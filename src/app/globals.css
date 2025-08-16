@@ -23,3 +23,12 @@
   --color-main-red: var(--color-main-red);
   --color-main-green: var(--color-main-green);
 }
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: monospace;
+  }
+}

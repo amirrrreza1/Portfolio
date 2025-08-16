@@ -10,7 +10,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative flex items-center justify-center w-7 h-7 border-b-2 border-secondary bg-primary  overflow-hidden"
+      className="relative flex items-center justify-center w-7 h-7 overflow-hidden"
     >
       <AnimatePresence initial={false} mode="wait">
         {theme === "light" ? (
