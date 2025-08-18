@@ -31,4 +31,8 @@
     box-sizing: border-box;
     font-family: monospace;
   }
+  body {
+    background-color: var(--color-primary);
+    color: var(--color-secondary);
+  }
 }
