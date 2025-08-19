@@ -36,3 +36,14 @@
     color: var(--color-secondary);
   }
 }
+
+@layer components {
+  .Container {
+    width: 95%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .FooterSmallText {
+    @apply w-fit mx-auto md:mx-0 p-1;
+  }
+}

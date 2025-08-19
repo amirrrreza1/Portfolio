@@ -9,7 +9,7 @@ const Header = () => {
     <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
       <div
         className="flex items-center gap-4 px-6 py-2 rounded-full
-        backdrop-blur-[5px] bg-white/20 
+        backdrop-blur-[5px] bg-secondary/20 
         border border-secondary/20 
         shadow-lg"
       >
