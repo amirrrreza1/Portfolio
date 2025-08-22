@@ -246,6 +246,10 @@
     background: var(--color-secondary);
     color: var(--color-primary);
   }
+  button,
+  a {
+    cursor: none !important;
+  }
 }
 
 @layer components {
