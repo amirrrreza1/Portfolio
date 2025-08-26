@@ -8,10 +8,8 @@ const MainLayout = ({ children }: any) => {
     <React.Fragment>
       <CustomCursor />
       <Header />
-      <div className="flex flex-col min-h-[calc(100vh-44px)]">
-        <main className="flex-1">{children}</main>
-      </div>
-      <Footer />
+      <main>{children}</main>
+      {/* <Footer /> */}
     </React.Fragment>
   );
 };

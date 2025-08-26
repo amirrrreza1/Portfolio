@@ -286,13 +286,19 @@ export default function RubikCube({
   );
   return (
     <div
-      className={`${className ?? ""} bg-primary m-0 p-0`}
-      style={{ width: "100%", height: "100%", display: "block" }}
+      className={`flex items-center justify-center w-full h-full ${
+        className ?? ""
+      }`}
     >
-      <Canvas shadows camera={{ position: [6, 6, 8], fov: 45 }}>
-        <SceneRoot onReady={onReady} />
-        {/* <StatsGl /> */}
-      </Canvas>
+      <div className="w-full h-full aspect-square max-w-[400px] max-h-[400px]">
+        <Canvas
+          shadows
+          className="w-full h-full"
+          camera={{ position: [6, 6, 8], fov: 45 }}
+        >
+          <SceneRoot onReady={() => {}} />
+        </Canvas>
+      </div>
     </div>
   );
 }

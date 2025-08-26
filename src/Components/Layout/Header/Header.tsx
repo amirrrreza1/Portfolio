@@ -6,9 +6,9 @@ import { Home, Search, Settings } from "lucide-react";
 
 const Header = () => {
   return (
-    <header className="sticky z-50 w-full h-15 mb-5">
+    <header className="sticky top-5 z-50 w-full h-15 mt-5">
       <div
-        className="w-fit mt-4 mx-auto flex  items-center gap-4 px-6 py-2
+        className="w-fit mx-auto flex  items-center gap-4 px-6 py-2
         backdrop-blur-[5px] bg-secondary/20 rounded
         border border-secondary/20 
         shadow-lg"
