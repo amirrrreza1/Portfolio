@@ -18,6 +18,7 @@ const ScrambleText: React.FC<Props> = ({
   delayBeforeFix = 1000,
 }) => {
   const [displayed, setDisplayed] = useState<string>("");
+  const [visible, setVisible] = useState(false);
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLSpanElement | null>(null);
 
@@ -28,43 +29,45 @@ const ScrambleText: React.FC<Props> = ({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            let delayPassed = false;
-
-            const delayInterval = setInterval(() => {
-              const scrambled = text
-                .split("")
-                .map(
-                  () =>
-                    scrambleChars[
-                      Math.floor(Math.random() * scrambleChars.length)
-                    ]
-                )
-                .join("");
-              setDisplayed(scrambled);
-            }, speed);
-
-            const delayTimer = setTimeout(() => {
-              delayPassed = true;
-              setStarted(true);
-              clearInterval(delayInterval);
-            }, delayBeforeFix);
-
+            setVisible(true);
             observer.disconnect();
-
-            return () => {
-              clearInterval(delayInterval);
-              clearTimeout(delayTimer);
-            };
           }
         });
       },
-      { threshold: 0.2 }
+      { rootMargin: "0px 0px -1% 0px" }
     );
 
     observer.observe(ref.current);
 
     return () => observer.disconnect();
-  }, [text, scrambleChars, delayBeforeFix, speed]);
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    let delayPassed = false;
+
+    const delayInterval = setInterval(() => {
+      const scrambled = text
+        .split("")
+        .map(
+          () => scrambleChars[Math.floor(Math.random() * scrambleChars.length)]
+        )
+        .join("");
+      setDisplayed(scrambled);
+    }, speed);
+
+    const delayTimer = setTimeout(() => {
+      delayPassed = true;
+      setStarted(true);
+      clearInterval(delayInterval);
+    }, delayBeforeFix);
+
+    return () => {
+      clearInterval(delayInterval);
+      clearTimeout(delayTimer);
+    };
+  }, [visible, text, scrambleChars, delayBeforeFix, speed]);
 
   useEffect(() => {
     if (!started) return;
@@ -100,7 +103,7 @@ const ScrambleText: React.FC<Props> = ({
 
   return (
     <span ref={ref} className={className}>
-      {displayed}
+      {visible ? displayed : ""}
     </span>
   );
 };
