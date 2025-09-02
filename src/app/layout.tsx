@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/Contexts/ThemeContext";
 import MainLayout from "@/Components/Layout/MainLayout";
+import { ToastProvider } from "@/Components/Toast/Toast";
 
 export const metadata: Metadata = {
   title: "Amirreza Azarioun",
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ThemeProvider>
-          <MainLayout>{children}</MainLayout>
+          <ToastProvider>
+            <MainLayout>{children}</MainLayout>
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

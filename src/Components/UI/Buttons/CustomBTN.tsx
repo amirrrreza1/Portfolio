@@ -32,13 +32,13 @@ const Button: FC<CodeButtonProps> = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={`
-        relative overflow-hidden rounded-md font-mono transition-all duration-300 shadow-md hover:shadow-lg group
+        relative overflow-hidden font-mono transition-all duration-300 shadow-md hover:shadow-lg group
         ${sizeClasses[size]}
         border border-secondary cursor-pointer
         ${
           isFill ? "bg-secondary text-primary" : "bg-transparent text-secondary"
         }
-        hover:scale-105 active:scale-100
+        active:scale-95
         ${className}
       `}
     >

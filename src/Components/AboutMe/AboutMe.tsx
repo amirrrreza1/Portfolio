@@ -9,7 +9,7 @@ const AboutMe = () => {
   const age = getAge();
 
   return (
-    <section className="Container">
+    <section className="Container backdrop-blur-sm p-2 my-10 border">
       <ScrambleText
         text="About Me"
         className="text-3xl ml-3"

@@ -1,0 +1,69 @@
+{
+  "skills": [
+    {
+      "id": 1,
+      "category": "Languages",
+      "items": [
+        { "name": "JavaScript", "color": "#f7df1e" },
+        { "name": "TypeScript", "color": "#3178c6" },
+        { "name": "HTML", "color": "#e34f26" },
+        { "name": "CSS", "color": "#1572b6" }
+      ]
+    },
+    {
+      "id": 2,
+      "category": "Frameworks & Libraries",
+      "items": [
+        { "name": "React.js", "color": "#61dafb" },
+        { "name": "Next.js (App Router)", "color": "#000000" },
+        { "name": "Redux / Zustand", "color": "#764abc" },
+        { "name": "Tailwind CSS", "color": "#38bdf8" }
+      ]
+    },
+    {
+      "id": 3,
+      "category": "UI & Styling Tools",
+      "items": [
+        { "name": "Sass (SCSS)", "color": "#cc6699" },
+        { "name": "Shadcn/ui", "color": "#000000" },
+        { "name": "Framer Motion", "color": "#e51cf4" }
+      ]
+    },
+    {
+      "id": 4,
+      "category": "Build Tools",
+      "items": [
+        { "name": "Vite", "color": "#646cff" },
+        { "name": "Webpack", "color": "#8dd6f9" },
+        { "name": "Babel", "color": "#f9dc3e" }
+      ]
+    },
+    {
+      "id": 5,
+      "category": "Testing",
+      "items": [
+        { "name": "Jest", "color": "#99425b" },
+        { "name": "React Testing Library", "color": "#e33332" },
+        { "name": "Cypress", "color": "#4a4a4a" }
+      ]
+    },
+    {
+      "id": 6,
+      "category": "Version Control",
+      "items": [
+        { "name": "Git", "color": "#f1502f" },
+        { "name": "GitHub", "color": "#181717" },
+        { "name": "GitLab", "color": "#fc6d26" }
+      ]
+    },
+    {
+      "id": 7,
+      "category": "Others",
+      "items": [
+        { "name": "REST APIs", "color": "#00bcd4" },
+        { "name": "GraphQL", "color": "#e10098" },
+        { "name": "Supabase / Firebase", "color": "#3ecf8e" }
+      ]
+    }
+  ]
+}

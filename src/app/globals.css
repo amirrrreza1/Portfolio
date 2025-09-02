@@ -250,6 +250,17 @@
   a {
     cursor: none !important;
   }
+  *::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--color-primary);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-secondary);
+  }
 }
 
 @layer components {
@@ -266,6 +277,25 @@
     margin-left: 2px;
     animation: blink 1s step-end infinite;
   }
+  .FormInput {
+    @apply bg-secondary/30 cursor-none;
+    width: 100%;
+    border: 1px solid var(--color-secondary);
+    padding: 10px;
+    font-size: 16px;
+    font-family: JetBrains_Mono, monospace;
+    outline: none;
+    &:focus {
+      outline: 2px solid var(--color-secondary);
+    }
+  }
+  .toast-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+
+  .toast-out {
+    animation: slideOut 0.3s ease-in forwards;
+  }
 }
 
 @keyframes blink {
@@ -279,14 +309,24 @@
   }
 }
 
-*::-webkit-scrollbar {
-  width: 5px;
+@keyframes slideIn {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
-*::-webkit-scrollbar-track {
-  background: var(--color-primary);
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--color-secondary);
+@keyframes slideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
