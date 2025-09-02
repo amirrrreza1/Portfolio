@@ -2,7 +2,7 @@
 
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
-import db from "@/DataBase/db.json";
+import Skill from "@/DataBase/Skills.json";
 import { getTextColor } from "@/Utils/getTextColor";
 
 interface SkillItem {
@@ -17,7 +17,7 @@ interface SkillCategory {
 }
 
 const Skills = () => {
-  const skills = db.skills as SkillCategory[];
+  const skills = Skill as SkillCategory[];
 
   return (
     <section className="Container backdrop-blur-sm p-2 border my-10">
