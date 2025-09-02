@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1,
+    "category": "Languages",
+    "items": [
+      { "id": 101, "name": "JavaScript", "color": "#f7df1e" },
+      { "id": 102, "name": "TypeScript", "color": "#3178c6" },
+      { "id": 103, "name": "HTML", "color": "#e34f26" },
+      { "id": 104, "name": "CSS", "color": "#1572b6" }
+    ]
+  },
+  {
+    "id": 2,
+    "category": "Frameworks & Libraries",
+    "items": [
+      { "id": 201, "name": "React.js", "color": "#61dafb" },
+      { "id": 202, "name": "Next.js (App Router)", "color": "#000000" },
+      { "id": 203, "name": "Redux / Zustand", "color": "#764abc" },
+      { "id": 204, "name": "Tailwind CSS", "color": "#38bdf8" }
+    ]
+  },
+  {
+    "id": 3,
+    "category": "UI & Styling Tools",
+    "items": [
+      { "id": 301, "name": "Sass (SCSS)", "color": "#cc6699" },
+      { "id": 302, "name": "Shadcn/ui", "color": "#000000" },
+      { "id": 303, "name": "Framer Motion", "color": "#e51cf4" }
+    ]
+  },
+  {
+    "id": 4,
+    "category": "Build Tools",
+    "items": [
+      { "id": 401, "name": "Vite", "color": "#646cff" },
+      { "id": 402, "name": "Webpack", "color": "#8dd6f9" },
+      { "id": 403, "name": "Babel", "color": "#f9dc3e" }
+    ]
+  },
+  {
+    "id": 5,
+    "category": "Testing",
+    "items": [
+      { "id": 501, "name": "Jest", "color": "#99425b" },
+      { "id": 502, "name": "React Testing Library", "color": "#e33332" },
+      { "id": 503, "name": "Cypress", "color": "#4a4a4a" }
+    ]
+  },
+  {
+    "id": 6,
+    "category": "Version Control",
+    "items": [
+      { "id": 601, "name": "Git", "color": "#f1502f" },
+      { "id": 602, "name": "GitHub", "color": "#181717" },
+      { "id": 603, "name": "GitLab", "color": "#fc6d26" }
+    ]
+  },
+  {
+    "id": 7,
+    "category": "Others",
+    "items": [
+      { "id": 701, "name": "REST APIs", "color": "#00bcd4" },
+      { "id": 702, "name": "GraphQL", "color": "#e10098" },
+      { "id": 703, "name": "Supabase / Firebase", "color": "#3ecf8e" }
+    ]
+  }
+]

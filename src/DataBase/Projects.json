@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "title": "FastFood",
+    "description": "An online ordering app with Supabase backend.",
+    "link": "https://fastfood-demo.com",
+    "repo": "https://github.com/yourname/fastfood-app",
+    "image": "https://via.placeholder.com/400x250",
+    "technologies": [202, 703, 204, 102],
+    "status": "completed"
+  },
+  {
+    "id": 2,
+    "title": "Portfolio",
+    "description": "A personal portfolio built with Next.js and Tailwind.",
+    "link": "https://myportfolio.com",
+    "repo": "https://github.com/amirrrreza1/FastFood-BurgerMaker",
+    "image": "https://via.placeholder.com/400x250",
+    "technologies": [202, 303, 204],
+    "status": "in-progress"
+  }
+]
