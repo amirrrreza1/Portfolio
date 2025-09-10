@@ -35,9 +35,9 @@ const Skills = () => {
         possible.
       </p>
 
-      <div className="space-y-6 px-6 my-6">
+      <div className="space-y-3 px-6 my-6">
         {skills.map((category) => (
-          <div key={category.id} className="bg-secondary/60 shadow p-5">
+          <div key={category.id} className="bg-secondary shadow p-5">
             <h3 className="text-xl font-semibold mb-3 text-primary">
               {category.category}
             </h3>
@@ -45,11 +45,10 @@ const Skills = () => {
               {category.items.map((skill, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 text-sm font-medium border"
+                  className="px-3 py-1 text-sm font-medium border-[1px] border-primary"
                   style={{
                     backgroundColor: skill.color,
                     color: getTextColor(skill.color),
-                    borderColor: skill.color,
                   }}
                 >
                   {skill.name}
