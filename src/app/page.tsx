@@ -1,4 +1,5 @@
 import AboutMe from "@/Components/AboutMe/AboutMe";
+import Certificate from "@/Components/Certificate/Certificate";
 import GetInTouchForm from "@/Components/GetInTouch/GetInTouch";
 import Hero from "@/Components/Hero/Hero";
 import ProjectsSection from "@/Components/Projects/Projects";
@@ -12,6 +13,7 @@ const HomePage = () => {
       <Skills />
       <GetInTouchForm />
       <ProjectsSection />
+      <Certificate />
     </>
   );
 };
