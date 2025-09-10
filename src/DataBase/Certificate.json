@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "title": "Web Design 1",
+    "description": "HTML & CSS basics.",
+    "teacher": "Turaj Armin",
+    "teacherLink": "https://www.linkedin.com/in/turaj-armin-34ab14b6/",
+    "score": "98/100",
+    "institute": "MFT",
+    "instituteLink": "https://mftplus.com/",
+    "filePath": "/Certificates/Web-1.pdf",
+    "date": "2024/05/26"
+  },
+  {
+    "id": 2,
+    "title": "Web Design 2",
+    "description": "Responsive with tailwindcss.",
+    "teacher": "Turaj Armin",
+    "teacherLink": "https://www.linkedin.com/in/turaj-armin-34ab14b6/",
+    "score": "100/100",
+    "institute": "MFT",
+    "instituteLink": "https://mftplus.com/",
+    "filePath": "/Certificates/web-2.pdf",
+    "date": "2024/08/04"
+  },
+  {
+    "id": 3,
+    "title": "Web Design 3",
+    "description": "Completed advanced JS course.",
+    "teacher": "Turaj Armin",
+    "teacherLink": "https://www.linkedin.com/in/turaj-armin-34ab14b6/",
+    "score": "100/100",
+    "institute": "MFT",
+    "instituteLink": "https://mftplus.com/",
+    "filePath": "/Certificates/web-3.pdf",
+    "date": "2024/11/10"
+  },
+  {
+    "id": 4,
+    "title": "React JS",
+    "description": "Completed advanced React course.",
+    "teacher": "Turaj Armin",
+    "teacherLink": "https://www.linkedin.com/in/turaj-armin-34ab14b6/",
+    "score": "100/100",
+    "institute": "MFT",
+    "instituteLink": "https://mftplus.com/",
+    "filePath": "/Certificates/React.pdf",
+    "date": "2025/01/31"
+  },
+  {
+    "id": 5,
+    "title": "Next JS",
+    "description": "Completed advanced React course.",
+    "teacher": "Ali Azimi",
+    "teacherLink": "https://www.linkedin.com/in/azimiac/",
+    "score": "100/100",
+    "institute": "MFT",
+    "instituteLink": "https://mftplus.com/",
+    "filePath": "/Certificates/Next.pdf",
+    "date": "2025/06/13"
+  }
+]
