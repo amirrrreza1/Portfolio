@@ -20,7 +20,7 @@ const Skills = () => {
   const skills = Skill as SkillCategory[];
 
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10">
+    <section className="Container backdrop-blur-sm p-2 border my-10" id="skills">
       <ScrambleText
         text="Skills"
         className="text-3xl ml-3"

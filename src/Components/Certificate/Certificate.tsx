@@ -22,7 +22,7 @@ const Certificate = () => {
   const Certificates: CertificateType[] = certificates;
 
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10">
+    <section className="Container backdrop-blur-sm p-2 border my-10" id="certificates">
       <ScrambleText
         text="Certificates"
         className="text-3xl ml-3"
