@@ -54,7 +54,7 @@ export default function ProjectsSection() {
   }, [visibleIds]);
 
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10">
+    <section className="Container backdrop-blur-sm p-2 border my-10" id="projects">
       <ScrambleText
         text="Projects"
         className="text-3xl ml-3"

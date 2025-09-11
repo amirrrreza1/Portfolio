@@ -4,7 +4,10 @@ import CodeStyleText from "../UI/CodeTyleText/CodeTyleText";
 const Hero = () => {
   return (
     <>
-      <main className="h-[calc(100vh-80px)] flex flex-col lg:flex-row justify-center items-center Container">
+      <main
+        className="h-[calc(100vh-80px)] flex flex-col lg:flex-row justify-center items-center Container"
+        id="home"
+      >
         <section className="lg:w-1/2 h-fit">
           <div className="w-fit  flex flex-col justify-center items-start gap-4 backdrop-blur-sm p-2 rounded">
             <CodeStyleText
