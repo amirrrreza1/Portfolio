@@ -1,6 +1,6 @@
 import Button from "@/Components/UI/Buttons/CustomBTN";
 import CodeStyleText from "@/Components/UI/CodeTyleText/CodeTyleText";
-import { Github, Linkedin, Heart } from "lucide-react";
+import { Github, Linkedin, Heart, Mail } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -21,25 +21,36 @@ const Footer = () => {
           <div className="flex items-center gap-4">
             <div className="flex gap-3">
               <a
-                href="https://github.com/your-username"
+                href="https://github.com/amirrrreza1"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
               >
-                <Github size={18} className="hover:text-primary" />
+                <Github size={19} className="hover:text-primary" />
               </a>
               <a
-                href="https://linkedin.com/in/your-username"
+                href="https://www.linkedin.com/in/amirrrreza1/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
               >
-                <Linkedin size={18} className="hover:text-primary" />
+                <Linkedin size={19} className="hover:text-primary" />
+              </a>
+              <a
+                href="mailto:arazarioun83@gmail.com"
+                className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
+              >
+                <Mail size={19} className="hover:text-primary" />
               </a>
             </div>
             <Button className="!px-3 !py-1">
-              <a href="" className="flex items-center gap-2">
-                <Heart size={14} className="hover:text-primary" />
+              <a
+                href="https://www.coffeebede.com/amirrrreza1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Heart size={19} className="hover:text-primary" />
                 Donate
               </a>
             </Button>
