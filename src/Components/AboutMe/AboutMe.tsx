@@ -10,11 +10,7 @@ const AboutMe = () => {
 
   return (
     <section className="Container backdrop-blur-sm p-2 my-10 border" id="about">
-      <ScrambleText
-        text="About Me"
-        className="text-3xl ml-3"
-        delayBeforeFix={1000}
-      />
+      <ScrambleText text="About Me" className="text-3xl ml-3" speed={30} />
       <Devider />
 
       <p className="px-6 leading-7 text-justify text-lg">

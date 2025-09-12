@@ -44,12 +44,11 @@ export default function GetInTouchForm() {
     }
   };
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10" id="getintouch">
-      <ScrambleText
-        text="Get in Touch"
-        className="text-3xl ml-3"
-        delayBeforeFix={1000}
-      />
+    <section
+      className="Container backdrop-blur-sm p-2 border my-10"
+      id="getintouch"
+    >
+      <ScrambleText text="Get in Touch" className="text-3xl ml-3" speed={30} />
 
       <Devider />
 
