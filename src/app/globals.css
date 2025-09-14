@@ -203,6 +203,19 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "VazirCode";
+  src: url("/Fonts/Vazir-Code.eot");
+  src: url("/Fonts/JetBrainsMono-Regular.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/Vazir-Code.woff2") format("woff2"),
+    url("/Fonts/Vazir-Code.woff") format("woff"),
+    url("/Fonts/Vazir-Code.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --color-primary: white;
   --color-secondary: black;
@@ -255,13 +268,16 @@
   *::-webkit-scrollbar {
     width: 5px;
   }
-
   *::-webkit-scrollbar-track {
     background: var(--color-primary);
   }
 
   *::-webkit-scrollbar-thumb {
     background: var(--color-secondary);
+  }
+  input:lang(fa),
+  textarea:lang(fa) {
+    font-family: "VazirCode", "tahoma", sans-serif;
   }
 }
 
