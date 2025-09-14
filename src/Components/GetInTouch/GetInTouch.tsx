@@ -3,13 +3,13 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
 import emailjs from "@emailjs/browser";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import Button from "../UI/Buttons/CustomBTN";
 import { useToast } from "../Toast/Toast";
 import { ContactUsSchema } from "@/Schemas/ContactUsForm";
+import { useAutoLang } from "@/Hooks/useAutoLang";
 
 type FormData = z.infer<typeof ContactUsSchema>;
 
@@ -43,13 +43,17 @@ export default function GetInTouchForm() {
       toast("Something went wrong!");
     }
   };
+
+  const nameRef = useAutoLang<HTMLInputElement>();
+  const emailRef = useAutoLang<HTMLInputElement>();
+  const messageRef = useAutoLang<HTMLTextAreaElement>();
+
   return (
     <section
       className="Container backdrop-blur-sm p-2 border my-10"
       id="getintouch"
     >
       <ScrambleText text="Get in Touch" className="text-3xl ml-3" speed={30} />
-
       <Devider />
 
       <form onSubmit={handleSubmit(onSubmit)} className="px-6">
@@ -64,9 +68,13 @@ export default function GetInTouchForm() {
           </div>
           <input
             type="text"
-            {...register("name")}
             className="FormInput"
             placeholder="Your name"
+            {...register("name")}
+            ref={(el) => {
+              register("name").ref(el);
+              nameRef.current = el;
+            }}
           />
         </div>
         <div className="mb-5">
@@ -81,11 +89,15 @@ export default function GetInTouchForm() {
             )}
           </div>
           <input
-            {...register("email")}
-            type="text"
             className="FormInput"
+            type="text"
             placeholder="you@example.com"
             autoComplete="off"
+            {...register("email")}
+            ref={(el) => {
+              register("email").ref(el);
+              emailRef.current = el;
+            }}
           />
         </div>
         <div className="mb-5">
@@ -104,10 +116,14 @@ export default function GetInTouchForm() {
             )}
           </div>
           <textarea
-            {...register("message")}
             className="FormInput resize-none"
             placeholder="Write your message..."
             rows={4}
+            {...register("message")}
+            ref={(el) => {
+              register("message").ref(el);
+              messageRef.current = el;
+            }}
           />
         </div>
 
