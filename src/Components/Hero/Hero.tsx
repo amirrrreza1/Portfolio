@@ -9,7 +9,7 @@ const Hero = () => {
         id="home"
       >
         <section className="lg:w-1/2 h-fit">
-          <div className="w-fit  flex flex-col justify-center items-start gap-4 backdrop-blur-sm p-2 rounded">
+          <div className="w-fit flex flex-col justify-center items-start gap-4 p-2 rounded">
             <CodeStyleText
               strings={["Hello There!", "I'm Amirreza Azarioun"]}
               typingSpeed={50}

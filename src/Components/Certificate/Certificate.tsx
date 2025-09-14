@@ -22,12 +22,11 @@ const Certificate = () => {
   const Certificates: CertificateType[] = certificates;
 
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10" id="certificates">
-      <ScrambleText
-        text="Certificates"
-        className="text-3xl ml-3"
-        delayBeforeFix={1000}
-      />
+    <section
+      className="Container backdrop-blur-sm p-2 border my-10"
+      id="certificates"
+    >
+      <ScrambleText text="Certificates" className="text-3xl ml-3" speed={30} />
       <Devider />
       <div className="space-y-8 px-6 my-6">
         {Certificates.map((cert) => (

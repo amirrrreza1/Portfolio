@@ -20,12 +20,11 @@ const Skills = () => {
   const skills = Skill as SkillCategory[];
 
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10" id="skills">
-      <ScrambleText
-        text="Skills"
-        className="text-3xl ml-3"
-        delayBeforeFix={1000}
-      />
+    <section
+      className="Container backdrop-blur-sm p-2 border my-10"
+      id="skills"
+    >
+      <ScrambleText text="Skills" className="text-3xl ml-3" speed={30} />
       <Devider />
 
       <p className="px-6 leading-7 text-justify text-lg">
@@ -37,7 +36,7 @@ const Skills = () => {
 
       <div className="space-y-3 px-6 my-6">
         {skills.map((category) => (
-          <div key={category.id} className="bg-secondary shadow p-5">
+          <div key={category.id} className="bg-secondary/60 shadow p-5">
             <h3 className="text-xl font-semibold mb-3 text-primary">
               {category.category}
             </h3>

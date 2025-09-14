@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useState } from "react";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import { useGitHubStats } from "@/Utils/getGithubStats";
@@ -31,53 +32,41 @@ const findSkillById = (id: number) => {
 };
 
 export default function ProjectsSection() {
-  const [visibleIds, setVisibleIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      Projects.forEach((project) => {
-        const element = document.getElementById(`project-${project.id}`);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          if (rect.top < window.innerHeight - 100) {
-            if (!visibleIds.includes(project.id)) {
-              setVisibleIds((prev) => [...prev, project.id]);
-            }
-          }
-        }
-      });
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [visibleIds]);
-
   return (
-    <section className="Container backdrop-blur-sm p-2 border my-10" id="projects">
-      <ScrambleText
-        text="Projects"
-        className="text-3xl ml-3"
-        delayBeforeFix={1000}
-      />
+    <section
+      className="Container backdrop-blur-sm p-2 border my-10"
+      id="projects"
+    >
+      <ScrambleText text="Projects" className="text-3xl ml-3" speed={30} />
       <Devider />
 
       <div className="space-y-8 px-6 my-6">
         {Projects.map((project) => {
           const stats = useGitHubStats(project.repo);
+          const [showAll, setShowAll] = useState(false);
+
+          const maxVisible = 4;
+          const visibleTechs = showAll
+            ? project.technologies
+            : project.technologies.slice(0, maxVisible);
+
+          const hiddenCount =
+            project.technologies.length > maxVisible
+              ? project.technologies.length - maxVisible
+              : 0;
 
           return (
-            <div
+            <motion.div
               key={project.id}
               id={`project-${project.id}`}
-              className={`p-6 shadow-lg border transition-transform duration-700 ease-out ${
-                visibleIds.includes(project.id)
-                  ? "translate-y-0 opacity-100"
-                  : "translate-y-10 opacity-0"
-              }`}
+              className="p-6 shadow-lg border"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              viewport={{ once: true, amount: 0.2 }}
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-2xl font-bold">{project.title}</h3>{" "}
+                <h3 className="text-2xl font-bold">{project.title}</h3>
                 <p
                   className={`text-sm font-medium ${
                     project.status === "completed"
@@ -88,26 +77,37 @@ export default function ProjectsSection() {
                   {project.status === "completed" ? "Open" : "Closed"}
                 </p>
               </div>
+
               <p className="text-secondary/70 mb-4">{project.description}</p>
+
               <div className="flex flex-wrap gap-2 mb-4">
-                {project.technologies.map((techId) => {
+                {visibleTechs.map((techId, idx) => {
                   const skill = findSkillById(techId);
                   if (!skill) return null;
-                  const textColor = getTextColor(skill.color);
                   return (
                     <span
-                      key={techId}
-                      className="px-3 py-1 text-sm shadow"
+                      key={`${project.id}-${techId}-${idx}`}
+                      className="px-3 py-1 text-sm font-medium border-[1px] border-secondary"
                       style={{
                         backgroundColor: skill.color,
-                        color: textColor,
+                        color: getTextColor(skill.color),
                       }}
                     >
                       {skill.name}
                     </span>
                   );
                 })}
+
+                {hiddenCount > 0 && (
+                  <Button
+                    onClick={() => setShowAll((prev) => !prev)}
+                    className="!px-3 !py-1"
+                  >
+                    {showAll ? "Show less" : `+${hiddenCount} more`}
+                  </Button>
+                )}
               </div>
+
               {stats ? (
                 <div className="flex gap-6 text-sm mb-4">
                   <span className="text-[#E2B340]">
@@ -118,6 +118,7 @@ export default function ProjectsSection() {
               ) : (
                 <p className="text-sm text-gray-400 mb-4">Loading stats...</p>
               )}
+
               <div className="flex gap-6">
                 <Button>
                   <a href={project.link} target="_blank">
@@ -130,7 +131,7 @@ export default function ProjectsSection() {
                   </a>
                 </Button>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
