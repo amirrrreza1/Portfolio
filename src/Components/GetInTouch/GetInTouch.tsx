@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import emailjs from "@emailjs/browser";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
@@ -10,8 +9,7 @@ import Button from "../UI/Buttons/CustomBTN";
 import { useToast } from "../Toast/Toast";
 import { ContactUsSchema } from "@/Schemas/ContactUsForm";
 import { useAutoLang } from "@/Hooks/useAutoLang";
-
-type FormData = z.infer<typeof ContactUsSchema>;
+import { FormData } from "./Types";
 
 export default function GetInTouchForm() {
   const toast = useToast();

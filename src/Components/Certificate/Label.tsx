@@ -1,9 +1,7 @@
 import React from "react";
+import { LabelProps } from "./Types";
 
-type LabelProps = {
-  children: React.ReactNode;
-  className?: string;
-};
+
 
 const Label: React.FC<LabelProps> = ({ children, className }) => {
   return (

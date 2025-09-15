@@ -4,17 +4,9 @@ import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import Skill from "@/DataBase/Skills.json";
 import { getTextColor } from "@/Utils/getTextColor";
+import { SkillCategory } from "./Types";
 
-interface SkillItem {
-  name: string;
-  color: string;
-}
 
-interface SkillCategory {
-  id: number;
-  category: string;
-  items: SkillItem[];
-}
 
 const Skills = () => {
   const skills = Skill as SkillCategory[];

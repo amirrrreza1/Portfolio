@@ -2,11 +2,8 @@
 
 import { ReactNode, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { TooltipProps } from "./Types";
 
-interface TooltipProps {
-  title: string;
-  children: ReactNode;
-}
 
 const Tooltip = ({ title, children }: TooltipProps) => {
   const [show, setShow] = useState(false);

@@ -3,18 +3,7 @@
 import { useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Option {
-  label: string;
-  value: string;
-}
-
-interface CustomSelectProps {
-  options: Option[];
-  placeholder?: string;
-  defaultValue?: string;
-  onChange?: (value: string) => void;
-}
+import { CustomSelectProps, Option } from "./Types";
 
 export default function CustomSelect({
   options,

@@ -1,12 +1,7 @@
 "use client";
 
 import quotes from "@/DataBase/DailyQuote.json";
-
-type Quote = {
-  id: number;
-  text: string;
-  author: string;
-};
+import { Quote } from "./Types";
 
 export default function DailyQuote() {
   const today = new Date();
