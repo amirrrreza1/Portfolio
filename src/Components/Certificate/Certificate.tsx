@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import certificates from "@/DataBase/Certificate.json";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
@@ -18,9 +21,9 @@ type CertificateType = {
   date: string;
 };
 
-const Certificate = () => {
-  const Certificates: CertificateType[] = certificates;
+const Certificates = certificates as CertificateType[];
 
+const CertificatesSection = () => {
   return (
     <section
       className="Container backdrop-blur-sm p-2 border my-10"
@@ -28,13 +31,21 @@ const Certificate = () => {
     >
       <ScrambleText text="Certificates" className="text-3xl ml-3" speed={30} />
       <Devider />
+
       <div className="space-y-8 px-6 my-6">
         {Certificates.map((cert) => (
-          <div key={cert.id} className="p-6 shadow-lg border">
-            <h2 className="text-xl font-bold">{cert.title}</h2>
-            <p className="text-sm mt-1">{cert.description}</p>
+          <motion.div
+            key={cert.id}
+            className="p-6 shadow-lg border"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            <h2 className="text-xl font-bold mb-2">{cert.title}</h2>
+            <p className="text-sm text-secondary/70 mb-4">{cert.description}</p>
 
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mb-4">
               <AnimatedLink href={cert.teacherLink}>
                 Teacher: {cert.teacher}
               </AnimatedLink>
@@ -46,14 +57,15 @@ const Certificate = () => {
               <Label>Date: {cert.date}</Label>
             </div>
 
-            <a href={cert.filePath} download>
-              <Button className="mt-4">Download Certificate</Button>
-            </a>
-          </div>
+            <div className="flex gap-4">
+              <a href={cert.filePath} download>
+                <Button>Download Certificate</Button>
+              </a>
+            </div>
+          </motion.div>
         ))}
       </div>
     </section>
   );
 };
-
-export default Certificate;
+export default CertificatesSection;
