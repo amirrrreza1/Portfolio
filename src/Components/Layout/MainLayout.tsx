@@ -9,10 +9,8 @@ const MainLayout = ({ children }: any) => {
     <React.Fragment>
       <CustomCursor />
       <Header />
-      <main>
-        <CodeParticlesBackground />
-        {children}
-      </main>
+      <CodeParticlesBackground />
+      <main data-scroll-section>{children}</main>
       <Footer />
     </React.Fragment>
   );
