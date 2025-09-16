@@ -1,16 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { ScrumbleTextProps } from "./Types";
 
-type Props = {
-  text: string;
-  speed?: number;
-  scrambleChars?: string;
-  className?: string;
-  delayBeforeFix?: number;
-};
-
-const ScrambleText: React.FC<Props> = ({
+const ScrambleText: React.FC<ScrumbleTextProps> = ({
   text,
   speed = 50,
   scrambleChars = "!@#$%^&*()_+-=<>?/[]{}abcdefghijklmnopqrstuvwxyz",

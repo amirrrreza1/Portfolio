@@ -2,12 +2,7 @@
 
 import { ButtonHTMLAttributes, FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface CodeButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
-  size?: "sm" | "md" | "lg";
-  variant?: "fill" | "outline";
-}
+import { CodeButtonProps } from "./Types";
 
 const sizeClasses = {
   sm: "px-3 py-1 text-sm",

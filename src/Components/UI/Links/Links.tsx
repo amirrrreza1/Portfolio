@@ -1,11 +1,8 @@
 import React from "react";
 import { ArrowRight } from "lucide-react";
+import { AnimatedLinkProps } from "./Types";
 
-type AnimatedLinkProps = {
-  href: string;
-  children: React.ReactNode;
-  className?: string;
-};
+
 
 const AnimatedLink: React.FC<AnimatedLinkProps> = ({
   href,

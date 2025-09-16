@@ -2,15 +2,9 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
+import { Particle } from "../Types";
 
 const CODE_CHARS = ["{", "}", ";", "<>", "()", "const", "let", "=>", "[ ]"];
-
-interface Particle {
-  mesh: THREE.Mesh;
-  rotationSpeed: THREE.Vector3;
-  layer: number;
-  char: string;
-}
 
 const LAYERS = [
   { count: 120, zOffset: -5 },

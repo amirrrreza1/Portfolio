@@ -7,19 +7,7 @@ import Devider from "../UI/Devider/Devider";
 import Button from "../UI/Buttons/CustomBTN";
 import AnimatedLink from "../UI/Links/Links";
 import Label from "./Label";
-
-type CertificateType = {
-  id: number;
-  title: string;
-  description: string;
-  teacher: string;
-  teacherLink: string;
-  score: string;
-  institute: string;
-  instituteLink: string;
-  filePath: string;
-  date: string;
-};
+import { CertificateType } from "./Types";
 
 const Certificates = certificates as CertificateType[];
 

@@ -1,19 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { CodeStyleTextProps } from "./Types";
 
-type Props = {
-  strings: string[];
-  typingSpeed?: number;
-  deletingSpeed?: number;
-  pauseBetween?: number;
-  loop?: boolean;
-  className?: string;
-  cursorClassName?: string;
-  ariaLabel?: string;
-};
-
-const CodeStyleText: React.FC<Props> = ({
+const CodeStyleText: React.FC<CodeStyleTextProps> = ({
   strings,
   typingSpeed = 70,
   deletingSpeed = 40,
