@@ -1,29 +1,30 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
+import gsap from "gsap";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 
 const SmoothScroll = ({ children }: { children: React.ReactNode }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const LocomotiveScroll = require("locomotive-scroll").default;
+    // جلوگیری از چند بار initialize شدن
+    if (ScrollSmoother.get()) return;
 
-    const scroll = new LocomotiveScroll({
-      el: scrollRef.current!,
-      smooth: true,
-      lerp: 0.08,
-      multiplier: 1.2,
-      class: "is-reveal",
+    ScrollSmoother.create({
+      wrapper: "#smooth-wrapper",
+      content: "#smooth-content",
+      smooth: 1.2,
+      effects: true,
     });
-
-    return () => scroll.destroy();
   }, []);
 
   return (
-    <div id="scroll-container" data-scroll-container ref={scrollRef}>
-      {children}
+    <div id="smooth-wrapper">
+      <div id="smooth-content">{children}</div>
     </div>
   );
 };

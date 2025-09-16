@@ -3,7 +3,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/Contexts/ThemeContext";
 import MainLayout from "@/Components/Layout/MainLayout";
 import { ToastProvider } from "@/Components/Toast/Toast";
-import SmoothLayout from "@/Components/SmoothScroll/SmoothScroll";
 
 export const metadata: Metadata = {
   title: "Amirreza Azarioun",
@@ -20,9 +19,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <ToastProvider>
-            <SmoothLayout>
-              <MainLayout>{children}</MainLayout>
-            </SmoothLayout>
+            <MainLayout>{children}</MainLayout>
           </ToastProvider>
         </ThemeProvider>
       </body>
