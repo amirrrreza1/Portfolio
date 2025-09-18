@@ -112,7 +112,7 @@ export default function ProjectsSection() {
               <div className="flex gap-6">
                 <Button>
                   <a href={pj.link} target="_blank">
-                    View pj
+                    View Project
                   </a>
                 </Button>
                 <Button>

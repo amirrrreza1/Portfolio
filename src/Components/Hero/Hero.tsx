@@ -5,7 +5,7 @@ const Hero = () => {
   return (
     <>
       <main
-        className="h-svh flex flex-col lg:flex-row justify-center items-center gap-5 Container"
+        className="h-[calc(100vh-80px)] mt-[100px] flex flex-col lg:flex-row justify-center items-center gap-5 Container"
         id="home"
       >
         <section className="lg:w-1/2 h-fit">
