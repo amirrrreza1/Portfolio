@@ -10,8 +10,7 @@ gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 const SmoothScroll = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // جلوگیری از چند بار initialize شدن
+    
     if (ScrollSmoother.get()) return;
 
     ScrollSmoother.create({
