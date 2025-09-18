@@ -7,6 +7,24 @@ import { ToastProvider } from "@/Components/Toast/Toast";
 export const metadata: Metadata = {
   title: "Amirreza Azarioun",
   description: "Amirreza Azarioun's portfolio site",
+  keywords: [
+    "Amirreza Azarioun",
+    "Portfolio",
+    "Web Developer",
+    "Frontend",
+    "React",
+    "Next.js",
+    "JavaScript",
+    "TypeScript",
+  ],
+  authors: [{ name: "Amirreza Azarioun" }],
+  creator: "Amirreza Azarioun",
+  publisher: "Amirreza Azarioun",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
