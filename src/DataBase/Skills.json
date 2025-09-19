@@ -1,0 +1,63 @@
+[
+  {
+    "id": 1,
+    "category": "Languages",
+    "items": [
+      { "id": 101, "name": "JavaScript", "color": "#f7df1e" },
+      { "id": 102, "name": "TypeScript", "color": "#3178c6" },
+      { "id": 103, "name": "HTML", "color": "#e34f26" },
+      { "id": 104, "name": "CSS", "color": "#1572b6" }
+    ]
+  },
+  {
+    "id": 2,
+    "category": "Frameworks & Libraries",
+    "items": [
+      { "id": 201, "name": "React.js", "color": "#61dafb" },
+      { "id": 202, "name": "Next.js (App Router)", "color": "#000000" },
+      { "id": 203, "name": "Three.js", "color": "#254E6E" },
+      { "id": 204, "name": "Redux", "color": "#764ABC" },
+      { "id": 205, "name": "Zustand", "color": "#582D3E" },
+      { "id": 206, "name": "Tailwind", "color": "#38bdf8" },
+      { "id": 207, "name": "React Query", "color": "#FF4154" },
+      { "id": 208, "name": "Swiper", "color": "#00A4FF" }
+    ]
+  },
+  {
+    "id": 3,
+    "category": "UI & Styling Tools",
+    "items": [
+      { "id": 301, "name": "MUI", "color": "#007FFF" },
+      { "id": 303, "name": "Framer Motion", "color": "#e51cf4" },
+      { "id": 304, "name": "GSAP", "color": "#17E34F" },
+      { "id": 305, "name": "DaisyUI", "color": "#FFCB31" }
+    ]
+  },
+  {
+    "id": 6,
+    "category": "Version Control",
+    "items": [
+      { "id": 601, "name": "GitHub", "color": "#181717" },
+      { "id": 602, "name": "GitLab", "color": "#fc6d26" }
+    ]
+  },
+  {
+    "id": 7,
+    "category": "Others",
+    "items": [
+      { "id": 701, "name": "Vite", "color": "#646cff" },
+      { "id": 702, "name": "REST APIs", "color": "#00bcd4" },
+      { "id": 703, "name": "Supabase", "color": "#3ecf8e" },
+      { "id": 704, "name": "Firebase", "color": "#ffcb2b" },
+      { "id": 705, "name": "PWA", "color": "#5A0FC8" }
+    ]
+  },
+  {
+    "id": 8,
+    "category": "Tools & Deployment",
+    "items": [
+      { "id": 801, "name": "Vercel", "color": "#000000" },
+      { "id": 802, "name": "Figma", "color": "#F24E1E" }
+    ]
+  }
+]

@@ -1,26 +1,350 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-BoldItalic.eot");
+  src: url("/Fonts/JetBrainsMono-BoldItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-BoldItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-BoldItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-BoldItalic.ttf") format("truetype");
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Bold.eot");
+  src: url("/Fonts/JetBrainsMono-Bold.eot?#iefix") format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Bold.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Bold.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-ExtraBold.eot");
+  src: url("/Fonts/JetBrainsMono-ExtraBold.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-ExtraBold.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-ExtraBold.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-ExtraBold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-ExtraBoldItalic.eot");
+  src: url("/Fonts/JetBrainsMono-ExtraBoldItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-ExtraBoldItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-ExtraBoldItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-ExtraBoldItalic.ttf") format("truetype");
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-ExtraLightItalic.eot");
+  src: url("/Fonts/JetBrainsMono-ExtraLightItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-ExtraLightItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-ExtraLightItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-ExtraLightItalic.ttf") format("truetype");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-ExtraLight.eot");
+  src: url("/Fonts/JetBrainsMono-ExtraLight.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-ExtraLight.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-ExtraLight.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-LightItalic.eot");
+  src: url("/Fonts/JetBrainsMono-LightItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-LightItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-LightItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-LightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Light.eot");
+  src: url("/Fonts/JetBrainsMono-Light.eot?#iefix") format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Light.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Light.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Italic.eot");
+  src: url("/Fonts/JetBrainsMono-Italic.eot?#iefix") format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Italic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Italic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Italic.ttf") format("truetype");
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Medium.eot");
+  src: url("/Fonts/JetBrainsMono-Medium.eot?#iefix") format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Medium.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Medium.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-MediumItalic.eot");
+  src: url("/Fonts/JetBrainsMono-MediumItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-MediumItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-MediumItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-MediumItalic.ttf") format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Regular.eot");
+  src: url("/Fonts/JetBrainsMono-Regular.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Regular.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Regular.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-SemiBold.eot");
+  src: url("/Fonts/JetBrainsMono-SemiBold.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-SemiBold.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-SemiBold.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-SemiBoldItalic.eot");
+  src: url("/Fonts/JetBrainsMono-SemiBoldItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-SemiBoldItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-SemiBoldItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-SemiBoldItalic.ttf") format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-Thin.eot");
+  src: url("/Fonts/JetBrainsMono-Thin.eot?#iefix") format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-Thin.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-Thin.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains_Mono";
+  src: url("/Fonts/JetBrainsMono-ThinItalic.eot");
+  src: url("/Fonts/JetBrainsMono-ThinItalic.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/JetBrainsMono-ThinItalic.woff2") format("woff2"),
+    url("/Fonts/JetBrainsMono-ThinItalic.woff") format("woff"),
+    url("/Fonts/JetBrainsMono-ThinItalic.ttf") format("truetype");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "VazirCode";
+  src: url("/Fonts/Vazir-Code.eot");
+  src: url("/Fonts/JetBrainsMono-Regular.eot?#iefix")
+      format("embedded-opentype"),
+    url("/Fonts/Vazir-Code.woff2") format("woff2"),
+    url("/Fonts/Vazir-Code.woff") format("woff"),
+    url("/Fonts/Vazir-Code.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-primary: white;
+  --color-secondary: black;
+  --color-Gold: #d0c39d;
+  --color-main-red: #e11d48;
+  --color-main-green: #22c55d;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --color-primary: black;
+  --color-secondary: white;
+  --color-Gold: #d0c39d;
+  --color-main-red: #e11d48;
+  --color-main-green: #22c55d;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-Gold: #d0c39d;
+  --color-main-red: var(--color-main-red);
+  --color-main-green: var(--color-main-green);
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: JetBrains_Mono, monospace;
+    scroll-behavior: smooth;
+    scroll-margin-top: 100px;
+  }
+  body {
+    background-color: var(--color-primary);
+    color: var(--color-secondary);
+    cursor: none;
+  }
+  html {
+    cursor: none;
+  }
+  ::selection {
+    background: var(--color-secondary);
+    color: var(--color-primary);
+  }
+  button,
+  a {
+    cursor: none !important;
+  }
+  *::-webkit-scrollbar {
+    width: 5px;
+  }
+  *::-webkit-scrollbar-track {
+    background: var(--color-primary);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-secondary);
+  }
+  input:lang(fa),
+  textarea:lang(fa) {
+    font-family: "VazirCode", "tahoma", sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .Container {
+    width: 95%;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .FooterSmallText {
+    @apply w-fit mx-auto md:mx-0 p-1;
+  }
+  .typewriter-cursor {
+    display: inline-block;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+  .FormInput {
+    @apply bg-secondary/30 cursor-none;
+    width: 100%;
+    border: 1px solid var(--color-secondary);
+    padding: 10px;
+    font-size: 16px;
+    font-family: JetBrains_Mono, monospace;
+    outline: none;
+    &:focus {
+      outline: 2px solid var(--color-secondary);
+    }
+  }
+  .toast-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+
+  .toast-out {
+    animation: slideOut 0.3s ease-in forwards;
+  }
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
