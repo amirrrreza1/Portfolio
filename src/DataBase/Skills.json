@@ -15,53 +15,49 @@
     "items": [
       { "id": 201, "name": "React.js", "color": "#61dafb" },
       { "id": 202, "name": "Next.js (App Router)", "color": "#000000" },
-      { "id": 203, "name": "Redux / Zustand", "color": "#764abc" },
-      { "id": 204, "name": "Tailwind CSS", "color": "#38bdf8" }
+      { "id": 203, "name": "Three.js", "color": "#254E6E" },
+      { "id": 204, "name": "Redux", "color": "#764ABC" },
+      { "id": 205, "name": "Zustand", "color": "#582D3E" },
+      { "id": 206, "name": "Tailwind", "color": "#38bdf8" },
+      { "id": 207, "name": "React Query", "color": "#FF4154" },
+      { "id": 208, "name": "Swiper", "color": "#00A4FF" }
     ]
   },
   {
     "id": 3,
     "category": "UI & Styling Tools",
     "items": [
-      { "id": 301, "name": "Sass (SCSS)", "color": "#cc6699" },
-      { "id": 302, "name": "Shadcn/ui", "color": "#000000" },
-      { "id": 303, "name": "Framer Motion", "color": "#e51cf4" }
-    ]
-  },
-  {
-    "id": 4,
-    "category": "Build Tools",
-    "items": [
-      { "id": 401, "name": "Vite", "color": "#646cff" },
-      { "id": 402, "name": "Webpack", "color": "#8dd6f9" },
-      { "id": 403, "name": "Babel", "color": "#f9dc3e" }
-    ]
-  },
-  {
-    "id": 5,
-    "category": "Testing",
-    "items": [
-      { "id": 501, "name": "Jest", "color": "#99425b" },
-      { "id": 502, "name": "React Testing Library", "color": "#e33332" },
-      { "id": 503, "name": "Cypress", "color": "#4a4a4a" }
+      { "id": 301, "name": "MUI", "color": "#007FFF" },
+      { "id": 303, "name": "Framer Motion", "color": "#e51cf4" },
+      { "id": 304, "name": "GSAP", "color": "#17E34F" },
+      { "id": 305, "name": "DaisyUI", "color": "#FFCB31" }
     ]
   },
   {
     "id": 6,
     "category": "Version Control",
     "items": [
-      { "id": 601, "name": "Git", "color": "#f1502f" },
-      { "id": 602, "name": "GitHub", "color": "#181717" },
-      { "id": 603, "name": "GitLab", "color": "#fc6d26" }
+      { "id": 601, "name": "GitHub", "color": "#181717" },
+      { "id": 602, "name": "GitLab", "color": "#fc6d26" }
     ]
   },
   {
     "id": 7,
     "category": "Others",
     "items": [
-      { "id": 701, "name": "REST APIs", "color": "#00bcd4" },
-      { "id": 702, "name": "GraphQL", "color": "#e10098" },
-      { "id": 703, "name": "Supabase / Firebase", "color": "#3ecf8e" }
+      { "id": 701, "name": "Vite", "color": "#646cff" },
+      { "id": 702, "name": "REST APIs", "color": "#00bcd4" },
+      { "id": 703, "name": "Supabase", "color": "#3ecf8e" },
+      { "id": 704, "name": "Firebase", "color": "#ffcb2b" },
+      { "id": 705, "name": "PWA", "color": "#5A0FC8" }
+    ]
+  },
+  {
+    "id": 8,
+    "category": "Tools & Deployment",
+    "items": [
+      { "id": 801, "name": "Vercel", "color": "#000000" },
+      { "id": 802, "name": "Figma", "color": "#F24E1E" }
     ]
   }
 ]

@@ -1,22 +1,74 @@
 [
   {
     "id": 1,
-    "title": "FastFood",
-    "description": "An online ordering app with Supabase backend.",
-    "link": "https://fastfood-demo.com",
-    "repo": "https://github.com/yourname/fastfood-app",
-    "image": "https://via.placeholder.com/400x250",
-    "technologies": [202, 703, 204, 102],
-    "status": "completed"
+    "title": "Portfolio",
+    "description": "The page that you are currently on",
+    "link": "#",
+    "repo": "https://github.com/amirrrreza1/Portfolio/tree/Dev",
+    "technologies": [102, 202, 203, 303, 801],
+    "status": "Completed"
   },
   {
     "id": 2,
-    "title": "Portfolio",
-    "description": "A personal portfolio built with Next.js and Tailwind.",
-    "link": "https://myportfolio.com",
+    "title": "Fast Food",
+    "description": "A full Stack site for a fast food restaurant with a ThreeJS burger maker",
+    "link": "https://www.amirfast.ir/",
     "repo": "https://github.com/amirrrreza1/FastFood-BurgerMaker",
-    "image": "https://via.placeholder.com/400x250",
-    "technologies": [202, 303, 204],
-    "status": "in-progress"
+    "technologies": [102, 202, 203, 205, 206, 703, 801],
+    "status": "Completed"
+  },
+  {
+    "id": 3,
+    "title": "Dastresi",
+    "description": "An e-commerce platform for selling electronics with an admin panel to manage products.",
+    "link": "https://dastersi-code.vercel.app/",
+    "repo": "https://github.com/amirrrreza1/Dastersi",
+    "technologies": [102, 201, 204, 206, 701],
+    "status": "Completed"
+  },
+  {
+    "id": 4,
+    "title": "Digikala (TypeScript)",
+    "description": "A replica of Digikala’s homepage built with vanilla TypeScript.",
+    "link": "https://amirrrreza1.github.io/Digikala-API/",
+    "repo": "https://github.com/amirrrreza1/DigiKala-API-Code",
+    "technologies": [102, 208],
+    "status": "Completed"
+  },
+  {
+    "id": 5,
+    "title": "Morse Code",
+    "description": "A weekend project for learning and practicing Morse code.",
+    "link": "https://morse-code-phi.vercel.app/",
+    "repo": "https://github.com/amirrrreza1/Morse-Code",
+    "technologies": [102, 202, 206, 705],
+    "status": "Completed"
+  },
+  {
+    "id": 6,
+    "title": "Hangman",
+    "description": "A weekend project for building and playing the Hangman game.",
+    "link": "https://hangman-eta-nine.vercel.app/",
+    "repo": "https://github.com/amirrrreza1/Hangman",
+    "technologies": [101, 206, 701],
+    "status": "Completed"
+  },
+  {
+    "id": 7,
+    "title": "Finsweet",
+    "description": "10 fully responsive, pixel-perfect web pages implemented directly from a Figma design.",
+    "link": "https://amirrrreza1.github.io/Finsweet/",
+    "repo": "https://github.com/amirrrreza1/Finsweet",
+    "technologies": [103, 104, 206, 305, 802],
+    "status": "Completed"
+  },
+  {
+    "id": 8,
+    "title": "Digikala (HTML & CSS)",
+    "description": "3 pages of Digikala’s website whit only HTML & CSS",
+    "link": "https://amirrrreza1.github.io/Digikala-HTML-CSS/",
+    "repo": "https://github.com/amirrrreza1/Digikala-HTML-CSS",
+    "technologies": [103, 104, 701],
+    "status": "Completed"
   }
 ]
