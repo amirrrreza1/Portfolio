@@ -36,6 +36,9 @@ export const CodeParticlesBackground: React.FC = () => {
 
   useEffect(() => {
     if (!mountRef.current) return;
+
+    const mountEl = mountRef.current;
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       60,
@@ -85,7 +88,6 @@ export const CodeParticlesBackground: React.FC = () => {
 
         const char = CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
         context.fillStyle = "#6b7280";
-
         context.fillText(char, canvas.width / 2, canvas.height / 2);
 
         const texture = new THREE.CanvasTexture(canvas);
@@ -124,24 +126,17 @@ export const CodeParticlesBackground: React.FC = () => {
         p.mesh.rotation.y += p.rotationSpeed.y;
         p.mesh.rotation.z += p.rotationSpeed.z;
       });
-
       renderer.render(scene, camera);
     };
 
-    mountRef.current.appendChild(renderer.domElement);
+    mountEl.appendChild(renderer.domElement);
     animate();
 
     return () => {
-      if (animationIdRef.current) {
-        cancelAnimationFrame(animationIdRef.current);
-      }
+      if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current);
 
-      if (
-        mountRef.current &&
-        renderer.domElement &&
-        mountRef.current.contains(renderer.domElement)
-      ) {
-        mountRef.current.removeChild(renderer.domElement);
+      if (renderer.domElement && mountEl.contains(renderer.domElement)) {
+        mountEl.removeChild(renderer.domElement);
       }
 
       particles.forEach((p) => {

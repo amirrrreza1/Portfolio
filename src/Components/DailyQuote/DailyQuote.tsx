@@ -15,7 +15,7 @@ export default function DailyQuote() {
 
   return (
     <div className="Container backdrop-blur-sm border my-10 p-6">
-      <p className="italic">"{quote.text}"</p>
+      <q className="italic">{quote.text}</q>
       <p className="mt-4 text-sm text-right">— {quote.author}</p>
     </div>
   );

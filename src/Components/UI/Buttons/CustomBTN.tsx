@@ -1,6 +1,6 @@
 "use client";
 
-import { ButtonHTMLAttributes, FC, useState } from "react";
+import { FC, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CodeButtonProps } from "./Types";
 
