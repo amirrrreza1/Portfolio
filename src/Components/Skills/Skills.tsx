@@ -6,8 +6,6 @@ import Skill from "@/DataBase/Skills.json";
 import { getTextColor } from "@/Utils/getTextColor";
 import { SkillCategory } from "./Types";
 
-
-
 const Skills = () => {
   const skills = Skill as SkillCategory[];
 
@@ -21,7 +19,7 @@ const Skills = () => {
 
       <p className="px-6 leading-7 text-justify text-lg">
         As a frontend developer, I adapt my choice of technologies based on each
-        project's goals and requirements. By leveraging different tools and
+        {" project's goals and requirements."} By leveraging different tools and
         frameworks, I aim to deliver the most efficient and effective solutions
         possible.
       </p>

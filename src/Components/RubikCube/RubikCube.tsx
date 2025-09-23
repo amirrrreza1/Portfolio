@@ -1,19 +1,10 @@
 "use client";
 
-import React, {
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useMemo, useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { StatsGl, RoundedBox } from "@react-three/drei";
-
-type Axis = "x" | "y" | "z";
-type LayerIndex = -1 | 0 | 1;
-type Turn = `${"U" | "D" | "L" | "R" | "F" | "B"}${"" | "'"}`;
+import { Canvas, useFrame, ThreeEvent } from "@react-three/fiber";
+import { RoundedBox } from "@react-three/drei";
+import { Axis, LayerIndex, Turn } from "./Types";
 
 const EPS = 0.0001;
 const S = 1;
@@ -167,7 +158,7 @@ function useMoveQueue(
       c.getWorldPosition(pWorld);
       const pLocal = pWorld.clone();
       parent.worldToLocal(pLocal);
-      const v = (pLocal as any)[next.axis] as number;
+      const v = pLocal[next.axis as Axis];
       return Math.abs(v - layerPos) < 0.5;
     });
 
@@ -196,7 +187,11 @@ function Cubie({ position }: { position: [number, number, number] }) {
   const onNegZ = pos.z < -t;
 
   return (
-    <group ref={ref} position={position as any} userData={{ cubie: true }}>
+    <group
+      ref={ref}
+      position={position as [number, number, number]}
+      userData={{ cubie: true }}
+    >
       <RoundedBox
         args={[size, size, size]}
         radius={radius}
@@ -250,9 +245,9 @@ function Cubie({ position }: { position: [number, number, number] }) {
 function Cube() {
   const positions: [number, number, number][] = [];
   const o = S + GAP;
-  for (let x of [-o, 0, o])
-    for (let y of [-o, 0, o])
-      for (let z of [-o, 0, o]) positions.push([x, y, z]);
+  for (const x of [-o, 0, o])
+    for (const y of [-o, 0, o])
+      for (const z of [-o, 0, o]) positions.push([x, y, z]);
   return (
     <group>
       {positions.map((p, i) => (
@@ -271,19 +266,8 @@ function Lights() {
   );
 }
 
-type HeroRubikProps = { width?: number; height?: number; className?: string };
-export default function RubikCube({
-  width = 420,
-  height = 420,
-  className,
-}: HeroRubikProps) {
-  const [api, setApi] = useState<{
-    enqueue: (m: Turn | Turn[]) => void;
-  } | null>(null);
-  const onReady = useCallback(
-    (v: { enqueue: (m: Turn | Turn[]) => void }) => setApi(v),
-    []
-  );
+type HeroRubikProps = { className?: string };
+export default function RubikCube({ className }: HeroRubikProps) {
   return (
     <div
       className={`flex items-center justify-center w-full h-full ${
@@ -328,7 +312,7 @@ function SceneRoot({
 
   const dragging = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
-  const onPointerDown = (e: any) => {
+  const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     dragging.current = true;
     last.current = {
       x: e.clientX ?? e.pointer?.x ?? 0,
@@ -336,7 +320,7 @@ function SceneRoot({
     };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
-  const onPointerMove = (e: any) => {
+  const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
     if (!dragging.current || !root.current || !last.current) return;
     const dx = (e.clientX ?? 0) - last.current.x;
     const dy = (e.clientY ?? 0) - last.current.y;

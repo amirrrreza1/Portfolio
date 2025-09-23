@@ -54,7 +54,7 @@ export default function CustomSelect({
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="absolute z-10 w-full mt-1 bg-primary border border-secondary rounded shadow-lg overflow-hidden p-2"
           >
-            {options.map((option, idx) => (
+            {options.map((option) => (
               <motion.li
                 key={option.value}
                 onClick={() => handleSelect(option)}

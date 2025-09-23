@@ -38,8 +38,6 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
   useEffect(() => {
     if (!visible) return;
 
-    let delayPassed = false;
-
     const delayInterval = setInterval(() => {
       const scrambled = text
         .split("")
@@ -51,7 +49,6 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
     }, speed);
 
     const delayTimer = setTimeout(() => {
-      delayPassed = true;
       setStarted(true);
       clearInterval(delayInterval);
     }, delayBeforeFix);

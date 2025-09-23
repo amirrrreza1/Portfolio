@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CodeStyleTextProps } from "./Types";
 
 const CodeStyleText: React.FC<CodeStyleTextProps> = ({
@@ -17,7 +17,9 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  const safeStrings = strings?.length ? strings : [""];
+  const safeStrings = useMemo(() => {
+    return strings?.length ? strings : [""];
+  }, [strings]);
 
   useEffect(() => {
     const full = safeStrings[strIndex % safeStrings.length];

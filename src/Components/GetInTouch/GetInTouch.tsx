@@ -38,7 +38,7 @@ export default function GetInTouchForm() {
       toast("Message sent successfully!");
       reset();
     } catch (err) {
-      toast("Something went wrong!");
+      toast(`Something went wrong ${err}`);
     }
   };
 
