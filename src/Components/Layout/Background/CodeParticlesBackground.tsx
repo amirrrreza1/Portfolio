@@ -6,11 +6,27 @@ import { Particle } from "../Types";
 
 const CODE_CHARS = ["{", "}", ";", "<>", "()", "const", "let", "=>", "[ ]"];
 
-const LAYERS = [
-  { count: 120, zOffset: -5 },
-  { count: 80, zOffset: 0 },
-  { count: 60, zOffset: 5 },
-];
+const getResponsiveLayers = (width: number) => {
+  if (width < 640) {
+    return [
+      { count: 40, zOffset: -5 },
+      { count: 25, zOffset: 0 },
+      { count: 15, zOffset: 5 },
+    ];
+  } else if (width < 1024) {
+    return [
+      { count: 80, zOffset: -5 },
+      { count: 50, zOffset: 0 },
+      { count: 30, zOffset: 5 },
+    ];
+  } else {
+    return [
+      { count: 120, zOffset: -5 },
+      { count: 80, zOffset: 0 },
+      { count: 60, zOffset: 5 },
+    ];
+  }
+};
 
 export const CodeParticlesBackground: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -35,7 +51,9 @@ export const CodeParticlesBackground: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!mountRef.current) return;
+    if (!mountRef.current || size.width === 0 || size.height === 0) return;
+
+    const layers = getResponsiveLayers(size.width);
 
     const mountEl = mountRef.current;
 
@@ -69,7 +87,7 @@ export const CodeParticlesBackground: React.FC = () => {
 
     const particles: Particle[] = [];
 
-    LAYERS.forEach((layer, layerIndex) => {
+    layers.forEach((layer, layerIndex) => {
       const { worldWidth, worldHeight } = getWorldDimensions(layer.zOffset);
 
       for (let i = 0; i < layer.count; i++) {
