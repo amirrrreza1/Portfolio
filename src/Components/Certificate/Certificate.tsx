@@ -20,7 +20,7 @@ const CertificatesSection = () => {
       <ScrambleText text="Certificates" className="text-3xl ml-3" speed={30} />
       <Devider />
 
-      <div className="space-y-8 px-6 my-6">
+      <div className="grid gap-6 px-6 my-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {Certificates.map((cert) => (
           <motion.div
             key={cert.id}
