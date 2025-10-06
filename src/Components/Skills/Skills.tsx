@@ -17,14 +17,14 @@ const Skills = () => {
       <ScrambleText text="Skills" className="text-3xl ml-3" speed={30} />
       <Devider />
 
-      <p className="px-6 leading-7 text-justify text-lg">
+      <p className="px-1 md:px-4 lg:px-6 leading-7 text-justify text-lg">
         As a frontend developer, I adapt my choice of technologies based on each
         {" project's goals and requirements."} By leveraging different tools and
         frameworks, I aim to deliver the most efficient and effective solutions
         possible.
       </p>
 
-      <div className="space-y-3 px-6 my-6">
+      <div className="space-y-3 px-1 md:px-4 lg:px-6 my-6">
         {skills.map((category) => (
           <div key={category.id} className="bg-secondary/60 shadow p-5">
             <h3 className="text-xl font-semibold mb-3 text-primary">
