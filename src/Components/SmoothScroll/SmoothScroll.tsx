@@ -7,10 +7,20 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollSmoother, ScrollTrigger);
 
+export const scrollToSection = (id: string) => {
+  const smoother = ScrollSmoother.get();
+  if (!smoother) return;
+  const target = document.querySelector(id);
+  if (!target) return;
+  const targetY = target.getBoundingClientRect().top + window.scrollY;
+  const headerOffset = 90;
+  smoother.scrollTo(targetY - headerOffset, true);
+};
+
 const SmoothScroll = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     if (ScrollSmoother.get()) return;
 
     ScrollSmoother.create({
