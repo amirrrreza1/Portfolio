@@ -7,8 +7,26 @@ export default function CustomCursor() {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [clicked, setClicked] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [isPointerFine, setIsPointerFine] = useState(false);
 
   useEffect(() => {
+    const checkPointer = () => {
+      const mediaQuery = window.matchMedia(
+        "(pointer: fine) and (hover: hover)"
+      );
+      setIsPointerFine(mediaQuery.matches);
+
+      const listener = (e: MediaQueryListEvent) => setIsPointerFine(e.matches);
+      mediaQuery.addEventListener("change", listener);
+      return () => mediaQuery.removeEventListener("change", listener);
+    };
+
+    return checkPointer();
+  }, []);
+
+  useEffect(() => {
+    if (!isPointerFine) return;
+
     const move = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
     const down = () => setClicked(true);
     const up = () => setClicked(false);
@@ -18,9 +36,12 @@ export default function CustomCursor() {
     window.addEventListener("mouseup", up);
 
     const buttons = document.querySelectorAll("button, a");
+    const enter = () => setHovered(true);
+    const leave = () => setHovered(false);
+
     buttons.forEach((el) => {
-      el.addEventListener("mouseenter", () => setHovered(true));
-      el.addEventListener("mouseleave", () => setHovered(false));
+      el.addEventListener("mouseenter", enter);
+      el.addEventListener("mouseleave", leave);
     });
 
     return () => {
@@ -28,11 +49,13 @@ export default function CustomCursor() {
       window.removeEventListener("mousedown", down);
       window.removeEventListener("mouseup", up);
       buttons.forEach((el) => {
-        el.removeEventListener("mouseenter", () => setHovered(true));
-        el.removeEventListener("mouseleave", () => setHovered(false));
+        el.removeEventListener("mouseenter", enter);
+        el.removeEventListener("mouseleave", leave);
       });
     };
-  }, []);
+  }, [isPointerFine]);
+
+  if (!isPointerFine) return null;
 
   const isActive = clicked || hovered;
 
@@ -50,7 +73,7 @@ export default function CustomCursor() {
       />
 
       <motion.div
-        className="fixed top-0 left-0 w-6 h-6 rounded-full border-2 border-secobg-secondary pointer-events-none z-40"
+        className="fixed top-0 left-0 w-6 h-6 rounded-full border-2 border-secondary pointer-events-none z-40"
         animate={{
           x: pos.x - 12,
           y: pos.y - 12,
