@@ -54,7 +54,7 @@ export default function GetInTouchForm() {
       <ScrambleText text="Get in Touch" className="text-3xl ml-3" speed={30} />
       <Devider />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="px-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="px-1 md:px-4 lg:px-6">
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-1">
             <label className={`${errors.name?.message ? "text-main-red" : ""}`}>

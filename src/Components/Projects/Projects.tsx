@@ -15,7 +15,7 @@ export default function ProjectsSection() {
       <ScrambleText text="Projects" className="text-3xl ml-3" speed={30} />
       <Devider />
 
-      <div className="space-y-8 px-6 my-6">
+      <div className="space-y-4 lg:space-y-8 px-1 md:px-4 lg:px-6 my-6">
         {Project.map((pj) => (
           <ProjectCard key={pj.id} pj={pj} />
         ))}
