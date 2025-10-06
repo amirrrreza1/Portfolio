@@ -1,9 +1,9 @@
 "use client";
 
+import { scrollToSection } from "@/Components/SmoothScroll/SmoothScroll";
 import ThemeToggle from "@/Components/UI/Buttons/ThemeToggle";
 import Tooltip from "@/Components/UI/Tooltip/Tooltip";
 import { Home, Search, Settings, Code2, Mail, Award } from "lucide-react";
-import Link from "next/link";
 
 const Header = () => {
   return (
@@ -15,57 +15,57 @@ const Header = () => {
         shadow-lg"
       >
         <Tooltip title="Home">
-          <Link
-            href="#home"
+          <button
+            onClick={() => scrollToSection("#home")}
             className="p-2 rounded hover:bg-white/20 transition"
           >
             <Home className="w-6 h-6 text-secondary" />
-          </Link>
+          </button>
         </Tooltip>
 
         <Tooltip title="About Me">
-          <Link
-            href="#about"
+          <button
+            onClick={() => scrollToSection("#about")}
             className="p-2 rounded hover:bg-white/20 transition"
           >
             <Search className="w-6 h-6 text-secondary" />
-          </Link>
+          </button>
         </Tooltip>
 
         <Tooltip title="Skills">
-          <Link
-            href="#skills"
+          <button
+            onClick={() => scrollToSection("#skills")}
             className="p-2 rounded hover:bg-white/20 transition"
           >
             <Code2 className="w-6 h-6 text-secondary" />
-          </Link>
-        </Tooltip>
-
-        <Tooltip title="Projects">
-          <Link
-            href="#projects"
-            className="p-2 rounded hover:bg-white/20 transition"
-          >
-            <Settings className="w-6 h-6 text-secondary" />
-          </Link>
-        </Tooltip>
-
-        <Tooltip title="Certificates">
-          <Link
-            href="#certificates"
-            className="p-2 rounded hover:bg-white/20 transition"
-          >
-            <Award className="w-6 h-6 text-secondary" />
-          </Link>
+          </button>
         </Tooltip>
 
         <Tooltip title="Get In Touch">
-          <Link
-            href="#getintouch"
+          <button
+            onClick={() => scrollToSection("#getintouch")}
             className="p-2 rounded hover:bg-white/20 transition"
           >
             <Mail className="w-6 h-6 text-secondary" />
-          </Link>
+          </button>
+        </Tooltip>
+
+        <Tooltip title="Projects">
+          <button
+            onClick={() => scrollToSection("#projects")}
+            className="p-2 rounded hover:bg-white/20 transition"
+          >
+            <Settings className="w-6 h-6 text-secondary" />
+          </button>
+        </Tooltip>
+
+        <Tooltip title="Certificates">
+          <button
+            onClick={() => scrollToSection("#certificates")}
+            className="p-2 rounded hover:bg-white/20 transition"
+          >
+            <Award className="w-6 h-6 text-secondary" />
+          </button>
         </Tooltip>
 
         <Tooltip title="Theme">
