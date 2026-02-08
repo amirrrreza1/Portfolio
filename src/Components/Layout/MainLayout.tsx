@@ -12,11 +12,9 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <React.Fragment>
       <CustomCursor />
-      <Header />
       <CodeParticlesBackground />
       <SmoothScroll>
         <main>{children}</main>
-        <Footer />
       </SmoothScroll>
     </React.Fragment>
   );
