@@ -39,7 +39,6 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
       transition={{ duration: 0.6, ease: "easeOut" }}
       viewport={{ once: true, amount: 0.2 }}
     >
-      {/* عنوان و وضعیت */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-2xl font-bold">{pj.title}</h3>
         <p
@@ -51,10 +50,8 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
         </p>
       </div>
 
-      {/* توضیحات */}
       <p className="text-secondary/70 mb-4">{pj.description}</p>
 
-      {/* تکنولوژی‌ها */}
       <div className="flex flex-wrap gap-2 mb-4">
         {visibleTechs.map((techId, idx) => {
           const skill = findSkillById(techId);
@@ -83,7 +80,6 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
         )}
       </div>
 
-      {/* آمار گیت‌هاب */}
       {stats ? (
         <div className="flex gap-6 text-sm mb-4">
           <span className="text-[#E2B340]">{stats.stars || 0} Stars</span>
@@ -93,7 +89,6 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
         <p className="text-sm text-gray-400 mb-4">Loading stats...</p>
       )}
 
-      {/* لینک‌ها */}
       <div className="flex gap-6">
         <Button>
           <a href={pj.link} target="_blank" rel="noopener noreferrer">

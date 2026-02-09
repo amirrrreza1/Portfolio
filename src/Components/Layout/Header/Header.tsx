@@ -1,13 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { scrollToSection } from "@/Components/SmoothScroll/SmoothScroll";
 import ThemeToggle from "@/Components/UI/Buttons/ThemeToggle";
 import Tooltip from "@/Components/UI/Tooltip/Tooltip";
 import { Home, Search, Settings, Code2, Mail, Award } from "lucide-react";
 
 const Header = () => {
-  return (
-    <header className="sticky top-5 z-50 w-full h-15 mt-5">
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || typeof document === "undefined") return null;
+
+  return createPortal(
+    <header className="fixed top-5 left-0 right-0 z-50 w-full h-15">
       <div
         className="w-fit mx-auto flex items-center gap-2 md:gap-4 px-2 md:px-4 py-2
         backdrop-blur-[5px] bg-secondary/20 rounded
@@ -72,7 +80,8 @@ const Header = () => {
           <ThemeToggle />
         </Tooltip>
       </div>
-    </header>
+    </header>,
+    document.body
   );
 };
 
