@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import gsap from "gsap";
 import { ScrollSmoother } from "gsap/ScrollSmoother";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -18,6 +19,8 @@ export const scrollToSection = (id: string) => {
 };
 
 const SmoothScroll = ({ children }: { children: React.ReactNode }) => {
+  const pathname = usePathname();
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -30,6 +33,17 @@ const SmoothScroll = ({ children }: { children: React.ReactNode }) => {
       effects: true,
     });
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const smoother = ScrollSmoother.get();
+    if (smoother) {
+      smoother.scrollTo(0, false);
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+  }, [pathname]);
 
   return (
     <div id="smooth-wrapper">
