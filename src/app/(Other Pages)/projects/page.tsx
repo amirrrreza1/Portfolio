@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import projectsData from "@/DataBase/Projects.json";
 import skillsData from "@/DataBase/Skills.json";
 import ScrambleText from "@/Components/UI/ScrumbleText/ScrumbleText";
 import Devider from "@/Components/UI/Devider/Devider";
-import { B } from "@/Components/UI/TextArea/TextArea";
 import { Projects } from "@/Components/Projects/Types";
 import ProjectCard from "@/Components/Projects/ProjectCard";
 import Button from "@/Components/UI/Buttons/CustomBTN";

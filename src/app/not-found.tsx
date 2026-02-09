@@ -19,10 +19,10 @@ export default function NotFound() {
 
         <div className="my-8">
           <p className="text-xl leading-7 mb-4">
-            Oops! It seems you've wandered into uncharted territory.
+            Oops! It seems you have wandered into uncharted territory.
           </p>
           <p>
-            The page you are looking for doesn't exist or has been moved to a
+            The page you are looking for does not exist or has been moved to a
             different coordinate.
           </p>
         </div>
