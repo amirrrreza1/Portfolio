@@ -17,7 +17,7 @@ const findSkillById = (id: number) => {
 };
 
 export default function ProjectCard({ pj }: { pj: Projects }) {
-  const stats = useGitHubStats(pj.repo);
+  const stats = useGitHubStats(pj.repo ?? "");
   const [showAll, setShowAll] = useState(false);
 
   const maxVisible = 4;
@@ -90,16 +90,20 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
       )}
 
       <div className="flex gap-6">
-        <Button>
-          <a href={pj.link} target="_blank" rel="noopener noreferrer">
-            View Project
-          </a>
-        </Button>
-        <Button>
-          <a href={pj.repo} target="_blank" rel="noopener noreferrer">
-            GitHub Repo
-          </a>
-        </Button>
+        {pj.link && (
+          <Button>
+            <a href={pj.link} target="_blank" rel="noopener noreferrer">
+              View Project
+            </a>
+          </Button>
+        )}
+        {pj.repo && (
+          <Button>
+            <a href={pj.repo} target="_blank" rel="noopener noreferrer">
+              GitHub Repo
+            </a>
+          </Button>
+        )}
       </div>
     </motion.div>
   );

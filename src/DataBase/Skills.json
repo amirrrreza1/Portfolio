@@ -30,7 +30,8 @@
       { "id": 301, "name": "MUI", "color": "#007FFF" },
       { "id": 303, "name": "Framer Motion", "color": "#e51cf4" },
       { "id": 304, "name": "GSAP", "color": "#17E34F" },
-      { "id": 305, "name": "DaisyUI", "color": "#FFCB31" }
+      { "id": 305, "name": "DaisyUI", "color": "#FFCB31" },
+      { "id": 306, "name": "shad CN", "color": "#000000" }
     ]
   },
   {

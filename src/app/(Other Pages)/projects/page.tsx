@@ -58,7 +58,7 @@ export default function ProjectsPage() {
   }, [searchTerm]);
 
   return (
-    <main className="min-h-screen px-4 pb-20 pt-20">
+    <main className="min-h-screen px-4 py-10 pt-20">
       {mounted &&
         typeof document !== "undefined" &&
         createPortal(
