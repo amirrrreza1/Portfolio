@@ -1,0 +1,53 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm blocks dependency lifecycle scripts unless they are explicitly allowed.
+allowBuilds:
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  argon2: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+
+# React Three Fiber's published declarations consume these types without
+# declaring them as peers. Explicitly link the web app's matching type packages
+# so strict pnpm isolation does not erase the JSX intrinsic element map.
+packageExtensions:
+  "@react-three/fiber@*":
+    peerDependencies:
+      "@types/react": "*"
+      "@types/three": "*"
+
+overrides:
+  "@babel/core": 7.29.7
+  find-my-way: 9.7.0
+  js-yaml: 5.2.3
+
+minimumReleaseAgeExclude:
+  - '@aws-sdk/checksums@3.1000.26'
+  - '@aws-sdk/client-s3@3.1103.0'
+  - '@aws-sdk/core@3.977.6'
+  - '@aws-sdk/credential-provider-env@3.972.67'
+  - '@aws-sdk/credential-provider-http@3.972.69'
+  - '@aws-sdk/credential-provider-ini@3.973.12'
+  - '@aws-sdk/credential-provider-login@3.972.74'
+  - '@aws-sdk/credential-provider-node@3.972.78'
+  - '@aws-sdk/credential-provider-process@3.972.67'
+  - '@aws-sdk/credential-provider-sso@3.973.11'
+  - '@aws-sdk/credential-provider-web-identity@3.972.73'
+  - '@aws-sdk/middleware-sdk-s3@3.972.72'
+  - '@aws-sdk/nested-clients@3.997.41'
+  - '@aws-sdk/token-providers@3.1103.0'
+  - '@shikijs/core@4.4.2'
+  - '@shikijs/engine-javascript@4.4.2'
+  - '@shikijs/engine-oniguruma@4.4.2'
+  - '@shikijs/langs@4.4.2'
+  - '@shikijs/primitive@4.4.2'
+  - '@shikijs/themes@4.4.2'
+  - '@shikijs/types@4.4.2'
+  - '@types/pg@8.20.4'
+  - shiki@4.4.2
+  - tsx@4.23.7

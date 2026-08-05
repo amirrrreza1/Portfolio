@@ -1,39 +1,29 @@
 {
-  "name": "portfolio",
-  "version": "0.1.0",
+  "name": "portfolio-platform",
+  "version": "0.2.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.13.0",
+    "pnpm": ">=11.9.0"
   },
-  "dependencies": {
-    "@emailjs/browser": "^4.4.1",
-    "@hookform/resolvers": "^5.2.2",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
-    "framer-motion": "^12.34.0",
-    "gsap": "^3.14.2",
-    "lucide-react": "^0.563.0",
-    "next": "16.1.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-hook-form": "^7.71.1",
-    "three": "^0.182.0",
-    "zod": "^4.3.6"
+  "scripts": {
+    "dev": "pnpm --filter @portfolio/web dev",
+    "dev:web": "pnpm --filter @portfolio/web dev",
+    "dev:api": "pnpm --filter @portfolio/api dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "security:audit": "pnpm audit --prod --audit-level high",
+    "db:generate": "pnpm --filter @portfolio/database db:generate",
+    "db:validate": "pnpm --filter @portfolio/database db:validate"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.3",
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/locomotive-scroll": "^4.1.4",
-    "@types/node": "^25.2.2",
-    "@types/react": "^19.2.13",
-    "@types/react-dom": "^19.2.3",
-    "@types/three": "^0.182.0",
-    "eslint": "^10.0.0",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
+    "prettier": "3.9.6",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "typescript": "5.9.3"
   }
 }
