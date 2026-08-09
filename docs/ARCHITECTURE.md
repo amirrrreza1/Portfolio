@@ -33,7 +33,7 @@ flowchart LR
 
 All browser API traffic uses the public site origin and `/api/v1`; the edge routes it to the API. Same-origin routing simplifies cookie and CSRF protections. The database, object store, and Git credential are never browser-accessible.
 
-The **scheduler** is exactly one logical instance — a platform cron trigger or a worker holding a PostgreSQL advisory lock — so scheduled publication cannot fire once per replica. The **content sync worker** may run inside the API process but its work is serialized per post.
+The **scheduler** is a dedicated process mode and exactly one logical instance holds a PostgreSQL advisory lock, so scheduled publication cannot fire once per replica. The **content sync worker** is also a dedicated process and consumes PostgreSQL-backed durable jobs, serialized per post where ordering matters. HTTP API replicas run no background timers. See [ADR-013](DECISIONS.md#adr-013--postgresql-backed-jobs-with-dedicated-sync-and-scheduler-workers).
 
 Reads never touch Git. A public article request is served from the database index and render cache, so Git being unreachable degrades authoring only, never reading.
 
@@ -116,9 +116,10 @@ Public pages MUST fail safely: a dependency outage renders a controlled error/st
 
 1. The admin browser saves; autosave writes only to a database draft row and never commits.
 2. The API validates frontmatter, body, and directives against `packages/markdown`, then serializes frontmatter deterministically.
-3. `content-store` commits to the content branch with `If-Match` on the known blob SHA. A stale SHA returns `409` with a diff and writes nothing.
-4. On a successful commit, one transaction updates the index row, render cache, revision, and audit event, then invalidates the affected locale's routes.
-5. If the commit fails, nothing is written and the editor keeps its draft. Publication state of already-synced content is unaffected.
+3. The API creates or reuses a durable content-write operation keyed by the request idempotency key.
+4. `content-store` commits to the protected dedicated `content` branch with `If-Match` on the known blob SHA and records the operation ID in fixed commit metadata. A stale SHA returns `409` with a diff and writes nothing.
+5. On a successful commit, one transaction idempotently updates the index row, render cache, revision, audit event, operation state, and cache-invalidation outbox.
+6. If Git succeeds but the transaction or invalidation fails, the webhook/reconciliation worker re-reads the committed blob by SHA and converges without a duplicate revision. See [ADR-012](DECISIONS.md#adr-012--durable-operation-log-idempotent-recovery-and-invalidation-outbox-for-git-writes).
 
 ### Content sync
 
@@ -145,16 +146,16 @@ Public pages MUST fail safely: a dependency outage renders a controlled error/st
 
 ## 6. Rendering and caching
 
-- Blog posts and portfolio pages use server components and server-rendered metadata.
+- Blog posts and portfolio pages use server components and server-rendered metadata. Their HTML shell is dynamic so validated appearance-cookie attributes are correct in the response; expensive public DTOs and rendered content use the shared tagged data cache.
 - Markdown parsing, sanitization, and syntax highlighting happen server-side at write/sync time. **No Markdown parser, sanitizer, or highlighter is shipped to the browser.** The `react-markdown` and `shiki` packages currently in the web app's dependencies MUST NOT be used in client components.
 - Published content may use ISR with tagged invalidation; drafts and admin pages use `no-store`.
 - **Locale is part of every public cache key and invalidation tag.** Publishing a Persian translation must not purge English pages.
-- **Appearance is not part of any cache key.** Theme is expressed as a root-element attribute; blog font and size are expressed only on the blog reading wrapper. Static CSS maps those allowlisted attributes to tokens, so one cached document serves every combination. `Vary: Cookie` on public pages is prohibited — see [THEMING.md](THEMING.md) §5.
+- **Appearance is not part of any shared data-cache key.** The dynamic shell emits theme on the root and blog font/size only on the blog reading wrapper. Two visitors may receive different shell attributes while using the same cached public DTO/render payload. Full-page public HTML is not stored in a shared cache and `Vary: Cookie` is prohibited — see [ADR-009](DECISIONS.md#adr-009--dynamic-html-shell-with-shared-cached-public-data-for-visitor-appearance).
 - `Vary: Accept-Language` appears only on the bare `/` negotiation response, never on locale-prefixed pages.
 - Authentication state MUST never participate in a shared public cache key.
 - The render cache is keyed on the blob SHA plus a `rendererVersion` constant, so a sanitizer or highlighter upgrade re-renders everything safely.
 - Public API reads use `ETag`/conditional requests where useful.
-- A short stale window is acceptable for published copy after edits; security-sensitive changes (unpublish, resume revocation) require immediate invalidation.
+- Public API outages use only bounded last-known-good published DTOs. Maximum-stale windows and fail-closed routes are defined by [ADR-014](DECISIONS.md#adr-014--bounded-last-known-good-public-reads-during-api-outages); security-sensitive changes require high-priority invalidation.
 - Preview URLs are authenticated, short-lived, unguessable, `noindex`, and `no-store`.
 
 ## 7. Configuration
@@ -203,14 +204,9 @@ These are subject to the same rules as `DATABASE_URL` and additionally MUST be s
 
 ## 10. Architecture decisions deferred to implementation
 
-- Production hosting provider and reverse proxy product
-- MinIO deployment topology for local Docker and production
-- Error-monitoring vendor
-- Whether scheduled publishing uses a platform cron trigger or a dedicated worker process — either way there is exactly one logical instance
-- Whether the content sync worker runs in the API process or separately
-- Whether content commits land on a dedicated `content` branch merged by automation, or directly on the deployment branch
+MinIO is selected by ADR-008; the dynamic appearance shell, dedicated content branch, partial-failure recovery, worker topology, and public-outage behavior are selected by ADR-009 through ADR-014. The remaining adapter choices and their blocking deadlines are listed in [DECISIONS.md](DECISIONS.md#decision-deadlines-for-remaining-adapters): production host/reverse proxy, v1 editor permissions, retention defaults, error monitoring, and analytics.
 
-These choices may change adapters or deployment files but MUST NOT weaken the boundaries above. In particular, none of them may put the Git credential outside the `content-store` module, put Git on a public read path, or allow more than one scheduler.
+Those choices may change adapters or deployment files but MUST NOT weaken the boundaries above. In particular, none may put the Git credential outside `content-store`, put Git on a public read path, expose PostgreSQL or MinIO publicly, vary shared data by appearance, or allow more than one logical scheduler.
 
 ## 11. Related specifications
 

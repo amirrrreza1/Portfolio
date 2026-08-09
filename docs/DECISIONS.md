@@ -12,6 +12,12 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 | ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist | Accepted | 2026-08-08 |
 | ADR-007 | Portfolio content is database-backed and fully admin-editable | Accepted | 2026-08-05 |
 | ADR-008 | MinIO is the object store for media and backups | Accepted | 2026-08-09 |
+| ADR-009 | Dynamic HTML shell with shared cached public data for visitor appearance | Accepted | 2026-08-09 |
+| ADR-010 | Unicode Persian slugs are canonical | Accepted | 2026-08-09 |
+| ADR-011 | Article bodies use a protected dedicated content branch | Accepted | 2026-08-09 |
+| ADR-012 | Durable operation log, idempotent recovery, and invalidation outbox for Git writes | Accepted | 2026-08-09 |
+| ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers | Accepted | 2026-08-09 |
+| ADR-014 | Bounded last-known-good public reads during API outages | Accepted | 2026-08-09 |
 
 ---
 
@@ -198,3 +204,173 @@ MinIO versioning/retention is enabled where supported for resume, blog media, an
 ### Consequences
 
 MinIO becomes an additional authoritative recovery input alongside PostgreSQL and the Git content repository. The restore drill must reconcile all three. MinIO credentials, endpoints, and signed URLs are server-only and redacted from logs.
+
+---
+
+## ADR-009 — Dynamic HTML shell with shared cached public data for visitor appearance
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+The selected appearance must be present in the first server response, while appearance must not fragment a shared full-page cache. Cookie-specific root attributes and one immutable cached HTML body cannot both be true without provider-specific response rewriting.
+
+### Decision
+
+Locale-prefixed public routes use a small **dynamic HTML shell**. The shell reads and strictly validates `portfolio_prefs` and emits the allowlisted `data-theme` root attribute; blog routes also emit `data-blog-font` and `data-blog-size` only on `.blog-reading-surface`. Public API payloads, rendered article HTML, media metadata, and other expensive read models remain shared and tagged in the Next.js data cache. Appearance is excluded from every data-cache key and invalidation tag.
+
+The public HTML response is not stored in a shared full-page CDN cache and does not send `Vary: Cookie`. A nonce-protected pre-paint script remains necessary only to resolve `theme: system`; it is not the delivery path for explicit theme choices. If a future host can safely transform cached HTML after the cache lookup, that is an optimization and requires a superseding ADR plus the same two-visitor cache test.
+
+### Rejected alternatives
+
+- **Cache the full HTML and correct all preferences with a pre-paint script.** First paint can be correct, but the server HTML is knowingly wrong and no-JavaScript visitors receive the default.
+- **Put the appearance cookie in the full-page cache key or use `Vary: Cookie`.** This creates an unbounded per-visitor cache and violates the product requirement.
+- **Require an edge HTML rewrite.** It can preserve a shared body, but makes a product invariant depend on a hosting product that has not been selected.
+
+### Consequences
+
+M4 must test that two visitors with different cookies receive different shell attributes while the underlying locale/content cache entry is shared. M5 must test the first response, hydration, no-JavaScript rendering, `system` pre-paint path, and absence of `Vary: Cookie`.
+
+---
+
+## ADR-010 — Unicode Persian slugs are canonical
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+The content-pipeline specification allowed Persian slugs while the data-model convention required ASCII. Contracts and unique indexes cannot be implemented until one canonical form is chosen.
+
+### Decision
+
+English slugs use normalized lowercase ASCII and hyphens. Persian (`fa`) slugs use normalized Persian Unicode letters and digits with ASCII hyphens. Input is normalized to Unicode NFC, Arabic code-point variants are mapped to their Persian equivalents, formatting controls are removed, whitespace and repeated hyphens collapse to one hyphen, and leading/trailing hyphens are removed. The stored value is decoded Unicode; URL generation percent-encodes it.
+
+An owner may record an ASCII transliteration as a redirect alias, but it is never silently generated as the canonical slug. Uniqueness is `(locale, slug)` after normalization. Every prior published slug redirects in one hop to the current canonical URL.
+
+### Rejected alternatives
+
+- **ASCII transliteration only.** It is easier to type but loses meaning, is not deterministic across Persian names, and makes owner review mandatory for every slug.
+- **Permit arbitrary Unicode in every locale.** It broadens the homograph and normalization surface without a product need.
+
+### Consequences
+
+M1 owns normalization contracts and database uniqueness tests. M2 reports every generated legacy project slug for review. M8 owns redirect-history and canonical/hreflang tests.
+
+---
+
+## ADR-011 — Article bodies use a protected dedicated content branch
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+Article files change independently of application deployments. Merging bot-authored content commits into the deployment branch would trigger unnecessary builds and expand the Git App's write surface.
+
+### Decision
+
+Canonical article bodies live on the dedicated `content` branch under `content/`. The branch is not merged into the application deployment branch as part of normal publishing. The GitHub App installation is scoped to one repository and contents write access only; it cannot modify workflows. Repository rules disallow branch deletion and force-push, require secret scanning for accepted content, and allow the owner and the installed App to create ordinary commits. Direct owner pushes remain a supported authoring path.
+
+All reads and writes specify the branch and enforce the `content/` prefix after path normalization. Deployment artifacts never copy the content branch.
+
+### Rejected alternatives
+
+- **Write directly to the deployment branch.** It couples publishing to deploys and gives the content credential access beside application code.
+- **Open a pull request for every panel save.** It breaks the required immediate explicit-save workflow and complicates scheduled reconciliation commits.
+
+### Consequences
+
+M3 must verify repository rules and secret scanning before accepting automated or direct commits. M9 must mirror the content branch as an independent recovery input.
+
+---
+
+## ADR-012 — Durable operation log, idempotent recovery, and invalidation outbox for Git writes
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+Git and PostgreSQL cannot share an atomic transaction. A successful Git commit followed by a database or cache-invalidation failure must converge without duplicate revisions, lost commits, or live output that is not backed by a recorded blob SHA.
+
+### Decision
+
+Each explicit content save receives an idempotency key and first creates a durable `ContentWriteOperation` intent in PostgreSQL with the expected base SHA, normalized path, payload digest, and state. The content-store module commits with that operation ID in fixed commit metadata. A successful commit is then applied through one database transaction that upserts the indexed body state, render cache, revision, audit event, and a locale-scoped cache-invalidation outbox record; the operation is marked applied in the same transaction.
+
+Retries lookup the operation before writing. If Git succeeded but the apply transaction failed, the webhook or reconciliation worker reads the committed blob by SHA and applies it idempotently. Applying the same `(repository, commitSha, path)` more than once is a no-op. Invalidation is delivered from the durable outbox with bounded exponential backoff and deduplicated by operation and cache tag. Invalid content never replaces the last valid live render.
+
+### Rejected alternatives
+
+- **Update PostgreSQL before Git and compensate on failure.** Compensation can also fail and can temporarily make the index claim a body that does not exist.
+- **Best-effort webhook recovery without an operation record.** It cannot reliably distinguish a retry from a new owner action or provide an auditable failure state.
+- **Distributed transactions.** Git hosts do not participate in the database transaction protocol.
+
+### Consequences
+
+M1 defines the IDs/error/idempotency contracts. M3 implements the operation log, apply ledger, outbox, reconciliation, and a forced post-commit database-failure test that proves convergence. M4 proves end-to-end invalidation delivery.
+
+---
+
+## ADR-013 — PostgreSQL-backed jobs with dedicated sync and scheduler workers
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+Webhook sync, reconciliation, invalidation, and scheduled publication need observable retries. Per-replica timers can duplicate work, while adding a second queue service is not justified at the expected workload.
+
+### Decision
+
+Durable job and outbox tables in PostgreSQL are the queue. A dedicated worker process, built from the API workspace and using the same domain modules, claims jobs with transactional row locking (`FOR UPDATE SKIP LOCKED`), leases, attempt counts, next-at timestamps, and dead-letter visibility. Work is serialized per post where ordering matters.
+
+The scheduler is a separate process mode. Exactly one logical scheduler claims a PostgreSQL advisory lock before enqueueing due-publication or reconciliation jobs; replicas that do not hold the lock do nothing. HTTP API replicas never run background timers. Health distinguishes liveness from readiness and reports queue age/failure metrics without making Git reachability a public-read dependency.
+
+### Rejected alternatives
+
+- **Run timers and webhook work inside every API replica.** Deploys and horizontal scaling create duplicate, interrupted, and poorly observable work.
+- **Add Redis and a queue framework in v1.** It adds an authoritative operational dependency without a workload that requires it.
+- **Platform cron as the only scheduler.** It is viable but would bind correctness and local tests to the future hosting choice.
+
+### Consequences
+
+M3 proves the sync/reconciliation worker, leases, retry safety, and per-post ordering. M8 proves scheduler locking and duplicate-trigger behavior. M9 supplies separate worker/scheduler containers and monitoring.
+
+---
+
+## ADR-014 — Bounded last-known-good public reads during API outages
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+The public web application needs one predictable response when the API is slow or unavailable. Route-by-route fallback risks leaking drafts, hiding failures indefinitely, or presenting stack traces.
+
+### Decision
+
+The server-side web client caches only allowlisted, published public DTOs and records their validation time, ETag, and content version. On timeout or a retryable API failure, a route may serve its last-known-good value only within its declared maximum-stale window. It adds an observable stale marker for operators, never exposes the condition or internal cause to visitors, and revalidates with a bounded timeout. If no valid entry exists or the maximum-stale window has expired, the route renders a controlled localized `503` state.
+
+Default windows are: site/navigation/project listings 60 minutes; article and taxonomy reads 15 minutes; GitHub statistics 24 hours; active resume metadata 5 minutes. Contact submission, previews, admin/auth routes, and every mutation fail closed and never use stale success. Unpublish, archive, resume revoke/replace, and other disclosure-sensitive changes synchronously enqueue high-priority invalidation; failed delivery remains a visible incident and cannot extend an entry beyond its maximum-stale limit.
+
+### Rejected alternatives
+
+- **Always fail immediately.** It turns a brief API restart into a full public outage even when a validated published response exists.
+- **Serve stale indefinitely.** Withdrawn content can remain public and operational failures become invisible.
+- **Read legacy JSON on API failure.** That creates a second uncontrolled production source after cutover.
+
+### Consequences
+
+M4 implements one typed client policy and tests cold outage, warm outage, expiry, malformed cache data, locale isolation, and disclosure-sensitive invalidation. M9 alerts on stale-serving duration and invalidation failures.
+
+---
+
+## Decision deadlines for remaining adapters
+
+These decisions are intentionally not made before implementation evidence exists, but they have named owners and hard milestone deadlines.
+
+| Decision | Owner | Deadline | Required output |
+| --- | --- | --- | --- |
+| Production host and TLS reverse proxy | Owner/developer | Before M4 starts | Deployment ADR preserving same-origin `/api/v1`, dynamic appearance shell, private database/MinIO, and worker processes |
+| v1 editor permissions | Owner | Before M6 starts | Authorization matrix ADR; until accepted, provisioning remains owner-only and `EDITOR` is not assignable |
+| Contact and audit retention defaults | Owner/security review | Before M7 starts | Retention ADR and configured deletion windows before those admin records are exposed |
+| Error monitoring and alert routing | Owner/operations | Before M9 starts | Vendor/adaptor ADR, redaction verification, and incident destination |
+| Privacy-preserving analytics or no analytics | Owner | Before M9 starts | Privacy decision, consent impact, retention, and product-spec update if analytics is enabled |
+
+Missing a deadline blocks its dependent milestone; it is not permission to choose an adapter implicitly.

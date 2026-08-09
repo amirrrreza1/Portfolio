@@ -1,4 +1,3 @@
-import { VersioningType } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import {
   FastifyAdapter,
@@ -6,6 +5,7 @@ import {
 } from "@nestjs/platform-fastify";
 
 import { AppModule } from "./app.module.js";
+import { configureApplication } from "./configure-app.js";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -13,9 +13,7 @@ async function bootstrap(): Promise<void> {
     new FastifyAdapter({ logger: false })
   );
 
-  app.setGlobalPrefix("api");
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
-  app.enableShutdownHooks();
+  configureApplication(app);
 
   const port = Number.parseInt(process.env.API_PORT ?? "4000", 10);
   const host = process.env.API_HOST ?? "0.0.0.0";

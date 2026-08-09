@@ -69,15 +69,15 @@ Rules:
 The mechanism that makes this work without a flash:
 
 1. A first-party cookie `portfolio_prefs` holds a small, versioned, strictly validated JSON object: `{v, theme, blogFont, blogSize, motion}`. It is `Secure` in production, `SameSite=Lax`, `Path=/`, host-only, and **not** `HttpOnly`, because the client also reads it. It contains no personal data, no identifier, and no security value.
-2. The server reads the cookie during rendering and validates each field against the enabled allowlist. It emits `data-theme` on `<html>`. On blog routes only, it also emits `data-blog-font` and `data-blog-size` on `.blog-reading-surface`; those attributes MUST NOT appear on the root element or non-blog pages.
+2. The dynamic server-rendered HTML shell reads the cookie and validates each field against the enabled allowlist. It emits `data-theme` on `<html>`. On blog routes only, it also emits `data-blog-font` and `data-blog-size` on `.blog-reading-surface`; those attributes MUST NOT appear on the root element or non-blog pages.
 3. There is therefore no client-side correction on first paint and no flash. The provider hydrates from the same attributes rather than re-deriving them, so server and client markup agree.
 4. `theme: system` is the one case needing client resolution. It is handled with a tiny inline script, allowed by a CSP nonce, that reads `prefers-color-scheme` and sets the attribute before first paint — plus a `@media (prefers-color-scheme)` fallback so the page is still correct with JavaScript disabled. This script is the only inline script permitted on public pages, it is reviewed, and it contains no interpolated values.
 5. Changing a setting updates its scoped attribute immediately, then writes the cookie. Theme updates `<html>`; blog typography updates `.blog-reading-surface` when present. Nothing re-fetches and nothing re-renders the page.
 6. `localStorage` is not used for appearance, because the server cannot read it. The existing `localStorage.getItem("theme")` behaviour is migrated once: an existing value is adopted into the cookie on first visit, then the key is removed.
 
-**Caching:** appearance MUST NOT enter the cache key. Theme is expressed as a root attribute, while blog typography is expressed as attributes on the blog reading wrapper, so one cached HTML document serves every combination. `Vary: Cookie` on public pages is prohibited — it would fragment the cache per visitor and destroy the ISR benefit described in [ARCHITECTURE.md](ARCHITECTURE.md) §6. The only per-visitor appearance variation permitted is these allowlisted attributes, set by the edge/render layer without varying the cached body.
+**Caching:** appearance MUST NOT enter a shared data-cache key. Per [ADR-009](DECISIONS.md#adr-009--dynamic-html-shell-with-shared-cached-public-data-for-visitor-appearance), public HTML shells are dynamic and are not stored in a shared full-page cache. Public DTOs, rendered article bodies, and media metadata remain shared and tagged; two visitors with different preferences reuse those same cache entries. `Vary: Cookie` on public pages is prohibited. The shell may vary only the allowlisted appearance attributes, never content or authorization state.
 
-Consequence to accept: a full-page CDN cache that cannot rewrite the root attribute will serve the site default and the inline script corrects it before paint. This is a one-attribute correction, not a repaint of the page.
+The `system` theme still uses the reviewed nonced pre-paint script because the server does not know the visitor's media-query result. Explicit theme choices do not depend on client correction.
 
 ## 6. Settings modal UX
 
@@ -110,7 +110,7 @@ Validation on write: every key MUST exist in the code registry; the default MUST
 - Cookie tampering: unknown theme, disabled theme, oversized cookie, malformed JSON, wrong version — each falls back to the default without an error page.
 - Allowlist enforcement: a disabled option cannot be activated through the API or the cookie.
 - Contrast: automated AA checks for every enabled theme across body text, muted text, links, focus rings, meaningful borders, and both code themes.
-- Caching: public responses do not send `Vary: Cookie`; two visitors with different preferences share a cache entry; appearance is absent from cache keys.
+- Caching: public responses do not send `Vary: Cookie`; two visitors with different preferences reuse one public-data cache entry while receiving the correct dynamic shell attributes; appearance is absent from shared cache keys.
 - Reduced motion: system preference alone disables every animation listed in §6.
 - Dialog accessibility: focus trap and restore, `Escape`, labelling, keyboard-only operation.
 - Blog typography: only `woff2` is requested; optional blog families are not downloaded on non-blog routes; the selected family and size affect only `.blog-reading-surface`; shared chrome and non-blog pages retain fixed site typography; `unicode-range` prevents cross-script downloads; a script-incompatible family is not offered.

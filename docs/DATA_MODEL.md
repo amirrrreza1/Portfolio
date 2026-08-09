@@ -20,7 +20,7 @@ Media binaries are not stored in PostgreSQL. The database stores object metadata
 - Time: `timestamptz` in UTC; `createdAt` and `updatedAt` on mutable records.
 - Concurrency: mutable admin records carry integer `version`, incremented atomically.
 - Deletion: content uses `archivedAt`/status where recovery matters. Hard deletion is exceptional.
-- Slugs: normalized lowercase ASCII with hyphens, unique under the relevant content type.
+- Slugs: English uses normalized lowercase ASCII with hyphens. Persian uses normalized Persian Unicode plus ASCII hyphens, stored as NFC and percent-encoded in URLs. Uniqueness is locale-scoped after normalization; see ADR-010.
 - User input: normalized once, validated before persistence, encoded at output.
 - Flexible section payloads may use `jsonb`, but each section key has a versioned Zod schema. Arbitrary unvalidated JSON is forbidden.
 - URLs are stored as absolute `https` URLs except internal paths; unsafe schemes are rejected.
@@ -149,6 +149,7 @@ Rules:
 
 - `(postId, locale)` is unique. `locale` is constrained to the allowlist.
 - `(locale, slug)` is unique. Slugs are unique per locale, not globally, so English and Persian may coincidentally share a slug.
+- Slug normalization follows [ADR-010](DECISIONS.md#adr-010--unicode-persian-slugs-are-canonical). An optional ASCII transliteration is a redirect alias, never a second canonical value.
 - Status is **per translation**: `DRAFT` is not publicly readable; `SCHEDULED` has a future `scheduledFor` and no `publishedAt`; `PUBLISHED` has `publishedAt` and appears in that locale's feeds and sitemap; `ARCHIVED` is absent from discovery, with prior URLs resolving to an explicit redirect or `410` and never leaking a draft.
 - A `Post` MUST have at least one `PostTranslation`. A `Post` whose every translation is non-public is itself non-public.
 - **No fallback.** A locale without a `PUBLISHED` translation is not served in that locale, per [ADR-005](DECISIONS.md#adr-005--bilingual-articles-as-per-locale-translations-of-one-post).

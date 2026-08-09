@@ -46,14 +46,14 @@ Each decision below requires an ADR or an explicit amendment to an existing ADR 
 
 | Decision | Must be closed by | Why it blocks work |
 | --- | --- | --- |
-| Per-visitor appearance delivery: edge rewrite, dynamic shell, or a reviewed pre-paint mechanism | Before M4 layout/caching and M5 appearance | Cookie-specific first-byte attributes and one immutable shared HTML body cannot both be provided by an ordinary full-page cache |
-| Persian slug policy: Unicode Persian slugs or ASCII transliteration | Before M1 contracts/schema | `CONTENT_PIPELINE.md` permits Persian slugs while `DATA_MODEL.md` currently requires ASCII slugs |
-| Git write branch and protection model | Before M3 | The content pipeline and environment template assume a `content` branch, while architecture still records dedicated-versus-direct writes as deferred |
-| Recovery after Git succeeds but PostgreSQL or invalidation fails | Design in M0; prove in M3 | Git and PostgreSQL cannot share an atomic transaction; idempotent reconciliation/outbox behavior is required |
+| Per-visitor appearance delivery | **Accepted: ADR-009**; prove in M4/M5 | Dynamic HTML shell emits cookie-specific attributes while public data/render caches stay shared and appearance-free |
+| Persian slug policy | **Accepted: ADR-010**; implement in M1 | Unicode Persian is canonical; normalized ASCII transliterations may be redirect aliases |
+| Git write branch and protection model | **Accepted: ADR-011**; prove in M3 | Protected dedicated `content` branch is not merged into the deployment branch during normal publishing |
+| Recovery after Git succeeds but PostgreSQL or invalidation fails | **Accepted: ADR-012**; prove in M3/M4 | Durable operation log, idempotent apply ledger, reconciliation, and invalidation outbox |
 | MinIO deployment and verified ingestion boundary | Before M2 | Certificate/resume migration and later admin media depend on stable media IDs and checksums |
-| Public API outage strategy | Before M4 | The web client must have one tested stale/error policy rather than route-specific improvisation |
-| Scheduler and sync-worker topology | Before M3 for sync; before M8 for scheduling | There must be one logical scheduler and observable, retry-safe workers |
-| Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Before the first dependent milestone; all closed by M9 | These choices affect adapters, privacy, authorization, runbooks, and final deployment |
+| Public API outage strategy | **Accepted: ADR-014**; prove in M4 | Bounded last-known-good published DTOs with per-surface maximum stale windows; cold/expired routes fail with controlled `503` |
+| Scheduler and sync-worker topology | **Accepted: ADR-013**; prove in M3/M8 | Dedicated PostgreSQL-backed worker and advisory-lock scheduler; API replicas run no timers |
+| Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Deadlines assigned in `DECISIONS.md`; each blocks its first dependent milestone | These choices affect adapters, privacy, authorization, runbooks, and final deployment |
 
 ## 4. Delivery map
 

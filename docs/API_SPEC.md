@@ -89,6 +89,8 @@ Rules:
 - A translation whose `syncState` is not `SYNCED` is excluded from listings and feed indexes.
 - Locale is part of the cache key and the invalidation tag for every entry above.
 - RSS, sitemap, robots, and HTML routes are emitted by Next.js from these public read models; they are not alternate write paths.
+- The Next.js server client follows [ADR-014](DECISIONS.md#adr-014--bounded-last-known-good-public-reads-during-api-outages): it may reuse only a previously validated published DTO within the endpoint's maximum-stale window. Site/projects default to 60 minutes, article/taxonomy reads to 15 minutes, and resume metadata to 5 minutes. A cold or expired outage renders a localized controlled `503` state.
+- Contact, preview, authentication, admin, and mutation requests never synthesize success from stale data. Unpublish/archive/resume-revoke changes enqueue high-priority invalidation and expose delivery failures to operations.
 
 ## 5. Authentication endpoints
 

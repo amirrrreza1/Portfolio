@@ -72,12 +72,6 @@ importers:
       argon2:
         specifier: 0.45.1
         version: 0.45.1
-      class-transformer:
-        specifier: 0.5.1
-        version: 0.5.1
-      class-validator:
-        specifier: 0.15.1
-        version: 0.15.1
       fastify:
         specifier: 5.11.2
         version: 5.11.2
@@ -255,10 +249,6 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
-      vitest:
-        specifier: 4.1.10
-        version: 4.1.10(@types/node@25.2.2)(vite@8.2.0(@types/node@25.2.2)(esbuild@0.28.1)(jiti@2.6.1)(terser@5.49.1)(tsx@4.23.7))
-
   packages/database:
     dependencies:
       '@prisma/adapter-pg':

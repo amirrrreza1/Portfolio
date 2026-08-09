@@ -40,7 +40,7 @@ Rules:
 - Locale filenames come from a fixed allowlist (`en`, `fa`). Any other filename is a sync error, not a new locale.
 - Paths are constructed server-side from validated identifiers only. No user-supplied string ever contributes a path segment. Any resolved path outside `content/` is a hard rejection with an audit event.
 - `content/` is excluded from the Next.js build trace and from Docker runtime images. The application reads content through the Git API and the database index, never from the local working tree in production.
-- Content commits land on a dedicated branch (`content`) that is fast-forward merged into the deployment branch by the sync worker or a scheduled job, so an article save never touches application code history.
+- Content commits land on the protected dedicated `content` branch and are not merged into the application deployment branch during normal publishing. Repository rules disallow force-push/deletion and the Git App cannot modify workflows; see [ADR-011](DECISIONS.md#adr-011--article-bodies-use-a-protected-dedicated-content-branch).
 
 ## 3. Frontmatter contract
 
@@ -77,7 +77,7 @@ Validation rules:
 - `schemaVersion` MUST match a supported version. An unsupported version blocks sync rather than guessing.
 - `postId` MUST match the containing directory. `locale` MUST match the filename. A mismatch is a sync error.
 - `title` and `excerpt` are required, trimmed, length-bounded, and MUST NOT be empty after normalization.
-- `slug` is normalized lowercase; for `fa`, Persian characters are permitted and the URL form is percent-encoded, with a Latin transliteration accepted as an alternate that permanently redirects to the canonical form.
+- `slug` follows [ADR-010](DECISIONS.md#adr-010--unicode-persian-slugs-are-canonical): English is lowercase ASCII; Persian is normalized Persian Unicode stored as NFC and percent-encoded in URLs. A reviewed Latin transliteration may exist as a redirect alias, never as a competing canonical form.
 - `status: published` requires `publishedAt`; `status: scheduled` requires a future `scheduledFor` and forbids `publishedAt`.
 - `category` and every `tag` MUST already exist as taxonomy records. Sync does not silently create taxonomy; it reports the missing slug.
 - `coverImage` and `socialImage` MUST reference existing `MediaAsset` IDs. An informative cover image requires non-empty `coverImageAlt`.
@@ -94,10 +94,13 @@ Frontmatter is authored intent. The database mirror is the realized state; §7 c
 4. On explicit save the API:
    - validates the whole document against the frontmatter schema and the directive allowlist;
    - serializes frontmatter deterministically (stable key order, LF endings, UTF-8, no BOM, single trailing newline) so a no-op save produces no diff;
-   - commits to Git with `If-Match` on the known blob SHA;
-   - on success, updates the index row, render cache, revision, and audit event in one transaction, then invalidates affected routes;
+   - creates or reuses a durable operation intent keyed by the request idempotency key;
+   - commits to Git with `If-Match` on the known blob SHA and the operation ID in fixed metadata;
+   - on success, atomically applies the index row, render cache, revision, audit event, operation state, and invalidation outbox;
    - on a SHA mismatch, returns `409 CONFLICT` with a diff and writes nothing.
 5. Rapid successive saves are coalesced by a short debounce and a per-post queue so the Git host is not hammered.
+
+If Git succeeds but the apply transaction fails, the durable operation plus commit metadata allow webhook/reconciliation processing to re-read the blob by SHA and apply it idempotently. The same `(repository, commitSha, path)` never creates two revisions. Cache invalidation is delivered from the outbox with bounded retries; see [ADR-012](DECISIONS.md#adr-012--durable-operation-log-idempotent-recovery-and-invalidation-outbox-for-git-writes).
 
 The editor is a plain Markdown textarea with a live preview, a directive insert palette, and a pre-publish checklist. It is not a WYSIWYG surface that round-trips HTML, because HTML round-tripping is how sanitized pipelines get bypassed.
 
@@ -124,7 +127,7 @@ Direct pushes to `content/` are a supported authoring path, so sync is bidirecti
 
 - The Git host calls a signed webhook. The signature is verified with a constant-time comparison over the raw body, with a timestamp window and nonce replay store, exactly as specified for cache invalidation in [SECURITY.md](SECURITY.md) §6.
 - The webhook payload is a trigger, not data. The worker re-reads the affected paths from the Git API by commit SHA and validates them from scratch.
-- A reconciliation job also runs on a schedule and on demand, comparing the recorded blob SHA of every translation against the branch head, so a missed webhook self-heals.
+- A dedicated worker consumes PostgreSQL-backed webhook and reconciliation jobs. A reconciliation job also runs on a schedule and on demand, comparing the recorded blob SHA of every translation against the branch head, so a missed webhook self-heals.
 - Validation failures do not change published output. The index row is flagged `SYNC_FAILED` with the reason, the previous good render stays live, and the owner is notified. Broken content in the repository can never take the site down or publish itself.
 - Conflict resolution: the blob SHA is the only concurrency token. Admin writes always use `If-Match`. A push that lands between load and save produces a `409` with a diff; the owner chooses to reload, or to overwrite with an explicit force that is separately audited. There is no automatic merge of article bodies.
 - Sync never deletes. A file removed from Git marks the translation `MISSING_IN_GIT` and unpublishes it after owner confirmation, so an accidental force-push cannot silently erase published articles.
@@ -134,7 +137,7 @@ Direct pushes to `content/` are a supported authoring path, so sync is bidirecti
 A scheduled post is an intent recorded in a file and a transition realized in a database. Reconciling them is the one genuinely awkward consequence of ADR-003, and it is handled explicitly.
 
 1. Saving with `status: scheduled` and a future `scheduledFor` commits that intent and sets the same values in the index.
-2. A single scheduler — one platform cron trigger or one worker with a database advisory lock, never a per-replica timer — polls for due translations.
+2. The dedicated scheduler process holds a PostgreSQL advisory lock before enqueueing due translations. HTTP API replicas have no timers; see [ADR-013](DECISIONS.md#adr-013--postgresql-backed-jobs-with-dedicated-sync-and-scheduler-workers).
 3. At the due time the worker transactionally sets `status = PUBLISHED` and `publishedAt`, writes a revision and audit event, and invalidates routes. **The article is live at this instant, with no commit and no deploy.**
 4. The worker then enqueues a **bot reconciliation commit** that rewrites only `status` and `publishedAt` in the frontmatter, with a fixed message (`chore(content): publish <postId>/<locale>`) and a bot identity. This commit is idempotent and retried with backoff.
 5. If the reconciliation commit cannot land, the translation is flagged `FRONTMATTER_DRIFT`. The site is correct, the file is stale, and the drift is visible in the admin dashboard until resolved. Publication is never blocked on a Git write.
