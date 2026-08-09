@@ -2,7 +2,7 @@
 
 ## 1. Product statement
 
-Turn the existing portfolio into a full-stack personal publishing platform where visitors can browse a fast, indexable **portfolio and bilingual blog** and read it in their preferred theme and font, while the owner can securely manage every visible content section—including the resume file—without editing source code.
+Turn the existing portfolio into a full-stack personal publishing platform where visitors can browse a fast, indexable **portfolio and bilingual blog**, use their preferred theme across the public site, and read blog content in their preferred font, while the owner can securely manage every visible content section—including the resume file—without editing source code.
 
 Articles are authored and stored as Markdown files in the Git repository. Portfolio content is stored in PostgreSQL. Both are edited from the same admin panel.
 
@@ -11,7 +11,7 @@ Articles are authored and stored as Markdown files in the Git repository. Portfo
 - Preserve the current visual identity and public routes during migration.
 - Make every portfolio content area editable from an authenticated admin panel, down to the About Me prose and the resume file.
 - Publish long-form technical writing in English and Persian, as durable Markdown files with real version history.
-- Let a visitor choose theme, font, size, motion, and language without a flash, a layout shift, or an accessibility regression.
+- Let a visitor choose a site-wide theme, blog-only font and size, motion, and language without a flash, a layout shift, or an accessibility regression.
 - Keep all privileged mutations behind a dedicated API and auditable authorization checks.
 - Use a PostgreSQL connection string so local, hosted, and container deployments share one configuration contract.
 - Produce reproducible Docker images and a safe database migration workflow.
@@ -65,7 +65,7 @@ The current browser-side EmailJS integration MUST be removed and its published k
 
 ### PORT-PUB-006 — Appearance settings
 
-A settings modal MUST let a visitor choose theme, font family, font size, motion preference, and language from the options the owner has enabled. The chosen appearance MUST be present in the first server-rendered HTML response — no flash of the wrong theme and no post-hydration correction. The site MUST remain readable and correctly themed with JavaScript disabled. Appearance MUST NOT fragment the public cache. Details in [THEMING.md](THEMING.md).
+A settings modal MUST let a visitor choose a site-wide theme, motion preference, and language, plus a blog font family and blog text size, from the options the owner has enabled. Blog typography MUST apply only to the blog content area and MUST NOT restyle the portfolio, shared header/footer/navigation, settings UI, or admin UI. The chosen appearance MUST be present in the first server-rendered HTML response — no flash of the wrong theme and no post-hydration correction. The site MUST remain readable and correctly themed with JavaScript disabled. Appearance MUST NOT fragment the public cache. Details in [THEMING.md](THEMING.md).
 
 ### PORT-PUB-007 — Bilingual public site
 
@@ -139,7 +139,7 @@ The dashboard MUST show drafts, scheduled content, recent edits, contact-message
 The panel MUST provide validated create/read/update/delete or archive operations for:
 
 - site settings and SEO defaults
-- appearance settings: enabled themes and fonts, defaults, size steps, motion toggle
+- appearance settings: enabled themes and blog fonts, defaults, blog size steps, motion toggle
 - ordered page sections and every editable text field, including the About Me prose and hero lines
 - projects and their skills
 - skill categories/items
@@ -179,7 +179,7 @@ The dashboard MUST surface content-store health: translations that failed valida
 | Availability | Health/readiness endpoints and graceful shutdown; target 99.9% when deployed on suitable infrastructure |
 | API correctness | All mutation payloads runtime-validated; OpenAPI contract generated in CI |
 | Internationalization | Both locales render with correct `lang`/`dir`; `hreflang` reciprocal for published pairs; no untranslated UI string reaches production |
-| Appearance | Every enabled theme passes AA contrast; correct theme and font in the first HTML byte; no layout shift on font swap |
+| Appearance | Every enabled theme passes AA contrast; correct theme and blog typography in the first HTML byte; blog typography never affects non-blog UI; no layout shift on font swap |
 | Content integrity | Every published translation matches a file at its recorded blob SHA; reconciliation reports zero unexplained differences |
 | Recovery | Automated encrypted backups plus an independent content-repository clone; restore drill documented and tested before production launch |
 | Observability | Structured redacted logs, request IDs, health metrics, and actionable error reporting |

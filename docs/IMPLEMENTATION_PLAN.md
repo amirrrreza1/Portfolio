@@ -97,12 +97,12 @@ Exit: no production component imports `src/DataBase`; both locales render; every
 
 Delivered early because it touches the root layout and every component's use of colour, and doing it after the admin panel would mean revisiting all of it.
 
-1. Extract theme token sets and the font registry into code; remove hard-coded colours from components and add the CI check that keeps them out.
-2. Reduce the font files to the `woff2` set in use, subset with `unicode-range`, and set up preloading.
-3. Replace the `localStorage` theme context with cookie-backed, server-rendered appearance: root attributes in the first response, one nonced pre-paint script for `system` mode, and the one-time migration of an existing `localStorage` value.
-4. Build the accessible settings modal with theme, font, size, motion, and language controls.
+1. Extract theme token sets and the blog font registry into code; remove hard-coded colours from components and add the CI check that keeps them out.
+2. Reduce the font files to the `woff2` set in use, subset with `unicode-range`, and preload optional blog fonts only on blog routes when active.
+3. Replace the `localStorage` theme context with cookie-backed, server-rendered appearance: the theme attribute on the root and blog font/size attributes only on `.blog-reading-surface` in the first response, one nonced pre-paint script for `system` mode, and the one-time migration of an existing `localStorage` value.
+4. Build the accessible settings modal with theme, blog font, blog text size, motion, and language controls. Label the typography controls as blog-only.
 5. Wire reduced motion through the cube, particles, scramble text, typing text, smooth scroll, and cursor.
-6. Add the contrast, no-flash, cookie-tampering, no-JavaScript, and cache-key tests from [THEMING.md](THEMING.md) §9.
+6. Add the contrast, no-flash, blog-typography scoping, cookie-tampering, no-JavaScript, and cache-key tests from [THEMING.md](THEMING.md) §9.
 
 Exit: appearance is correct in the first HTML byte, every enabled theme passes AA, and two visitors with different preferences share one cache entry.
 

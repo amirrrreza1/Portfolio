@@ -73,7 +73,7 @@ Translatable fields (site name, title template, meta description) use the sideca
 
 ### `AppearanceSettings`
 
-Singleton record containing `enabledThemes` (ordered keys), `defaultTheme`, `enabledFonts` (ordered keys), `defaultFontByLocale`, `allowedSizeSteps`, `defaultSizeStep`, `offerMotionToggle`, version, timestamps.
+Singleton record containing `enabledThemes` (ordered keys), `defaultTheme`, `enabledBlogFonts` (ordered keys), `defaultBlogFontByLocale`, `allowedBlogSizeSteps`, `defaultBlogSizeStep`, `offerMotionToggle`, version, timestamps.
 
 Every key MUST exist in the code registry described in [THEMING.md](THEMING.md) §3–§4; the default MUST be within the enabled set; at least one theme and one script-compatible font per enabled locale MUST remain enabled. **No stored value here is ever interpolated into CSS** — these are keys that select static, authored token sets and `@font-face` declarations.
 

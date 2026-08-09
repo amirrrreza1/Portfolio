@@ -19,7 +19,7 @@ These documents define the approved target before feature implementation begins.
 | [DATA_MODEL.md](DATA_MODEL.md) | PostgreSQL entities, relationships, constraints, publishing states, translations, and revisions |
 | [API_SPEC.md](API_SPEC.md) | Public/admin endpoints, contracts, caching, errors, and concurrency rules |
 | [I18N.md](I18N.md) | Locales, routing, per-locale translations, `hreflang`, and RTL typography |
-| [THEMING.md](THEMING.md) | Theme and font model, settings modal, flash-free server rendering, and appearance security |
+| [THEMING.md](THEMING.md) | Site-wide theme and blog-only typography model, settings modal, flash-free server rendering, and appearance security |
 | [SEO.md](SEO.md) | Technical SEO, structured data, publishing checklist, and measurable targets |
 | [SECURITY.md](SECURITY.md) | Threat model, mandatory controls, secure defaults, content-store controls, and release gates |
 | [DOCKER.md](DOCKER.md) | Container topology, hardening, health checks, migrations, and operations |
@@ -27,7 +27,7 @@ These documents define the approved target before feature implementation begins.
 
 ## What this product is
 
-A bilingual portfolio and blog. Article bodies are Markdown files in the Git repository, editable from the admin panel or by direct push, and importable by upload. Everything currently visible on the portfolio — including the About Me prose, the skill colours, and the resume PDF — becomes editable in the admin panel. Visitors choose their own theme, font, and language.
+A bilingual portfolio and blog. Article bodies are Markdown files in the Git repository, editable from the admin panel or by direct push, and importable by upload. Everything currently visible on the portfolio — including the About Me prose, the skill colours, and the resume PDF — becomes editable in the admin panel. Visitors choose their own site-wide theme and language, plus a font and text size for blog content only.
 
 ## Priority rules
 

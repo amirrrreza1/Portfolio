@@ -50,7 +50,7 @@ portfolio-platform/
 │  │     ├─ Components/           # legacy components, migrated feature-by-feature
 │  │     ├─ features/             # target feature-oriented modules
 │  │     ├─ messages/             # en.json / fa.json UI catalogs
-│  │     └─ appearance/           # theme token sets and font registry
+│  │     └─ appearance/           # site theme tokens and blog font registry
 │  └─ api/
 │     └─ src/
 │        ├─ modules/              # auth, admin, blog, content, content-store,
@@ -79,7 +79,7 @@ Rules:
 - API modules may import database and contracts; the database package never imports an app.
 - Shared contracts validate at every untrusted boundary. TypeScript types alone are not validation.
 - Public response DTOs MUST be allowlists and must never serialize database records wholesale.
-- The theme token sets and font registry are code. Nothing generates CSS from a stored value.
+- The site theme token sets and blog font registry are code. Nothing generates CSS from a stored value.
 - The single validation stack is Zod. `class-validator` and `class-transformer` currently appear in the API dependencies; they MUST be removed rather than left as a second, divergent validation path.
 
 ## 4. API module ownership
@@ -90,7 +90,7 @@ Rules:
 | `content` | site settings, sections, projects, skills, certificates, quotes, nav/social links, resume metadata, portfolio translations |
 | `blog` | post/translation index, taxonomy, publishing transitions, revisions, slug redirects, feeds |
 | `content-store` | the only holder of the Git credential: commit, read-by-SHA, webhook verification, sync, reconciliation, drift detection, import |
-| `appearance` | enabled themes/fonts, defaults, preference cookie validation against the allowlist |
+| `appearance` | enabled site themes/blog fonts, defaults, preference cookie validation against the allowlist |
 | `media` | signed upload flow, MIME verification, metadata, object lifecycle, resume activation |
 | `contact` | form validation, anti-abuse, persistence/retention, mail delivery adapter |
 | `admin` | admin-specific query composition, audit log access, dashboard summaries, content-store health |
@@ -107,7 +107,7 @@ Each module follows controller → application service → repository/adapter. C
 2. Next.js resolves a public route on the server.
 3. It calls a public API/read service with an explicit `locale` parameter and a bounded timeout.
 4. The API selects only published, enabled fields for that locale, and returns the cached sanitized HTML for article bodies.
-5. Next.js renders HTML, metadata, `hreflang`, and JSON-LD, sets `lang`/`dir` and the appearance attributes on the root element, and assigns an explicit cache/revalidation policy.
+5. Next.js renders HTML, metadata, `hreflang`, and JSON-LD, sets `lang`/`dir` and the theme attribute on the root element, adds blog font/size attributes only to the blog reading wrapper, and assigns an explicit cache/revalidation policy.
 6. Publication mutations trigger targeted, locale-scoped cache invalidation by signed server-to-server request.
 
 Public pages MUST fail safely: a dependency outage renders a controlled error/stale page, never drafts or stack traces. Git is never on this path.
@@ -149,7 +149,7 @@ Public pages MUST fail safely: a dependency outage renders a controlled error/st
 - Markdown parsing, sanitization, and syntax highlighting happen server-side at write/sync time. **No Markdown parser, sanitizer, or highlighter is shipped to the browser.** The `react-markdown` and `shiki` packages currently in the web app's dependencies MUST NOT be used in client components.
 - Published content may use ISR with tagged invalidation; drafts and admin pages use `no-store`.
 - **Locale is part of every public cache key and invalidation tag.** Publishing a Persian translation must not purge English pages.
-- **Appearance is not part of any cache key.** Theme and font are expressed as root-element attributes plus CSS custom properties, so one cached document serves every combination. `Vary: Cookie` on public pages is prohibited — see [THEMING.md](THEMING.md) §5.
+- **Appearance is not part of any cache key.** Theme is expressed as a root-element attribute; blog font and size are expressed only on the blog reading wrapper. Static CSS maps those allowlisted attributes to tokens, so one cached document serves every combination. `Vary: Cookie` on public pages is prohibited — see [THEMING.md](THEMING.md) §5.
 - `Vary: Accept-Language` appears only on the bare `/` negotiation response, never on locale-prefixed pages.
 - Authentication state MUST never participate in a shared public cache key.
 - The render cache is keyed on the blob SHA plus a `rendererVersion` constant, so a sanitizer or highlighter upgrade re-renders everything safely.
@@ -219,5 +219,5 @@ These choices may change adapters or deployment files but MUST NOT weaken the bo
 | Decision rationale and rejected alternatives | [DECISIONS.md](DECISIONS.md) |
 | Content storage, frontmatter, sync, render pipeline | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) |
 | Locales, routing, `hreflang`, RTL | [I18N.md](I18N.md) |
-| Theme, fonts, settings modal, no-flash SSR | [THEMING.md](THEMING.md) |
+| Site theme, blog typography, settings modal, no-flash SSR | [THEMING.md](THEMING.md) |
 | Field-level admin coverage of current content | [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) |

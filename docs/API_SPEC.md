@@ -69,7 +69,7 @@ All public read paths are locale-scoped. `:locale` is validated against the allo
 | Method | Path | Purpose | Cache |
 | --- | --- | --- | --- |
 | `GET` | `/public/:locale/site` | Enabled settings, navigation, sections, social links | short ISR/public cache |
-| `GET` | `/public/:locale/appearance` | Enabled themes/fonts and defaults for the settings modal | long public cache |
+| `GET` | `/public/:locale/appearance` | Enabled site themes, blog typography options, and defaults for the settings modal | long public cache |
 | `GET` | `/public/:locale/projects` | Enabled projects and associated skills | public cache |
 | `GET` | `/public/:locale/projects/:slug` | One public project | public cache |
 | `GET` | `/public/:locale/blog/posts` | Published translation summaries, cursor pagination | public cache |

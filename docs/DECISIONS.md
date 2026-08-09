@@ -9,7 +9,7 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 | ADR-003 | Git repository is the source of truth for article bodies | Accepted | 2026-08-08 |
 | ADR-004 | Markdown with an allowlisted directive set; no runtime MDX execution | Accepted | 2026-08-08 |
 | ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering | Accepted | 2026-08-08 |
-| ADR-006 | Visitor-selectable theme and font from an owner-defined allowlist | Accepted | 2026-08-08 |
+| ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist | Accepted | 2026-08-08 |
 | ADR-007 | Portfolio content is database-backed and fully admin-editable | Accepted | 2026-08-05 |
 
 ---
@@ -121,17 +121,17 @@ Persian content requires correct RTL typography, bidirectional-safe rendering of
 
 ---
 
-## ADR-006 — Visitor-selectable theme and font from an owner-defined allowlist
+## ADR-006 — Site-wide theme and blog-only typography from an owner-defined allowlist
 
 **Status:** Accepted, 2026-08-08.
 
 ### Context
 
-Visitors should be able to change theme and font in a settings modal.
+Visitors should be able to change the site-wide theme and customize typography for reading the blog. A blog typography preference must not restyle the portfolio or shared site interface.
 
 ### Decision
 
-The owner defines, in the admin panel, the enabled themes and font families and the site default for each. Visitors override their own choice in a settings modal. The choice is stored in a first-party cookie that the server reads, so the correct theme and font are present in the first HTML response.
+The owner defines, in the admin panel, the enabled themes and blog font families and the default for each. Visitors override their own choice in a settings modal. Theme applies across the public site; font family and size apply only to the blog content wrapper and never to shared chrome or non-blog pages. The choice is stored in a first-party cookie that the server reads, so the correct theme and blog typography are present in the first HTML response.
 
 Fonts are self-hosted only, from a code-declared registry. The admin panel enables and orders entries and picks the default; it cannot introduce a new font file or arbitrary CSS. Uploading font files is explicitly out of scope for this release.
 
@@ -146,7 +146,7 @@ A cookie read on the server eliminates the theme flash that a `localStorage` rea
 
 ### Consequences
 
-The appearance cookie must never enter a cache key in a way that fragments the cache uncontrollably. Theme and font are applied through CSS custom properties on the root element and one class attribute, so a single cached HTML document can serve any appearance combination. See [THEMING.md](THEMING.md) §5.
+The appearance cookie must never enter a cache key in a way that fragments the cache uncontrollably. Theme is applied at the root; blog font and size are applied only on the blog reading wrapper, so a single cached HTML document can serve any appearance combination without leaking blog typography into the rest of the site. See [THEMING.md](THEMING.md) §5.
 
 ---
 
