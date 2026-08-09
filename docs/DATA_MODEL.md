@@ -113,7 +113,7 @@ Skills have `id`, category ID, unique normalized `name`, `color`, optional icon/
 
 `id`, issuer name and URL, instructor name and URL, `scoreText`, `issuedAt`, `credentialUrl`, certificate media ID, enabled, sort order, `legacyId`, version, timestamps, archivedAt, plus `CertificateTranslation(certificateId, locale, title, description)`.
 
-`scoreText` is free text such as `98/100`. It is **not** a number and MUST NOT be emitted as a structured-data rating. `issuedAt` is a real date; the legacy `YYYY/MM/DD` strings are normalized on migration. The media reference is resolved case-sensitively, which is what catches the three case-mismatched certificate paths documented in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §6.
+`scoreText` is free text such as `98/100`. It is **not** a number and MUST NOT be emitted as a structured-data rating. `issuedAt` is a real date; the legacy `YYYY/MM/DD` strings are normalized on migration. The media reference is resolved case-sensitively, which is what catches the two case-mismatched certificate paths documented in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §6.
 
 ### `Quote`
 

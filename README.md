@@ -7,7 +7,7 @@ What that means concretely:
 - **Blog articles are Markdown files in this repository**, under `content/blog/<postId>/<locale>.md`. They can be written in the admin panel, uploaded as a `.md`/`.mdx` file, or pushed directly with Git — all three paths converge, and publishing never requires a deployment.
 - **Every article exists in English and Persian** as two independent translations. One language is shown at a time; a missing translation is a `404` in that language, not a silent fallback.
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
-- **Visitors choose their own appearance** — theme, font, size, motion, and language — from options the owner enables, applied in the first server-rendered byte with no flash.
+- **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
 The current change establishes the architecture, documentation, workspace layout, and package boundaries. It intentionally does **not** migrate the existing JSON content or implement the admin and blog features yet; those steps are sequenced in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -62,4 +62,4 @@ Copy `.env.example` to `.env` only for local development. Never commit real cred
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md), then read [docs/DECISIONS.md](docs/DECISIONS.md) for why the design is shaped the way it is. The documents are normative for the next implementation phases, especially the security gates, the content-pipeline rules, and the content migration reconciliation requirements.
+Start at [docs/README.md](docs/README.md), use [docs/ROADMAP.md](docs/ROADMAP.md) for current delivery status and milestone gates, then read [docs/DECISIONS.md](docs/DECISIONS.md) for why the design is shaped the way it is. The documents are normative for the next implementation phases, especially the security gates, the content-pipeline rules, and the content migration reconciliation requirements.

@@ -1,5 +1,7 @@
 # Implementation and migration plan
 
+Current milestone status, dependencies, risks, and the immediate execution queue are tracked in [ROADMAP.md](ROADMAP.md). This document remains the detailed implementation sequence.
+
 ## Phase 0 — Architecture scaffold (current)
 
 - Preserve the frontend under `apps/web`.
@@ -8,15 +10,17 @@
 
 Exit: existing web app builds from the new location; API health scaffold builds; lockfile and workspace commands are valid.
 
-### Phase 0 cleanup carried into Phase 1
+### Phase 0 stabilization
 
 Small corrections that are cheap now and expensive later:
 
+- Capture original legacy route screenshots, content counts, and source/file hashes before correcting source data or deleting redundant assets.
+- Establish starter CI with frozen install, format, lint, typecheck, at least one real smoke test, builds, and secret scanning; remove `--passWithNoTests` package by package as real suites land.
 - Set `metadataBase` and `output: "standalone"` in the Next.js config.
 - Remove `class-validator` and `class-transformer` from the API so Zod is the only validation stack.
-- Revoke and rotate the published EmailJS keys at the provider, independently of removing the client code.
+- Revoke and rotate the published EmailJS keys at the provider, remove/disable the browser integration in the same change, and render an honest temporary unavailable state until the server contact path lands in Phase 3.
 - Add the missing `NEXT_PUBLIC_BIRTHDAY` to `.env.example` so a fresh checkout does not render an empty age, or move the value server-side immediately. It is currently required by `Utils/Age.ts` and declared nowhere.
-- Fix the three case-mismatched certificate paths in `Certificate.json`, which are currently masked by a case-insensitive development filesystem and will `404` in a Linux container.
+- Fix the two case-mismatched certificate paths in `Certificate.json`, which are currently masked by a case-insensitive development filesystem and will `404` in a Linux container.
 - Delete the `.eot`, `.ttf`, and `.woff` font duplicates once the `woff2` set in use is confirmed.
 
 ## Phase 1 — Contracts, database, and markdown package
@@ -27,6 +31,7 @@ Small corrections that are cheap now and expensive later:
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
 5. Validate all environment configuration at process startup, including the content-store credentials.
 6. Add unit tests for normalization, per-translation publishing state, per-locale slugs, safe URLs, optimistic concurrency, and frontmatter round-trip determinism.
+7. Choose the object-store adapter and implement the verified media identity/ingestion foundation needed by legacy migration. Admin upload/quarantine UX remains in its later vertical slice.
 
 Exit: a clean database can migrate from zero, seed deterministic fixtures, and pass contract/schema tests. The render pipeline passes its security corpora. No browser receives database access.
 
@@ -69,29 +74,33 @@ The field-by-field mapping, including every current value and the defects found 
 
 Exit: the reconciliation report in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §15 is fully satisfied, no warnings remain unexplained, and rollback to JSON reads remains possible.
 
+Before the first public cutover, wrap the preserved JSON reads in an isolated server-side rollback adapter and feature flag. Active components stop importing `src/DataBase`; the adapter remains dormant and tested until the post-launch rollback window closes.
+
 ## Phase 2.5 — Content store
 
 Stand up the Git content store before any blog UI, so the blog phase builds on a proven store rather than growing one underneath itself.
 
 1. Implement the `content-store` module: GitHub App authentication, read-by-SHA, commit with `If-Match`, path-prefix enforcement, and per-post queuing with backoff.
 2. Implement the signed webhook, the sync worker, and the scheduled reconciliation job. Sync validates from scratch and never deletes.
-3. Implement sync-state tracking, drift detection, and the `ContentSyncLog`.
-4. Add the failure-mode tests that matter: Git unreachable, invalid file in the repository, deleted file, stale blob SHA, forged and replayed webhooks, commit attempted outside `content/`.
-5. Seed one real article in both locales through a direct push and confirm it reconciles into the index and renders.
+3. Implement sync-state tracking, drift detection, the `ContentSyncLog`, and idempotent recovery when Git succeeds but the database transaction or invalidation fails.
+4. Add the failure-mode tests that matter: Git unreachable, invalid file in the repository, deleted file, stale blob SHA, forged and replayed webhooks, commit attempted outside `content/`, and forced database failure after a successful commit.
+5. Enable secret scanning on the content branch before automated or direct content commits are accepted.
+6. Seed one real article in both locales through a direct push and confirm it reconciles into the indexed render cache. End-to-end web route invalidation is proven in Phase 3.
 
-Exit: a file pushed to the repository appears correctly on the site with no deployment; an invalid file changes nothing and is reported; Git being unavailable blocks saves and nothing else.
+Exit: a file pushed to the repository appears correctly in the indexed render cache with no deployment; an invalid file changes nothing and is reported; Git being unavailable blocks saves and nothing else. Phase 3 proves the corresponding public route and end-to-end invalidation.
 
 ## Phase 3 — Public API and frontend read migration
 
 1. Implement public DTO allowlists and repository predicates that expose only published/enabled data, with locale as an explicit parameter.
 2. Introduce locale-prefixed routing: `app/[locale]/`, middleware resolution, `308` redirects from every current URL, dynamic `lang`/`dir`, and the UI message catalogs.
-3. Add site/appearance/projects/resume/blog-read endpoints with ETags and tests for draft and cross-locale leakage.
+3. Add site/appearance/projects/resume/blog-read endpoints with ETags, exclude non-`SYNCED` translations from public discovery, and test draft/cross-locale leakage plus the deliberate portfolio-fallback/article-no-fallback asymmetry.
 4. Add a typed server-side API client in Next.js with timeouts and controlled errors.
 5. Make the header render server-side so navigation exists in the HTML, then migrate one public section at a time behind a server feature flag, comparing rendered output before removing JSON imports.
 6. Move GitHub statistics to a cached allowlisted server adapter.
 7. Refactor the five files listed in the temporary ESLint legacy baseline and restore React hook/compiler rules to error level everywhere.
+8. Replace the temporarily disabled EmailJS form with server-side SMTP submission, validation, layered anti-abuse controls, and a generic response before public preview.
 
-Exit: no production component imports `src/DataBase`; both locales render; every old URL redirects once; navigation is in the server HTML; public pages remain functional during an API outage according to the chosen stale/error strategy.
+Exit: the active production path has no component import from `src/DataBase`; the dormant server rollback adapter is tested and isolated behind its flag; both locales render; every old URL redirects once; navigation is in the server HTML; the server contact path contains no browser/provider credentials; and public pages remain functional during an API outage according to the chosen stale/error strategy.
 
 ## Phase 3.5 — Appearance and settings modal
 
@@ -103,6 +112,7 @@ Delivered early because it touches the root layout and every component's use of 
 4. Build the accessible settings modal with theme, blog font, blog text size, motion, and language controls. Label the typography controls as blog-only.
 5. Wire reduced motion through the cube, particles, scramble text, typing text, smooth scroll, and cursor.
 6. Add the contrast, no-flash, blog-typography scoping, cookie-tampering, no-JavaScript, and cache-key tests from [THEMING.md](THEMING.md) §9.
+7. Add public CSP/security headers and test the nonce path required by the reviewed pre-paint script.
 
 Exit: appearance is correct in the first HTML byte, every enabled theme passes AA, and two visitors with different preferences share one cache entry.
 
@@ -123,13 +133,13 @@ Implement the admin shell and resources in small vertical slices:
 1. settings, appearance settings, page sections, nav items, social links
 2. skill categories/skills and project relations
 3. projects, certificates, quotes
-4. media library and atomic resume activation
+4. secure media library and atomic resume activation, including streaming limits, MIME/decode verification, image re-encoding, PDF policy/quarantine, safe object keys, and abuse tests
 5. per-locale translation editing for every portfolio resource, with untranslated-field indicators
 6. revisions, restore, audit viewer, content-store health panel, sessions/users
 
 Each slice includes shared contracts, API transaction/revision/audit behavior, accessible UI states, optimistic conflict handling, tests, and cache invalidation before moving to the next.
 
-Exit: every row of [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) is editable, satisfying PRODUCT_SPEC `ADMIN-004` without direct database or source edits.
+Exit: every non-blog row of [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) is editable, satisfying the portfolio portion of PRODUCT_SPEC `ADMIN-004` without direct database or source edits.
 
 ## Phase 6 — Blog and SEO
 
@@ -140,13 +150,12 @@ Exit: every row of [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) is editable, sat
 5. Add dynamic metadata, canonicals, `hreflang`, JSON-LD, per-locale RSS and sitemaps, robots, redirects, and `noindex` enforcement.
 6. Add the editorial checklist and the automated validations from [SEO.md](SEO.md) §10.
 
-Exit: a translation can move draft → preview → scheduled/published → revised/redirected/archived through the panel, through a file upload, and through a direct push, all producing identical output, with no private leakage, invalid cache, or broken canonical history. A scheduled article publishes on time with the Git host down, and the resulting drift is reported.
+Exit: a translation can move draft → preview → scheduled/published → revised/redirected/archived through the panel, through a file upload, and through a direct push, all producing identical output, with no private leakage, invalid cache, or broken canonical history. A scheduled article publishes on time with the Git host down, and the resulting drift is reported. Together with Phase 5, the full PRODUCT_SPEC `ADMIN-004` scope is editable.
 
 ## Phase 7 — Contact, uploads, and operational adapters
 
-- Replace browser EmailJS with server-side SMTP adapter.
-- Add contact anti-abuse, retention, delivery state, and safe admin access.
-- Add streaming media verification/quarantine, image re-encoding, PDF policy, object lifecycle, and orphan cleanup.
+- Complete contact retention, delivery state, alerting, and safe admin access around the Phase 3 server adapter.
+- Add media/object lifecycle, orphan cleanup, storage monitoring, and final upload-abuse regression around the secure Phase 5 ingestion path.
 - Add retries only where idempotent and observable.
 
 Exit: public source maps/bundles contain no provider credentials; malicious upload/contact test corpora pass.
@@ -164,9 +173,10 @@ Exit: a clean checkout starts locally; staging deploys reproducibly; production 
 
 - Freeze content briefly, run final migration/reconciliation, smoke test public/admin paths in both locales, and verify headers, robots, per-locale sitemaps, RSS, canonicals, and `hreflang`.
 - Redirect old URLs to their locale-prefixed equivalents and monitor errors, cache invalidations, authentication events, content-sync failures, index coverage per locale, and Core Web Vitals.
-- Remove legacy JSON reads and the client EmailJS package only after the rollback window closes. Key revocation happens immediately and does not wait for this step.
+- Remove the legacy JSON adapter and remaining obsolete packages only after the rollback window closes. The EmailJS browser integration and provider keys are removed/revoked during Phase 0 stabilization and do not wait for launch.
 - Verify in webmaster tools that both locales are indexed and that `hreflang` is recognized without reciprocity errors.
 - Keep old files/backups under retention; do not silently delete them during deployment.
+- Obtain the independent security review required by [SECURITY.md](SECURITY.md) §15 before exposing the admin panel to the public internet.
 
 ## Test strategy
 

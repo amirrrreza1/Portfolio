@@ -99,7 +99,7 @@ The system computes estimated reading time and a table of contents from rendered
 - Use Next.js image/font optimization and reserve media dimensions to avoid layout shifts.
 - Keep public reading pages primarily server components and minimize hydration/animation cost.
 - Load the Rubik cube, particles, settings modal, admin editor, and other heavy interactive code only where needed. The cube is owner-toggleable per [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §2 precisely so the heaviest component can be dropped without a code change.
-- Self-host and subset fonts, serve `woff2` only, declare `unicode-range` so Latin pages never download Persian glyphs, and preload an optional blog family's critical variant only on blog routes when that family is active. The repository currently carries 17 JetBrains Mono faces in four formats including IE-only `.eot`; that is to be reduced per [THEMING.md](THEMING.md) §4.
+- Self-host and subset fonts, serve `woff2` only, declare `unicode-range` so Latin pages never download Persian glyphs, and preload an optional blog family's critical variant only on blog routes when that family is active. The repository currently carries 16 JetBrains Mono faces plus one Vazir Code face in four formats including IE-only `.eot`; that is to be reduced per [THEMING.md](THEMING.md) §4.
 - Appearance changes must not shift layout: blog font families declare metric-compatible fallbacks, blog typography is scoped to the blog content wrapper, and theme switching changes only colours.
 - Set immutable caching for fingerprinted assets and targeted ISR for published content.
 - Monitor real-user Core Web Vitals by route/template and keep representative mobile Lighthouse results in CI as regression signals.

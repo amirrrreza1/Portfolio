@@ -8,6 +8,7 @@ These documents define the approved target before feature implementation begins.
 | --- | --- |
 | [DECISIONS.md](DECISIONS.md) | Architecture decision record: what was chosen, why, what was rejected, and what risks were accepted |
 | [PRODUCT_SPEC.md](PRODUCT_SPEC.md) | Scope, users, requirements, acceptance criteria, and non-goals |
+| [ROADMAP.md](ROADMAP.md) | Current status, milestone dependencies, delivery gates, risks, and immediate execution queue |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered delivery phases, legacy migration, testing, and definition of done |
 
 ## Design specifications
@@ -44,4 +45,4 @@ A bilingual portfolio and blog. Article bodies are Markdown files in the Git rep
 
 The repository currently contains documentation, workspace/package scaffolding, the original frontend, and an API health probe. Feature code, the Prisma model, the markdown package, and the content store are intentionally deferred to the implementation phases.
 
-Known defects in the current code, documented rather than silently carried forward: publicly exposed EmailJS credentials, an undeclared `NEXT_PUBLIC_BIRTHDAY` that renders an empty age on a fresh checkout, three case-mismatched certificate paths that only work on a case-insensitive filesystem, a missing `metadataBase`, a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, two skill colours that fail contrast, and 17 fonts shipped in four formats. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Known defects in the current code, documented rather than silently carried forward: publicly exposed EmailJS credentials, an undeclared `NEXT_PUBLIC_BIRTHDAY` that renders an empty age on a fresh checkout, two case-mismatched certificate paths that only work on a case-insensitive filesystem, a missing `metadataBase`, a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, two skill colours that fail contrast, and 17 font faces shipped in four formats. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

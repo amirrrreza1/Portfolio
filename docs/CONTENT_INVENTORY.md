@@ -114,7 +114,7 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 | Credential URL | URL, optional | Not present today |
 | Enabled, sort order | boolean, integer | |
 
-**Correction — a real bug, currently masked.** Three `filePath` values disagree in case with the files on disk:
+**Correction — a real bug, currently masked.** Two `filePath` values disagree in case with the files on disk:
 
 | JSON value | Actual file |
 | --- | --- |
@@ -234,7 +234,7 @@ The `useAutoLang` hook, which sets `lang` on inputs based on whether the value c
 | Item | Disposition |
 | --- | --- |
 | Rubik cube, particle background, scramble/typing text, smooth scroll, custom cursor | Visual identity. Preserved, made toggle-able, and gated behind reduced-motion per [THEMING.md](THEMING.md) §6 |
-| 17 JetBrains Mono faces × 4 formats, plus Vazir Code | Reduced to `woff2` only, subset, with unused weights removed per [THEMING.md](THEMING.md) §4 |
+| 16 JetBrains Mono faces plus 1 Vazir Code face × 4 formats (68 files) | Reduced to `woff2` only, subset, with unused weights removed per [THEMING.md](THEMING.md) §4 |
 | Existing route structure `(Home Page)` / `(Other Pages)` | Becomes locale-prefixed per [I18N.md](I18N.md) §2, with `308` redirects from every current URL |
 | `not-found.tsx` | Kept and made locale-aware, `noindex` |
 | `Schemas/ContactUsForm.ts` | Moves to `packages/contracts` so the API and the form validate against one schema |
