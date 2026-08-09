@@ -11,6 +11,7 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 | ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering | Accepted | 2026-08-08 |
 | ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist | Accepted | 2026-08-08 |
 | ADR-007 | Portfolio content is database-backed and fully admin-editable | Accepted | 2026-08-05 |
+| ADR-008 | MinIO is the object store for media and backups | Accepted | 2026-08-09 |
 
 ---
 
@@ -20,7 +21,7 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 
 ### Context
 
-Article bodies must exist as real `.md` files, be writable from the admin panel, and be importable by uploading a file. Four storage locations were considered: S3-compatible object storage, the Git repository, a mounted disk volume, and a PostgreSQL column with file import/export.
+Article bodies must exist as real `.md` files, be writable from the admin panel, and be importable by uploading a file. Four storage locations were considered: MinIO object storage, the Git repository, a mounted disk volume, and a PostgreSQL column with file import/export.
 
 ### Decision
 
@@ -39,7 +40,7 @@ Publishing does **not** require a redeploy. The web app reads the index and rend
 
 ### Rejected alternatives
 
-- **S3 object storage.** Operationally simpler and the usual recommendation, but gives no diff or history without building versioning by hand, and makes local authoring awkward.
+- **MinIO object storage for article bodies.** Operationally useful for media, but it gives no diff or history without building versioning by hand, and makes local authoring awkward.
 - **Mounted disk volume.** Ties content to one host, needs its own backup story, and turns every path into an attack surface.
 - **PostgreSQL column with import/export only.** Least new machinery, but the requirement that content *be* files would only be half met.
 
@@ -165,3 +166,35 @@ All of it moves to PostgreSQL and becomes editable from the admin panel, includi
 Rationale for the split: article bodies are long-form documents whose history matters and whose authoring benefits from files. Portfolio fields are structured records that are queried, sorted, filtered, and joined; expressing them as files would mean reimplementing a database.
 
 Every item is enumerated in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) with its target admin field, so "editable in the admin panel" is a checklist rather than an aspiration.
+
+---
+
+## ADR-008 — MinIO is the object store for media and backups
+
+**Status:** Accepted, 2026-08-09.
+
+### Context
+
+The portfolio needs private storage for certificate PDFs, the active resume, blog figures, uploads, and encrypted backup artifacts. PostgreSQL must retain metadata and transactional references, not large binary payloads. The project needs the same storage contract in local development, integration tests, and deployment.
+
+### Decision
+
+Use MinIO as the project's object-storage service. Local development and self-hosted deployment run a pinned MinIO service with a private network and named volume. The API reaches MinIO through a server-only adapter using MinIO's S3-compatible API; browser code never receives MinIO credentials or public bucket listing access. Storage keys are random and application-generated, while PostgreSQL stores object metadata, checksums, media type, and activation state.
+
+MinIO versioning/retention is enabled where supported for resume, blog media, and backup recovery. A provider change requires a new adapter decision; it must not leak storage credentials into the web app or change the media authorization boundary.
+
+### Rationale
+
+- One self-hostable service keeps local, test, and production behavior consistent.
+- MinIO provides the object-storage semantics needed for immutable media keys, private buckets, versioning, and lifecycle rules.
+- Its S3-compatible API lets the adapter use a mature protocol client without making AWS S3 the selected provider.
+
+### Rejected alternatives
+
+- **AWS S3 or another managed S3 provider.** Viable, but not selected for this deployment; switching later is isolated behind the storage adapter.
+- **Local filesystem or public web assets.** Simple, but difficult to isolate, authorize, version, and restore safely across replicas.
+- **PostgreSQL bytea storage.** Avoids a service, but couples large binaries to database backups and operational tables.
+
+### Consequences
+
+MinIO becomes an additional authoritative recovery input alongside PostgreSQL and the Git content repository. The restore drill must reconcile all three. MinIO credentials, endpoints, and signed URLs are server-only and redacted from logs.

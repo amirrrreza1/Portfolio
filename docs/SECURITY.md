@@ -122,7 +122,7 @@ External links opened in a new context use `rel="noopener noreferrer"`. Third-pa
 - Commit only `.env.example` placeholders. Secret scanning runs in CI and pre-commit tooling where available. Because content commits are automated, secret scanning MUST also run on the content branch — an article that pastes a credential into a code block would otherwise be committed by the bot without review.
 - The published EmailJS keys in the current client bundle (`NEXT_PUBLIC_EMAILJS_SERVICE_ID`, `NEXT_PUBLIC_EMAILJS_TEMPLATE_ID`, `NEXT_PUBLIC_EMAILJS_PUBLIC_KEY`) MUST be revoked and rotated at the provider. Deleting them from source does not invalidate keys that have already shipped to every visitor.
 - Production secrets come from the deployment secret manager or mounted runtime secrets, not image build arguments/layers.
-- Database URLs, session/CSRF keys, SMTP URLs, S3 keys, WebAuthn flows, and signed URLs are redacted from logs and error reports.
+- Database URLs, session/CSRF keys, SMTP URLs, MinIO credentials, WebAuthn flows, and signed URLs are redacted from logs and error reports.
 - Independent secrets serve independent purposes and support rotation.
 - Backups are encrypted, access-controlled, retention-limited, and restore-tested.
 - Sensitive values are excluded from revision snapshots and audit metadata by explicit allowlist.

@@ -50,7 +50,7 @@ Each decision below requires an ADR or an explicit amendment to an existing ADR 
 | Persian slug policy: Unicode Persian slugs or ASCII transliteration | Before M1 contracts/schema | `CONTENT_PIPELINE.md` permits Persian slugs while `DATA_MODEL.md` currently requires ASCII slugs |
 | Git write branch and protection model | Before M3 | The content pipeline and environment template assume a `content` branch, while architecture still records dedicated-versus-direct writes as deferred |
 | Recovery after Git succeeds but PostgreSQL or invalidation fails | Design in M0; prove in M3 | Git and PostgreSQL cannot share an atomic transaction; idempotent reconciliation/outbox behavior is required |
-| Object storage provider and verified ingestion boundary | Before M2 | Certificate/resume migration and later admin media depend on stable media IDs and checksums |
+| MinIO deployment and verified ingestion boundary | Before M2 | Certificate/resume migration and later admin media depend on stable media IDs and checksums |
 | Public API outage strategy | Before M4 | The web client must have one tested stale/error policy rather than route-specific improvisation |
 | Scheduler and sync-worker topology | Before M3 for sync; before M8 for scheduling | There must be one logical scheduler and observable, retry-safe workers |
 | Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Before the first dependent milestone; all closed by M9 | These choices affect adapters, privacy, authorization, runbooks, and final deployment |
@@ -131,7 +131,7 @@ Deliverables:
 - Prisma schema, reviewed migrations, generated client wrapper, transaction helpers, test database, and deterministic seed;
 - startup validation for all runtime configuration and secrets;
 - `packages/markdown` with frontmatter parsing, deterministic serialization, restricted directives, sanitization, heading extraction, Shiki output, and restricted inline Markdown for portfolio prose;
-- the chosen object-store adapter with verified MIME detection, hashing, stable media IDs, safe names, and a local/test implementation for migration;
+- the chosen MinIO adapter with verified MIME detection, hashing, stable media IDs, safe names, and a local/test implementation for migration;
 - security corpora for XSS, unsafe links, YAML abuse, path traversal, unknown directives, and malformed input;
 - CI checks for contracts, migration validation, renderer tests, dependency/secret scanning, lint, typecheck, and builds.
 
@@ -351,7 +351,7 @@ The feature-level definition of done in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_
 | Draft or wrong-locale content leaks through caches | M4/M8 | Published-only predicates, explicit locale keys, disclosure tests, and targeted invalidation |
 | Malicious uploads or contact abuse | M4/M7/M9 | Server-side contact controls in M4; complete upload verification/quarantine in M7; operational retention and regression in M9 |
 | Duplicate scheduler publishes twice | M8 | Exactly one logical scheduler, database lock/idempotency, duplicate-trigger tests, observable retries |
-| Restore omits one authoritative store | M9 | Restore drill always combines PostgreSQL, Git, and object storage, then runs reconciliation |
+| Restore omits one authoritative store | M9 | Restore drill always combines PostgreSQL, Git, and MinIO, then runs reconciliation |
 | Scope exceeds sustainable throughput | Every milestone | Keep v1 non-goals closed, ship vertical slices, measure cycle time, and reforecast only at milestone reviews |
 
 ## 10. Immediate implementation queue
@@ -359,12 +359,12 @@ The feature-level definition of done in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_
 The next reviewable changes should be:
 
 1. **M0 baseline PR:** capture the original legacy baseline, fix repository-owned Phase 0 defects, disable the revoked EmailJS path honestly, and make clean quality commands reproducible.
-2. **M0 decision review:** resolve the appearance-cache, slug, content-branch, dual-write recovery, storage, worker, and outage questions; record ADRs.
+2. **M0 decision review:** resolve the appearance-cache, slug, content-branch, dual-write recovery, worker, and outage questions; record ADRs. MinIO is already selected by ADR-008; M1 must prove its private adapter contract.
 3. **M0 CI PR:** add starter CI and real health/smoke tests so zero-test runs cannot be mistaken for coverage.
 4. **M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).
 5. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus.
 6. **M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.
-7. **M1 media-foundation PR:** chosen object-store adapter, verified media identity/ingestion contract, and local/test implementation.
+7. **M1 media-foundation PR:** chosen MinIO adapter, verified media identity/ingestion contract, and local/test implementation.
 
 After item 7, re-plan M2–M3 using observed cycle time and the accepted infrastructure decisions. Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished.
 

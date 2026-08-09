@@ -31,7 +31,7 @@ Small corrections that are cheap now and expensive later:
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
 5. Validate all environment configuration at process startup, including the content-store credentials.
 6. Add unit tests for normalization, per-translation publishing state, per-locale slugs, safe URLs, optimistic concurrency, and frontmatter round-trip determinism.
-7. Choose the object-store adapter and implement the verified media identity/ingestion foundation needed by legacy migration. Admin upload/quarantine UX remains in its later vertical slice.
+7. Implement the chosen MinIO adapter and verified media identity/ingestion foundation needed by legacy migration. Admin upload/quarantine UX remains in its later vertical slice.
 
 Exit: a clean database can migrate from zero, seed deterministic fixtures, and pass contract/schema tests. The render pipeline passes its security corpora. No browser receives database access.
 

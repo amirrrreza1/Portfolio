@@ -12,7 +12,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/portfolio?schema=public
 
 Production SHOULD use TLS parameters required by its provider and a pool sized across all API replicas. Application and migration credentials SHOULD be separate: the runtime role receives only CRUD permissions on required objects; the migration role may alter schema.
 
-Media binaries are not stored in PostgreSQL. The database stores object metadata and immutable storage keys; an S3-compatible store holds the bytes.
+Media binaries are not stored in PostgreSQL. The database stores object metadata and immutable storage keys; MinIO holds the bytes through its S3-compatible API.
 
 ## 2. Global conventions
 
@@ -237,7 +237,7 @@ erDiagram
 - **Article bodies have a second, independent recovery path:** a clone of the content repository. A valid restore requires the database backup *and* a repository clone to reconcile — every index row matching a file at its recorded blob SHA, every file having an index row, and every published translation rendering. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
 - `renderedHtml` is a cache and need not be backed up; it is regenerable from Git. It MUST NOT be the only surviving copy of any article.
 - `PostDraft` rows are working state with a short retention window and are excluded from revision snapshots.
-- Object storage versioning or equivalent retention for resume/blog assets.
+- MinIO versioning or equivalent retention for resume/blog assets.
 - Contact messages are automatically purged after the configured window.
 - Expired/revoked sessions and used recovery codes are purged on a schedule after the audit window.
 - Revisions and audit events have documented retention and protected access.

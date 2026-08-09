@@ -13,10 +13,10 @@ Docker artifacts are delivered after the application/database contracts are impl
 | `migrate` | same application artifact or dedicated migration target | no listener; one-shot | database changes |
 | `scheduler` | same application artifact, scheduler entrypoint | no listener | none; holds a database advisory lock |
 | `postgres` | pinned supported PostgreSQL image for local/self-hosted use | private network only | named database volume |
-| `object-store` | optional pinned S3-compatible service for local/self-hosted use | private/admin network only | named object volume |
+| `minio` | pinned MinIO service for local/self-hosted use | private/admin network only | named MinIO volume |
 | `edge` | chosen TLS reverse proxy in self-hosted topology | public `80/443` | certificates/config as required |
 
-Managed production PostgreSQL or object storage replaces its Compose service without changing application code. `DATABASE_URL` remains the contract.
+The MinIO deployment uses the same private adapter contract in local and production environments. `DATABASE_URL` remains the database contract; MinIO settings are server-only `MINIO_*` configuration.
 
 ## 3. Build rules
 
@@ -44,15 +44,15 @@ Every application container MUST:
 - log to stdout/stderr in structured form without secrets
 - have a health check with bounded interval, timeout, retries, and start period
 
-PostgreSQL/object storage run with their vendor-specific least-privilege settings and are never exposed publicly. Production administration occurs through provider/private-network mechanisms, not an open Compose port.
+PostgreSQL and MinIO run with least-privilege settings and are never exposed publicly. Production administration occurs through private-network mechanisms, not an open Compose port.
 
 ## 5. Networks and routing
 
 - `edge` can reach `web` and `/api` upstream, and routes `/webhooks/content-git` to the API with its own stricter body-size and rate limits.
 - `web` can reach API for server-side reads but not PostgreSQL and not the Git host.
-- `api` can reach PostgreSQL, object storage, SMTP, the Git host, and approved outbound APIs. Outbound access to the Git host is an explicit allowlist entry, not open egress.
+- `api` can reach PostgreSQL, MinIO, SMTP, the Git host, and approved outbound APIs. Outbound access to the Git host is an explicit allowlist entry, not open egress.
 - `scheduler` can reach PostgreSQL and the API/Git host but accepts no inbound traffic.
-- PostgreSQL and object store accept only required private-service traffic.
+- PostgreSQL and MinIO accept only required private-service traffic.
 - Browser requests use `https://site.example/api/v1`; no production credentialed cross-origin API is required.
 - The edge applies request/header/body limits and TLS policy; the API repeats relevant validation.
 
@@ -106,11 +106,11 @@ Compose dependency health can improve local startup but is not a substitute for 
 
 The eventual `compose.yaml` supports profiles:
 
-- `dependencies`: PostgreSQL, object storage, and a local mail catcher; web/API run with pnpm on the host.
+- `dependencies`: PostgreSQL, MinIO, and a local mail catcher; web/API run with pnpm on the host.
 - `full`: production-like web/API/dependencies behind the edge.
-- `test`: isolated ephemeral database/object storage for integration tests.
+- `test`: isolated ephemeral PostgreSQL/MinIO resources for integration tests.
 
-Only the local dependency profile may publish PostgreSQL/object-store console ports to loopback. Named volumes are project-scoped and never silently deleted by routine start/stop commands.
+Only the local dependency profile may publish PostgreSQL/MinIO console ports to loopback. Named volumes are project-scoped and never silently deleted by routine start/stop commands.
 
 ## 10. Backup, restore, and upgrades
 

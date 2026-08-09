@@ -34,7 +34,7 @@ The current change establishes the architecture, documentation, workspace layout
 - Validation: Zod contracts shared by the web and API workspaces
 - Admin authentication: Argon2id password verification plus WebAuthn/passkeys, opaque server-side sessions, and secure cookies
 - Locales: English and Persian, locale-prefixed URLs, reciprocal `hreflang`, RTL typography
-- Deployment: separate non-root web/API images with PostgreSQL and an optional S3-compatible object store
+- Deployment: separate non-root web/API images with PostgreSQL and MinIO object storage
 
 ### Why Markdown and not MDX
 

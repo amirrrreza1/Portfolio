@@ -23,7 +23,7 @@ flowchart LR
   E -->|"/api/v1/*"| API["NestJS + Fastify API"]
   W -->|"server-side public reads"| API
   API --> DB[("PostgreSQL")]
-  API --> OBJ["S3-compatible object storage"]
+  API --> OBJ["MinIO object storage"]
   API --> SMTP["SMTP provider"]
   API --> OBS["Logs / error monitoring"]
   API -->|"commit / read by SHA"| GIT["Git host: content repository"]
@@ -204,7 +204,7 @@ These are subject to the same rules as `DATABASE_URL` and additionally MUST be s
 ## 10. Architecture decisions deferred to implementation
 
 - Production hosting provider and reverse proxy product
-- S3-compatible provider (local Docker may use MinIO)
+- MinIO deployment topology for local Docker and production
 - Error-monitoring vendor
 - Whether scheduled publishing uses a platform cron trigger or a dedicated worker process — either way there is exactly one logical instance
 - Whether the content sync worker runs in the API process or separately

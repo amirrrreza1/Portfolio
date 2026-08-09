@@ -14,7 +14,7 @@ Normative decisions: [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-sourc
 | Realized publication state and timestamps | PostgreSQL |
 | Sanitized render cache, reading time, heading tree | PostgreSQL |
 | Blob SHA and sync state per translation | PostgreSQL |
-| Media binaries | Object storage |
+| Media binaries | MinIO object storage |
 
 The rule that resolves every ambiguity: **Git is authoritative for what the text says; PostgreSQL is authoritative for what the site is currently doing with it.**
 
@@ -30,7 +30,7 @@ content/
 │  └─ <postId>/
 │     ├─ en.md
 │     ├─ fa.md
-│     └─ assets/          # optional per-post images, mirrored to object storage
+│     └─ assets/          # optional per-post images, mirrored to MinIO
 └─ .content-schema         # integer schema version of the frontmatter contract
 ```
 
