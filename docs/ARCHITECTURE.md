@@ -2,9 +2,16 @@
 
 ## 1. Decision summary
 
-Use a **modular monorepo with separately deployable web and API applications**. Next.js owns rendering and browser interaction. NestJS/Fastify owns authentication, authorization, validation, persistence, mail, uploads, and audit events. PostgreSQL is the source of truth and is configured by a server-only `DATABASE_URL`.
+Use a **modular monorepo with separately deployable web and API applications**. Next.js owns rendering and browser interaction. NestJS/Fastify owns authentication, authorization, validation, persistence, mail, uploads, content-store access, and audit events.
+
+There are **two stores with clearly divided authority**:
+
+- **PostgreSQL** is authoritative for portfolio content, identity, taxonomy, and all operational state, configured by a server-only `DATABASE_URL`.
+- **The Git repository** is authoritative for article body text, per [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies). PostgreSQL holds a derived index of it.
 
 This keeps public pages server-rendered and SEO-friendly while maintaining a strict privilege boundary around writes and credentials. It also avoids splitting a personal site into premature microservices.
+
+The single rule that resolves ambiguity between the two stores: **Git is authoritative for what the text says; PostgreSQL is authoritative for what the site is currently doing with it.**
 
 ## 2. Runtime topology
 
@@ -19,9 +26,16 @@ flowchart LR
   API --> OBJ["S3-compatible object storage"]
   API --> SMTP["SMTP provider"]
   API --> OBS["Logs / error monitoring"]
+  API -->|"commit / read by SHA"| GIT["Git host: content repository"]
+  GIT -->|"signed webhook"| API
+  SCHED["Scheduler: single instance"] --> API
 ```
 
-All browser API traffic uses the public site origin and `/api/v1`; the edge routes it to the API. Same-origin routing simplifies cookie and CSRF protections. The database and object store are never browser-accessible.
+All browser API traffic uses the public site origin and `/api/v1`; the edge routes it to the API. Same-origin routing simplifies cookie and CSRF protections. The database, object store, and Git credential are never browser-accessible.
+
+The **scheduler** is exactly one logical instance — a platform cron trigger or a worker holding a PostgreSQL advisory lock — so scheduled publication cannot fire once per replica. The **content sync worker** may run inside the API process but its work is serialized per post.
+
+Reads never touch Git. A public article request is served from the database index and render cache, so Git being unreachable degrades authoring only, never reading.
 
 ## 3. Workspace boundaries
 
@@ -31,16 +45,23 @@ portfolio-platform/
 │  ├─ web/
 │  │  ├─ public/                  # preserved assets during migration
 │  │  └─ src/
-│  │     ├─ app/                  # public routes and future /admin route group
+│  │     ├─ app/[locale]/         # locale-prefixed public routes
+│  │     ├─ app/admin/            # admin route group, not locale-prefixed
 │  │     ├─ Components/           # legacy components, migrated feature-by-feature
-│  │     └─ features/             # target feature-oriented modules
+│  │     ├─ features/             # target feature-oriented modules
+│  │     ├─ messages/             # en.json / fa.json UI catalogs
+│  │     └─ appearance/           # theme token sets and font registry
 │  └─ api/
 │     └─ src/
-│        ├─ modules/              # auth, admin, blog, content, contact, media, health
+│        ├─ modules/              # auth, admin, blog, content, content-store,
+│        │                        # contact, media, appearance, health
 │        └─ common/               # guards, pipes, filters, interceptors, config
 ├─ packages/
 │  ├─ contracts/                  # Zod schemas and inferred transport types
-│  └─ database/                   # Prisma schema/client/migrations only
+│  ├─ database/                   # Prisma schema/client/migrations only
+│  └─ markdown/                   # frontmatter schema, directives, render pipeline
+├─ content/
+│  └─ blog/<postId>/{en,fa}.md    # article bodies; source of truth (ADR-003)
 ├─ infrastructure/
 │  └─ docker/
 └─ docs/
@@ -49,22 +70,30 @@ portfolio-platform/
 Rules:
 
 - `apps/web` MUST NOT import Prisma or database adapters.
+- `apps/web` MUST NOT read `content/` from the filesystem. It receives rendered HTML through the API.
+- `content/` MUST be excluded from the Next.js build trace and from runtime container images. It is data, not source.
 - `packages/database` MUST NOT contain HTTP or UI concerns.
 - `packages/contracts` MUST remain environment-neutral: no Node-only or browser-only side effects.
+- `packages/markdown` owns the frontmatter schema, the directive allowlist, and the render pipeline, and is imported by the API only. Its output is HTML strings; it MUST NOT import React or reach the browser bundle.
+- Only the `content-store` module may hold the Git credential or call the Git host. No other module, and no part of the web app, touches it.
 - API modules may import database and contracts; the database package never imports an app.
 - Shared contracts validate at every untrusted boundary. TypeScript types alone are not validation.
 - Public response DTOs MUST be allowlists and must never serialize database records wholesale.
+- The theme token sets and font registry are code. Nothing generates CSS from a stored value.
+- The single validation stack is Zod. `class-validator` and `class-transformer` currently appear in the API dependencies; they MUST be removed rather than left as a second, divergent validation path.
 
 ## 4. API module ownership
 
 | Module | Owns |
 | --- | --- |
 | `auth` | bootstrap owner, login, WebAuthn, recovery, sessions, re-authentication |
-| `content` | site settings, sections, projects, skills, certificates, quotes, links, resume metadata |
-| `blog` | posts, tags, categories, publishing transitions, revisions, slug redirects, feeds |
+| `content` | site settings, sections, projects, skills, certificates, quotes, nav/social links, resume metadata, portfolio translations |
+| `blog` | post/translation index, taxonomy, publishing transitions, revisions, slug redirects, feeds |
+| `content-store` | the only holder of the Git credential: commit, read-by-SHA, webhook verification, sync, reconciliation, drift detection, import |
+| `appearance` | enabled themes/fonts, defaults, preference cookie validation against the allowlist |
 | `media` | signed upload flow, MIME verification, metadata, object lifecycle, resume activation |
 | `contact` | form validation, anti-abuse, persistence/retention, mail delivery adapter |
-| `admin` | admin-specific query composition, audit log access, dashboard summaries |
+| `admin` | admin-specific query composition, audit log access, dashboard summaries, content-store health |
 | `health` | liveness and dependency-aware readiness probes |
 | `common` | configuration validation, guards, policies, error mapping, request IDs, redaction |
 
@@ -74,13 +103,36 @@ Each module follows controller → application service → repository/adapter. C
 
 ### Public read
 
-1. Next.js resolves a public route on the server.
-2. It calls a public API/read service with a bounded timeout.
-3. The API selects only published, enabled fields.
-4. Next.js renders HTML, metadata, and JSON-LD and assigns an explicit cache/revalidation policy.
-5. Publication mutations trigger targeted cache invalidation by signed server-to-server request.
+1. Next.js middleware resolves the locale from the URL prefix and the appearance preferences from the cookie, validating both against allowlists.
+2. Next.js resolves a public route on the server.
+3. It calls a public API/read service with an explicit `locale` parameter and a bounded timeout.
+4. The API selects only published, enabled fields for that locale, and returns the cached sanitized HTML for article bodies.
+5. Next.js renders HTML, metadata, `hreflang`, and JSON-LD, sets `lang`/`dir` and the appearance attributes on the root element, and assigns an explicit cache/revalidation policy.
+6. Publication mutations trigger targeted, locale-scoped cache invalidation by signed server-to-server request.
 
-Public pages MUST fail safely: a dependency outage renders a controlled error/stale page, never drafts or stack traces.
+Public pages MUST fail safely: a dependency outage renders a controlled error/stale page, never drafts or stack traces. Git is never on this path.
+
+### Article write
+
+1. The admin browser saves; autosave writes only to a database draft row and never commits.
+2. The API validates frontmatter, body, and directives against `packages/markdown`, then serializes frontmatter deterministically.
+3. `content-store` commits to the content branch with `If-Match` on the known blob SHA. A stale SHA returns `409` with a diff and writes nothing.
+4. On a successful commit, one transaction updates the index row, render cache, revision, and audit event, then invalidates the affected locale's routes.
+5. If the commit fails, nothing is written and the editor keeps its draft. Publication state of already-synced content is unaffected.
+
+### Content sync
+
+1. The Git host calls a signed webhook; the signature, timestamp window, and nonce are verified before the payload is trusted.
+2. The payload is a trigger only. The worker re-reads affected paths from the Git API by commit SHA and validates them from scratch.
+3. Valid files update the index, render cache, and revision. Invalid files set a sync-failure flag with a reason, leave live output unchanged, and notify the owner.
+4. A scheduled reconciliation job compares every recorded blob SHA against the branch head, so a missed webhook self-heals.
+5. Sync never deletes: a missing file is flagged and requires owner confirmation to unpublish.
+
+### Scheduled publish
+
+1. The single scheduler finds due translations.
+2. It transactionally sets the realized status and timestamp, writes a revision and audit event, and invalidates routes. The article is live at this moment, with no commit and no deploy.
+3. It then enqueues an idempotent bot commit to reconcile the frontmatter. Failure raises visible drift; it never blocks or reverses publication.
 
 ### Admin mutation
 
@@ -94,8 +146,13 @@ Public pages MUST fail safely: a dependency outage renders a controlled error/st
 ## 6. Rendering and caching
 
 - Blog posts and portfolio pages use server components and server-rendered metadata.
+- Markdown parsing, sanitization, and syntax highlighting happen server-side at write/sync time. **No Markdown parser, sanitizer, or highlighter is shipped to the browser.** The `react-markdown` and `shiki` packages currently in the web app's dependencies MUST NOT be used in client components.
 - Published content may use ISR with tagged invalidation; drafts and admin pages use `no-store`.
+- **Locale is part of every public cache key and invalidation tag.** Publishing a Persian translation must not purge English pages.
+- **Appearance is not part of any cache key.** Theme and font are expressed as root-element attributes plus CSS custom properties, so one cached document serves every combination. `Vary: Cookie` on public pages is prohibited — see [THEMING.md](THEMING.md) §5.
+- `Vary: Accept-Language` appears only on the bare `/` negotiation response, never on locale-prefixed pages.
 - Authentication state MUST never participate in a shared public cache key.
+- The render cache is keyed on the blob SHA plus a `rendererVersion` constant, so a sanitizer or highlighter upgrade re-renders everything safely.
 - Public API reads use `ETag`/conditional requests where useful.
 - A short stale window is acceptable for published copy after edits; security-sensitive changes (unpublish, resume revocation) require immediate invalidation.
 - Preview URLs are authenticated, short-lived, unguessable, `noindex`, and `no-store`.
@@ -109,6 +166,22 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
 ```
 
 The value is a secret. It appears only in the API/migration process environment, never in a `NEXT_PUBLIC_*` variable, browser bundle, log, image layer, or repository file. Production SHOULD use a secret manager and a restricted application database role; migrations use a separate elevated role when the platform supports it.
+
+The content store adds a second credential contract:
+
+```text
+CONTENT_GIT_PROVIDER=github
+CONTENT_GIT_REPO=owner/repo
+CONTENT_GIT_BRANCH=content
+CONTENT_GIT_APP_ID=...
+CONTENT_GIT_INSTALLATION_ID=...
+CONTENT_GIT_PRIVATE_KEY=...          # server-only, mounted, never a build arg
+CONTENT_GIT_WEBHOOK_SECRET=...       # independent of every other secret
+CONTENT_GIT_BOT_NAME=portfolio-bot
+CONTENT_GIT_BOT_EMAIL=bot@example.invalid
+```
+
+These are subject to the same rules as `DATABASE_URL` and additionally MUST be scoped to a single repository with contents write permission only, as required by [SECURITY.md](SECURITY.md) §16. Startup validation fails closed on a missing or malformed value; the API refuses to serve rather than running with authoring silently broken.
 
 ## 8. Error contract and observability
 
@@ -133,6 +206,18 @@ The value is a secret. It appears only in the API/migration process environment,
 - Production hosting provider and reverse proxy product
 - S3-compatible provider (local Docker may use MinIO)
 - Error-monitoring vendor
-- Whether scheduled publishing uses a platform cron trigger or a dedicated worker process
+- Whether scheduled publishing uses a platform cron trigger or a dedicated worker process — either way there is exactly one logical instance
+- Whether the content sync worker runs in the API process or separately
+- Whether content commits land on a dedicated `content` branch merged by automation, or directly on the deployment branch
 
-These choices may change adapters or deployment files but MUST NOT weaken the boundaries above.
+These choices may change adapters or deployment files but MUST NOT weaken the boundaries above. In particular, none of them may put the Git credential outside the `content-store` module, put Git on a public read path, or allow more than one scheduler.
+
+## 11. Related specifications
+
+| Topic | Document |
+| --- | --- |
+| Decision rationale and rejected alternatives | [DECISIONS.md](DECISIONS.md) |
+| Content storage, frontmatter, sync, render pipeline | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) |
+| Locales, routing, `hreflang`, RTL | [I18N.md](I18N.md) |
+| Theme, fonts, settings modal, no-flash SSR | [THEMING.md](THEMING.md) |
+| Field-level admin coverage of current content | [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) |

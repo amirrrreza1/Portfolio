@@ -55,27 +55,40 @@ Stable codes include `VALIDATION_FAILED`, `AUTHENTICATION_REQUIRED`, `AUTHENTICA
 - Pagination is cursor-based with server-capped page size (default 20, maximum 100).
 - Public list filters use explicit allowlists; arbitrary field sorting/query operators are forbidden.
 - Mutation requests require `Content-Type`, a valid CSRF token, authenticated session, role permission, and an `If-Match` version/ETag for existing resources.
-- A stale `If-Match` returns `409 CONFLICT` with the current version metadata and makes no write.
-- `POST` operations that can be retried (upload completion, publish actions) accept an idempotency key with bounded retention.
+- A stale `If-Match` returns `409 CONFLICT` with the current version metadata and makes no write. For article bodies the token is the Git blob SHA and the conflict response includes a diff.
+- **Every public read endpoint takes an explicit, validated `locale` parameter** from the allowlist. There is no implicit default that could silently serve the wrong language, and an unknown locale is `VALIDATION_FAILED`, not a fallback.
+- Admin endpoints address a translation explicitly in the path rather than inferring locale from a header.
+- `POST` operations that can be retried (upload completion, publish actions, content commits) accept an idempotency key with bounded retention.
 - Rate-limit responses include `Retry-After`; detailed thresholds are configuration, not public guarantees.
+- Additional stable error codes for the content store: `CONTENT_STORE_UNAVAILABLE`, `CONTENT_VALIDATION_FAILED`, `CONTENT_CONFLICT`, and `TRANSLATION_NOT_FOUND`.
 
 ## 4. Public endpoints
 
+All public read paths are locale-scoped. `:locale` is validated against the allowlist in [I18N.md](I18N.md) §1.
+
 | Method | Path | Purpose | Cache |
 | --- | --- | --- | --- |
-| `GET` | `/public/site` | Enabled settings, navigation, sections, social links | short ISR/public cache |
-| `GET` | `/public/projects` | Enabled projects and associated skills | public cache |
-| `GET` | `/public/projects/:slug` | One public project | public cache |
-| `GET` | `/public/blog/posts` | Published post summaries, cursor pagination | public cache |
-| `GET` | `/public/blog/posts/:slug` | One published post and SEO data | public cache |
-| `GET` | `/public/blog/categories/:slug` | Published posts in category | public cache |
-| `GET` | `/public/blog/tags/:slug` | Published posts with tag | public cache/noindex policy may apply |
+| `GET` | `/public/:locale/site` | Enabled settings, navigation, sections, social links | short ISR/public cache |
+| `GET` | `/public/:locale/appearance` | Enabled themes/fonts and defaults for the settings modal | long public cache |
+| `GET` | `/public/:locale/projects` | Enabled projects and associated skills | public cache |
+| `GET` | `/public/:locale/projects/:slug` | One public project | public cache |
+| `GET` | `/public/:locale/blog/posts` | Published translation summaries, cursor pagination | public cache |
+| `GET` | `/public/:locale/blog/posts/:slug` | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache |
+| `GET` | `/public/:locale/blog/categories/:slug` | Published posts in category | public cache |
+| `GET` | `/public/:locale/blog/tags/:slug` | Published posts with tag | public cache/noindex policy may apply |
+| `GET` | `/public/:locale/blog/feed-index` | Ordered published entries for RSS and sitemap generation | public cache |
 | `GET` | `/public/resume` | Active resume metadata/download location | short cache |
 | `POST` | `/contact` | Validate, persist, and queue contact delivery | no-store, strict limit |
 
-Draft, scheduled, archived, disabled, and soft-deleted records MUST behave as `404` on public endpoints.
+Rules:
 
-RSS, sitemap, robots, and HTML routes are emitted by Next.js from these public read models; they are not alternate write paths.
+- Draft, scheduled, archived, disabled, and soft-deleted records MUST behave as `404` on public endpoints, in every locale.
+- A post with no `PUBLISHED` translation in the requested locale returns `404` with `TRANSLATION_NOT_FOUND` and, in `meta`, the locales in which it *is* available — so the web app can render a helpful page without a second request. It MUST NOT return another locale's body.
+- The post detail response includes only the alternates that are actually published, and the web app emits `hreflang` from exactly that list.
+- Article responses carry pre-rendered sanitized HTML. The API never returns raw Markdown on a public endpoint.
+- A translation whose `syncState` is not `SYNCED` is excluded from listings and feed indexes.
+- Locale is part of the cache key and the invalidation tag for every entry above.
+- RSS, sitemap, robots, and HTML routes are emitted by Next.js from these public read models; they are not alternate write paths.
 
 ## 5. Authentication endpoints
 
@@ -101,7 +114,9 @@ Cookies use the `__Host-` prefix in HTTPS production, `Secure`, `HttpOnly`, `Sam
 The following resource groups use conventional `GET` list/detail, `POST` create, `PATCH` update, and owner-restricted archive/delete operations under `/admin`:
 
 - `/admin/settings`
+- `/admin/appearance`
 - `/admin/sections`
+- `/admin/nav-items`
 - `/admin/social-links`
 - `/admin/projects`
 - `/admin/skill-categories` and `/admin/skills`
@@ -113,25 +128,54 @@ The following resource groups use conventional `GET` list/detail, `POST` create,
 - `/admin/contact-messages`
 - `/admin/revisions`
 - `/admin/audit-events`
+- `/admin/content-store` (sync health, drift, reconciliation)
 - `/admin/users` (owner only)
 
-Purpose-specific transitions are commands rather than arbitrary status patches:
+Translatable resources expose their translations as explicit subresources, for example `PATCH /admin/projects/:id/translations/:locale`. A translation write carries its own `If-Match` so two locales can be edited concurrently without conflicting.
+
+### Article and translation commands
+
+Article bodies are addressed per translation. Editorial state transitions are commands, not arbitrary status patches:
 
 | Method | Path | Rule |
 | --- | --- | --- |
-| `POST` | `/admin/blog/posts/:id/publish` | Validate publish checklist, create revision, set public time, invalidate routes |
-| `POST` | `/admin/blog/posts/:id/schedule` | Owner/editor permission, future UTC timestamp |
-| `POST` | `/admin/blog/posts/:id/unpublish` | Recent auth for owner policy, immediate cache invalidation |
-| `POST` | `/admin/revisions/:id/restore` | Creates a new revision; never mutates history |
+| `GET` | `/admin/blog/posts/:id/translations/:locale` | Returns frontmatter, raw Markdown, blob SHA, sync state, and any newer draft |
+| `PUT` | `/admin/blog/posts/:id/translations/:locale` | Explicit save: validate, commit to Git with `If-Match` blob SHA, then update index in one transaction. `409` with a diff on a stale SHA; `503 CONTENT_STORE_UNAVAILABLE` if Git is unreachable, with nothing written |
+| `PUT` | `/admin/blog/posts/:id/translations/:locale/draft` | Autosave to `PostDraft` only. Never commits, never publishes, no `If-Match` required |
+| `POST` | `/admin/blog/posts/:id/translations/:locale/preview` | Render through the production pipeline; returns a short-lived, unguessable, `noindex`, `no-store` preview URL |
+| `POST` | `/admin/blog/posts/:id/translations/:locale/publish` | Validate the publish checklist, set realized state, create revision, invalidate that locale's routes, enqueue the bot reconciliation commit |
+| `POST` | `/admin/blog/posts/:id/translations/:locale/schedule` | Future UTC timestamp; commits the intent and mirrors it to the index |
+| `POST` | `/admin/blog/posts/:id/translations/:locale/unpublish` | Recent auth; immediate invalidation because a withdrawn article left cached is a disclosure issue |
+| `DELETE` | `/admin/blog/posts/:id/translations/:locale` | Owner only; blocked while `PUBLISHED`; removes the file by commit and archives the index row |
+| `POST` | `/admin/blog/import` | Multipart `.md`/`.mdx` upload. **Dry run by default:** returns the normalized document, a line-referenced report, and the exact diff. Committing requires a second call with `confirm: true` and the returned report token |
+| `POST` | `/admin/revisions/:id/restore` | Writes a new commit and a new revision; never mutates history |
 | `POST` | `/admin/resumes/:id/activate` | Atomic single-active update and cache invalidation |
 | `POST` | `/admin/media` | Stream bounded upload through verification/quarantine |
 | `POST` | `/admin/media/:id/archive` | Reject if still referenced unless replacement supplied |
+
+### Content-store operations
+
+| Method | Path | Rule |
+| --- | --- | --- |
+| `GET` | `/admin/content-store/status` | Sync state counts, drift list, pending bot commits, last successful reconciliation |
+| `POST` | `/admin/content-store/reconcile` | Owner-triggered full reconciliation; idempotent, rate-limited, reports differences without changing published output |
+| `POST` | `/admin/content-store/translations/:id/resync` | Re-read and re-validate one translation from Git |
+| `POST` | `/admin/content-store/translations/:id/force-save` | Overwrite a conflicting blob; owner only, recent auth, separately audited, requires the acknowledged diff |
+
+### Git webhook
+
+| Method | Path | Rule |
+| --- | --- | --- |
+| `POST` | `/webhooks/content-git` | Verify HMAC signature over the raw body in constant time, enforce a narrow timestamp window and a nonce replay store, then enqueue sync. Returns `202` with no content. Unauthenticated in the session sense, authenticated by signature. Never trusts payload contents as data |
+
+The webhook path is exempt from CSRF (it is not cookie-authenticated) and is explicitly excluded from the session middleware, so a browser cannot reach it with ambient credentials.
 
 Batch reorder endpoints accept the complete ordered ID set plus a collection version. They update in one transaction and reject duplicates/missing IDs.
 
 ## 7. Upload contract
 
-- Accept only explicit media classes required by the product: PDF resume/certificates and approved raster image formats.
+- Accept only explicit media classes required by the product: PDF resume/certificates, approved raster image formats, and Markdown documents for article import.
+- **Markdown import** (`.md`, `.mdx`, `.markdown`) is size-bounded, decoded strictly as UTF-8 with invalid sequences rejected rather than replaced, and validated per [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §5. It is never partially applied, and the original upload is retained in quarantine for the audit window without ever being served.
 - Per-class byte and dimension limits are enforced before/while streaming.
 - Extension and browser-supplied MIME are advisory; magic bytes and decoders determine accepted type.
 - Filenames are display metadata only. Storage keys are random and cannot contain user paths.
@@ -141,9 +185,11 @@ Batch reorder endpoints accept the complete ordered ID set plus a collection ver
 
 ## 8. Caching and invalidation contract
 
-Public `GET` responses provide `Cache-Control`, `ETag`, and `Last-Modified` where meaningful. Admin/auth/contact responses are always `private, no-store`.
+Public `GET` responses provide `Cache-Control`, `ETag`, `Last-Modified`, and `Content-Language` where meaningful. Admin/auth/contact/webhook responses are always `private, no-store`.
 
-After a committed publish, unpublish, redirect, or active-resume transaction, the API sends a signed, replay-protected invalidation event to the web app. Invalidation failure is retried and observable; the database state remains authoritative.
+Cache keys include the locale and exclude the appearance preferences cookie. `Vary: Cookie` MUST NOT appear on a public response; `Vary: Accept-Language` appears only on the bare `/` negotiation response.
+
+After a committed publish, unpublish, redirect, active-resume, or sync transaction, the API sends a signed, replay-protected invalidation event to the web app, tagged by locale so one language's publication does not purge the other. Invalidation failure is retried and observable; the database state remains authoritative.
 
 ## 9. Authorization matrix
 
@@ -151,7 +197,12 @@ After a committed publish, unpublish, redirect, or active-resume transaction, th
 | --- | ---: | ---: | ---: |
 | Read published content | yes | yes | yes |
 | Read/edit drafts | no | yes | yes |
+| Save an article body (commit to Git) | no | yes | yes |
+| Import a Markdown file | no | dry run only | yes |
 | Publish/schedule content | no | configurable | yes |
+| Force-overwrite a conflicting blob | no | no | yes + recent auth |
+| Trigger reconciliation | no | no | yes |
+| Change appearance settings | no | no | yes |
 | Manage media/resume | no | upload/select | yes |
 | View contact bodies | no | no by default | yes |
 | Restore revision | no | own content if allowed | yes |

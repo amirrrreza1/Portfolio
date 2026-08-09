@@ -2,7 +2,9 @@
 
 ## 1. Database choice and connection
 
-PostgreSQL is the source of truth. Prisma owns the schema and migrations in `packages/database`. The application receives one server-only connection string:
+PostgreSQL is the source of truth **for everything except article body text**, which lives in the Git repository per [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies). For article bodies the database holds a derived index: identity, taxonomy, realized publication state, the Git blob SHA, and the sanitized render cache. Portfolio content, identity, media metadata, and all operational state are database-authoritative.
+
+Prisma owns the schema and migrations in `packages/database`. The application receives one server-only connection string:
 
 ```text
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/portfolio?schema=public
@@ -22,6 +24,9 @@ Media binaries are not stored in PostgreSQL. The database stores object metadata
 - User input: normalized once, validated before persistence, encoded at output.
 - Flexible section payloads may use `jsonb`, but each section key has a versioned Zod schema. Arbitrary unvalidated JSON is forbidden.
 - URLs are stored as absolute `https` URLs except internal paths; unsafe schemes are rejected.
+- **Translatable fields** are stored per locale, never as a single concatenated value. Locale codes come from the closed allowlist in [I18N.md](I18N.md) §1.
+- **Rendered HTML is a cache, never an input.** Any column holding rendered HTML records the source identity (blob SHA or record version) plus a `rendererVersion`, and is discarded rather than trusted when either changes.
+- Colour values are validated `#rrggbb` strings, and are checked for contrast against every enabled theme before they can be saved.
 
 ## 3. Identity and security models
 
@@ -49,35 +54,72 @@ Only a SHA-256/HMAC-derived token hash is stored. The random token exists solely
 
 ## 4. Portfolio content models
 
+### Translation strategy for portfolio content
+
+Portfolio content is translatable with **English required and Persian optional**, falling back to English when absent — the opposite of articles, and deliberately so, per [I18N.md](I18N.md) §4. A page with one untranslated label is broken in a way that a missing article is not.
+
+Two patterns are used, chosen per entity:
+
+- **Sidecar translation table** for entities with several translatable fields (`PageSection`, `Project`, `Certificate`, `Category`, `Tag`), named `<Entity>Translation` with `(entityId, locale)` unique.
+- **Per-locale jsonb map** for entities with one or two short translatable strings (`SocialLink.label`, `NavItem.label`, `Quote.text`), validated by a Zod schema keyed on the locale allowlist.
+
+Every translatable field records whether a locale value is present, so the admin panel can flag untranslated fields rather than hiding the gap behind a fallback.
+
 ### `SiteSettings`
 
-Singleton record containing public site name/URL, locale, timezone, default title template, default meta description, default social image ID, contact availability, robots policy flags, and version.
+Singleton record containing public site name, canonical site URL (the `metadataBase` value, currently missing from the application), default locale, enabled locales, timezone, default title template, default meta description, default social image ID, author/creator/publisher name, optional search-console verification tokens, contact recipient address, contact availability flag, contact retention days, GitHub username, GitHub repository allowlist, GitHub cache TTL, robots policy flags, and version.
+
+Translatable fields (site name, title template, meta description) use the sidecar pattern. The contact recipient address is server-only and MUST NOT appear in any public DTO.
+
+### `AppearanceSettings`
+
+Singleton record containing `enabledThemes` (ordered keys), `defaultTheme`, `enabledFonts` (ordered keys), `defaultFontByLocale`, `allowedSizeSteps`, `defaultSizeStep`, `offerMotionToggle`, version, timestamps.
+
+Every key MUST exist in the code registry described in [THEMING.md](THEMING.md) §3–§4; the default MUST be within the enabled set; at least one theme and one script-compatible font per enabled locale MUST remain enabled. **No stored value here is ever interpolated into CSS** — these are keys that select static, authored token sets and `@font-face` declarations.
 
 ### `PageSection`
 
-`id`, unique stable `key` (`hero`, `about`, `skills`, etc.), `title`, validated `content` JSON, `schemaVersion`, `enabled`, `sortOrder`, version, timestamps, archivedAt.
+`id`, unique stable `key` (`hero`, `about`, `skills`, etc.), validated `content` JSON, `schemaVersion`, `enabled`, `sortOrder`, version, timestamps, archivedAt, plus `PageSectionTranslation(sectionId, locale, title, content)` for the translatable payload.
 
-Section keys are an allowlist in code. The API rejects content that does not match that key’s contract.
+Section keys are an allowlist in code. The API rejects content that does not match that key's contract. Prose inside a section uses the restricted inline-Markdown profile in [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §10, and its sanitized render is cached with the record version.
+
+### `NavItem`
+
+`id`, `labelByLocale`, `targetKind` ∈ `{SECTION_ANCHOR, INTERNAL_ROUTE}`, `target`, `iconKey`, `enabled`, `sortOrder`, version, timestamps.
+
+`iconKey` is validated against a code registry of permitted icons; an arbitrary string is rejected. `target` is a section key or a site-relative path — never an external URL, so the header cannot be turned into an off-site redirect surface. Nav items MUST render server-side.
 
 ### `SocialLink`
 
-`id`, `label`, `url`, `iconKey`, `rel`, `enabled`, `sortOrder`, version, timestamps.
+`id`, `labelByLocale`, `url`, `iconKey`, `rel`, `kind` ∈ `{SOCIAL, EMAIL, DONATE}`, `enabled`, `sortOrder`, version, timestamps.
+
+`mailto:` is permitted only for `kind = EMAIL`; every other kind requires absolute `https`.
 
 ### `Project`
 
-`id`, unique `slug`, `title`, `summary`, optional long description, `status` (`PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`), `demoUrl`, `repositoryUrl`, `imageId`, `featured`, `sortOrder`, `startedAt`, `completedAt`, version, timestamps, archivedAt.
+`id`, unique `slug`, `status` (`PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`), `demoUrl`, `repositoryUrl`, `imageId`, `featured`, `sortOrder`, `enabled`, `startedAt`, `completedAt`, `legacyId`, version, timestamps, archivedAt, plus `ProjectTranslation(projectId, locale, title, summary, longDescription)`.
+
+`demoUrl` and `repositoryUrl` distinguish null from empty: absent means the link is not rendered. A placeholder `"#"` is not a URL and is rejected. `legacyId` preserves the numeric ID from `Projects.json` for migration reconciliation and is never exposed publicly.
 
 ### `SkillCategory` and `Skill`
 
-Categories have `id`, unique name, sort order, enabled state, and version. Skills have `id`, category ID, unique normalized name, color, optional icon/media reference, sort order, enabled state, and version. `ProjectSkill(projectId, skillId, sortOrder)` is the many-to-many join with a composite unique key.
+Categories have `id`, stable `key`, sort order, enabled state, `legacyId`, version, and `SkillCategoryTranslation(categoryId, locale, name)`.
+
+Skills have `id`, category ID, unique normalized `name`, `color`, optional icon/media reference, sort order, enabled state, `legacyId`, and version. Skill names are proper nouns and are **not** translated. `color` is validated `#rrggbb` and contrast-checked against every enabled theme, because label text colour is derived from it at render time.
+
+`ProjectSkill(projectId, skillId, sortOrder)` is the many-to-many join with a composite unique key. Moving a skill between categories preserves its project links.
 
 ### `Certificate`
 
-`id`, title, description, issuer, instructor and URLs, score text, issued date, credential URL, certificate media ID, enabled, sort order, version, timestamps, archivedAt.
+`id`, issuer name and URL, instructor name and URL, `scoreText`, `issuedAt`, `credentialUrl`, certificate media ID, enabled, sort order, `legacyId`, version, timestamps, archivedAt, plus `CertificateTranslation(certificateId, locale, title, description)`.
+
+`scoreText` is free text such as `98/100`. It is **not** a number and MUST NOT be emitted as a structured-data rating. `issuedAt` is a real date; the legacy `YYYY/MM/DD` strings are normalized on migration. The media reference is resolved case-sensitively, which is what catches the three case-mismatched certificate paths documented in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §6.
 
 ### `Quote`
 
-`id`, text, author, source URL, enabled, sort order, version, timestamps. Selection is deterministic per UTC day or explicitly pinned so server and client HTML do not disagree.
+`id`, `textByLocale`, author, source URL, enabled, `pinned`, sort order, version, timestamps.
+
+Selection is deterministic — the pinned quote, otherwise a stable function of the UTC date — and computed server-side, so the cached HTML is valid and server and client cannot disagree. `"Anonymous"` is a legitimate author value and MUST NOT be normalized away.
 
 ### `MediaAsset`
 
@@ -91,25 +133,51 @@ The object key is internal. Public URLs are constructed by an adapter or returne
 
 ## 5. Blog models
 
+Article bodies are **not** stored in PostgreSQL. `Post` and `PostTranslation` are the index over `content/blog/<postId>/<locale>.md`.
+
 ### `Post`
 
-`id`, unique current `slug`, title, excerpt, `bodyMarkdown`, optional rendered-content checksum/cache, status, author ID, category ID, cover media ID, SEO title, SEO description, canonical URL, social image ID, `publishedAt`, `scheduledFor`, `readingMinutes`, version, timestamps, archivedAt.
+`id`, author ID, category ID, cover media ID, `featured`, `pinnedUntil`, version, timestamps, archivedAt.
+
+`Post` carries only what is shared across languages: identity, authorship, taxonomy, and the cover image. It has **no** title, slug, body, or publication date — those are per translation. The `id` is the immutable directory name in the content repository, so a slug change never moves a file.
+
+### `PostTranslation`
+
+`id`, `postId`, `locale`, `title`, `slug`, `excerpt`, `seoTitle`, `seoDescription`, `canonicalUrl`, `socialImageId`, `status`, `publishedAt`, `scheduledFor`, `readingMinutes`, `headingTree` (jsonb), `renderedHtml`, `rendererVersion`, `sourceBlobSha`, `syncState`, `syncError`, `lastSyncedAt`, `frontmatterSchemaVersion`, version, timestamps, archivedAt.
 
 Rules:
 
-- `DRAFT`: not publicly readable.
-- `SCHEDULED`: has a future `scheduledFor`; not public until transitioned.
-- `PUBLISHED`: has `publishedAt`; appears in feeds/sitemaps unless explicitly excluded.
-- `ARCHIVED`: absent from discovery; prior URL behavior is an explicit redirect or `410`, never an accidental draft leak.
-- Only reviewed Markdown is stored. Rendered HTML is derived with an allowlisted sanitizer policy.
+- `(postId, locale)` is unique. `locale` is constrained to the allowlist.
+- `(locale, slug)` is unique. Slugs are unique per locale, not globally, so English and Persian may coincidentally share a slug.
+- Status is **per translation**: `DRAFT` is not publicly readable; `SCHEDULED` has a future `scheduledFor` and no `publishedAt`; `PUBLISHED` has `publishedAt` and appears in that locale's feeds and sitemap; `ARCHIVED` is absent from discovery, with prior URLs resolving to an explicit redirect or `410` and never leaking a draft.
+- A `Post` MUST have at least one `PostTranslation`. A `Post` whose every translation is non-public is itself non-public.
+- **No fallback.** A locale without a `PUBLISHED` translation is not served in that locale, per [ADR-005](DECISIONS.md#adr-005--bilingual-articles-as-per-locale-translations-of-one-post).
+- `sourceBlobSha` is the Git blob SHA of the body file and doubles as the optimistic-concurrency token for body writes.
+- `renderedHtml` is a cache produced by the pipeline in [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8, valid only while `sourceBlobSha` and `rendererVersion` both match. It is never written from a request payload.
+- `syncState` ∈ `{SYNCED, PENDING, SYNC_FAILED, MISSING_IN_GIT, FRONTMATTER_DRIFT}`. Anything other than `SYNCED` is surfaced on the admin dashboard and excludes the translation from newly generated feeds and sitemaps.
+- A check constraint enforces the status/timestamp invariants, so a `PUBLISHED` row without `publishedAt` cannot exist.
 
-### `Category`, `Tag`, and `PostTag`
+### `PostDraft`
 
-Categories and tags have unique slug/name, optional description, enabled state, and timestamps. Each post has zero or one category and many tags through `PostTag(postId, tagId)` with a composite unique key.
+`id`, `postId`, `locale`, `authorId`, `bodyMarkdown`, `frontmatter` (jsonb), `baseBlobSha`, `updatedAt`.
+
+Editor autosave only. Unique on `(postId, locale, authorId)`. These rows are working state, never a publication source, and are deleted once their content is committed. `baseBlobSha` records what the author started from so a conflict can be diffed. Draft bodies are excluded from revision snapshots.
+
+### `Category`, `Tag`, `CategoryTranslation`, `TagTranslation`, and `PostTag`
+
+Categories and tags have a stable `key`, enabled state, sort order, and timestamps. Human-readable name, slug, and description are per locale in `CategoryTranslation(categoryId, locale, name, slug, description)` and `TagTranslation(tagId, locale, name, slug, description)`, each unique on `(locale, slug)`.
+
+Taxonomy is shared across a post's translations: a post has zero or one category and many tags through `PostTag(postId, tagId)` with a composite unique key. Sync never creates taxonomy implicitly — an unknown category or tag in frontmatter is a reported sync error.
 
 ### `SlugRedirect`
 
-`id`, unique `fromPath`, `toPath`, status code restricted to `301` or `308`, source entity ID/type, createdBy, createdAt. Redirect chains and loops are rejected; changes collapse to the final target.
+`id`, `locale`, unique `(locale, fromPath)`, `toPath`, status code restricted to `301` or `308`, source entity ID/type, createdBy, createdAt. Redirect chains and loops are rejected; changes collapse to the final target. A slug change in one locale creates a redirect only within that locale.
+
+### `ContentSyncLog`
+
+`id`, `commitSha`, `trigger` ∈ `{ADMIN_SAVE, WEBHOOK, RECONCILE, SCHEDULER_BOT, IMPORT}`, affected paths, outcome, error summary, `startedAt`, `finishedAt`.
+
+Append-only operational history of the content store, used for drift investigation and for the dashboard's last-successful-reconciliation indicator. Contains no body text.
 
 ## 6. Governance and operational models
 
@@ -133,29 +201,42 @@ erDiagram
   USER ||--o{ WEBAUTHN_CREDENTIAL : registers
   USER ||--o{ POST : authors
   USER ||--o{ CONTENT_REVISION : creates
+  POST ||--|{ POST_TRANSLATION : "has per locale"
+  POST_TRANSLATION ||--o{ SLUG_REDIRECT : "leaves behind"
+  POST ||--o{ POST_DRAFT : "autosaves"
+  PROJECT ||--|{ PROJECT_TRANSLATION : "has per locale"
   PROJECT }o--o{ SKILL : uses
   SKILL_CATEGORY ||--o{ SKILL : groups
   POST }o--o{ TAG : tagged
   CATEGORY ||--o{ POST : categorizes
   MEDIA_ASSET ||--o{ POST : illustrates
   MEDIA_ASSET ||--o{ RESUME_VERSION : stores
+  MEDIA_ASSET ||--o{ CERTIFICATE : evidences
   USER ||--o{ AUDIT_EVENT : performs
 ```
 
 ## 8. Index and constraint requirements
 
 - Unique normalized user email and WebAuthn credential ID.
-- Unique published/current post slug; unique tag/category/project slugs.
-- Index `Post(status, publishedAt DESC)` and scheduled posts by `(status, scheduledFor)`.
-- Index enabled/sort-order columns used for portfolio reads.
+- Unique `(postId, locale)` and `(locale, slug)` on `PostTranslation`; unique `(locale, slug)` on category and tag translations; unique project slug.
+- Unique `(locale, fromPath)` on `SlugRedirect`.
+- Index `PostTranslation(locale, status, publishedAt DESC)` for listings and feeds, and `(status, scheduledFor)` for the scheduler.
+- Index `PostTranslation(syncState)` for the dashboard's degraded-content query.
+- Index `PostTranslation(sourceBlobSha)` for reconciliation lookups.
+- Index enabled/sort-order columns used for portfolio reads, and `(entityId, locale)` on every translation table.
 - Index session token hash and expiration/revocation fields.
 - Index audit/revision by target and descending creation time.
-- Check positive media size, sensible sort order, valid publish-state timestamps, and non-empty trimmed titles.
-- Foreign-key delete policies are explicit: restrict referenced media and taxonomy; cascade only private joins/sessions where safe.
+- Check positive media size, sensible sort order, non-empty trimmed titles, `#rrggbb` colour format, and locale values within the allowlist.
+- Check publish-state invariants per translation: `PUBLISHED` requires `publishedAt`; `SCHEDULED` requires `scheduledFor` and forbids `publishedAt`.
+- Partial unique index guaranteeing at most one active `ResumeVersion`.
+- Foreign-key delete policies are explicit: restrict referenced media and taxonomy; cascade translations with their parent; cascade only private joins, drafts, and sessions where safe. `PostTranslation` cascades from `Post`; `Post` deletion is blocked while any translation is `PUBLISHED`.
 
 ## 9. Backup and retention
 
 - Daily encrypted database backups plus provider point-in-time recovery where available.
+- **Article bodies have a second, independent recovery path:** a clone of the content repository. A valid restore requires the database backup *and* a repository clone to reconcile — every index row matching a file at its recorded blob SHA, every file having an index row, and every published translation rendering. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
+- `renderedHtml` is a cache and need not be backed up; it is regenerable from Git. It MUST NOT be the only surviving copy of any article.
+- `PostDraft` rows are working state with a short retention window and are excluded from revision snapshots.
 - Object storage versioning or equivalent retention for resume/blog assets.
 - Contact messages are automatically purged after the configured window.
 - Expired/revoked sessions and used recovery codes are purged on a schedule after the audit window.

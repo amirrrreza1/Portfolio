@@ -1,6 +1,13 @@
 # Portfolio Platform
 
-This repository is being migrated from a static Next.js portfolio into a secure, database-backed portfolio and publishing platform.
+This repository is being migrated from a static Next.js portfolio into a secure **bilingual portfolio and blog** with a full admin panel.
+
+What that means concretely:
+
+- **Blog articles are Markdown files in this repository**, under `content/blog/<postId>/<locale>.md`. They can be written in the admin panel, uploaded as a `.md`/`.mdx` file, or pushed directly with Git — all three paths converge, and publishing never requires a deployment.
+- **Every article exists in English and Persian** as two independent translations. One language is shown at a time; a missing translation is a `404` in that language, not a silent fallback.
+- **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
+- **Visitors choose their own appearance** — theme, font, size, motion, and language — from options the owner enables, applied in the first server-rendered byte with no flash.
 
 The current change establishes the architecture, documentation, workspace layout, and package boundaries. It intentionally does **not** migrate the existing JSON content or implement the admin and blog features yet; those steps are sequenced in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -8,22 +15,30 @@ The current change establishes the architecture, documentation, workspace layout
 
 | Path | Responsibility |
 | --- | --- |
-| `apps/web` | Existing Next.js public site and the future `/admin` interface |
-| `apps/api` | NestJS/Fastify API scaffold; all authenticated writes will live here |
+| `apps/web` | Next.js public site (locale-prefixed) and the `/admin` interface |
+| `apps/api` | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here |
 | `packages/contracts` | Shared Zod request/response schemas and TypeScript types |
 | `packages/database` | Prisma schema, migrations, and PostgreSQL client |
+| `packages/markdown` | Frontmatter schema, directive allowlist, and the server-side render pipeline |
+| `content/` | Article bodies as Markdown files — the source of truth for article text |
 | `infrastructure/docker` | Production and local Docker assets in the implementation phase |
-| `docs` | Product, architecture, API, security, SEO, data, and deployment specifications |
+| `docs` | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
 
 ## Chosen stack
 
 - Frontend: Next.js 16, React 19, Tailwind CSS 4
 - Backend: NestJS 11 with Fastify
 - Database: PostgreSQL through `DATABASE_URL`, accessed with Prisma
+- Content store: this Git repository, written through a repository-scoped GitHub App token
+- Authoring format: GFM Markdown with an allowlisted directive set, sanitized server-side. **MDX is never executed** — see [ADR-004](docs/DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution)
 - Validation: Zod contracts shared by the web and API workspaces
 - Admin authentication: Argon2id password verification plus WebAuthn/passkeys, opaque server-side sessions, and secure cookies
-- Content: database-backed portfolio sections, projects, skills, certificates, media, resume, and Markdown blog posts
+- Locales: English and Persian, locale-prefixed URLs, reciprocal `hreflang`, RTL typography
 - Deployment: separate non-root web/API images with PostgreSQL and an optional S3-compatible object store
+
+### Why Markdown and not MDX
+
+MDX's defining feature is that a document can import and execute JavaScript. For content that arrives through an admin panel or a file upload, that turns the security boundary into "do you trust every author forever," which is not a boundary that survives a stolen session. It also forces a choice between compiling at request time (running a compiler on submitted input) and compiling at build time (every article edit becomes a deploy). Markdown plus a fixed directive set gives the same authoring richness — callouts, figures, embeds, step lists — with a reviewable component surface, sanitizable output, and files that still render correctly in GitHub or any other editor. Full reasoning in [DECISIONS.md](docs/DECISIONS.md).
 
 ## Requirements
 
@@ -47,4 +62,4 @@ Copy `.env.example` to `.env` only for local development. Never commit real cred
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md). The documents are normative for the next implementation phases, especially the security gates and content migration rules.
+Start at [docs/README.md](docs/README.md), then read [docs/DECISIONS.md](docs/DECISIONS.md) for why the design is shaped the way it is. The documents are normative for the next implementation phases, especially the security gates, the content-pipeline rules, and the content migration reconciliation requirements.
