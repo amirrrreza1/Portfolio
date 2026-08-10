@@ -10,13 +10,13 @@ Theme changes apply across the public site. Font family and font size changes ap
 
 ## 2. Control split
 
-| Setting | Owner defines | Visitor chooses |
-| --- | --- | --- |
-| Theme | enabled themes, order, site default | active theme, or follow system; applies site-wide |
-| Blog font family | enabled families, order, blog default per locale | active family for blog content only |
-| Blog font size | allowed scale steps, default step | active step for blog content only |
-| Reduced motion | whether the toggle is offered | on / off / follow system |
-| Language | enabled locales, default | active locale ([I18N.md](I18N.md)) |
+| Setting          | Owner defines                                    | Visitor chooses                                   |
+| ---------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Theme            | enabled themes, order, site default              | active theme, or follow system; applies site-wide |
+| Blog font family | enabled families, order, blog default per locale | active family for blog content only               |
+| Blog font size   | allowed scale steps, default step                | active step for blog content only                 |
+| Reduced motion   | whether the toggle is offered                    | on / off / follow system                          |
+| Language         | enabled locales, default                         | active locale ([I18N.md](I18N.md))                |
 
 The visitor's choice always wins over the corresponding configured default. The owner's allowlist always wins over the visitor's request: an option that is not enabled cannot be selected by crafting a cookie value.
 
@@ -48,11 +48,11 @@ Registry entry: internal key, display name, CSS family stack, supported scripts,
 
 Initial registry:
 
-| Key | Family | Scripts | Notes |
-| --- | --- | --- | --- |
-| `jetbrains-mono` | JetBrains Mono | Latin | Current site font; available for Latin blog content |
-| `vazir-code` | Vazir Code | Arabic/Persian + Latin | Required for `fa`; default for Persian blog content |
-| `system-sans` | System UI sans stack | Both | Zero-download option, best for reading long articles |
+| Key              | Family               | Scripts                | Notes                                                |
+| ---------------- | -------------------- | ---------------------- | ---------------------------------------------------- |
+| `jetbrains-mono` | JetBrains Mono       | Latin                  | Current site font; available for Latin blog content  |
+| `vazir-code`     | Vazir Code           | Arabic/Persian + Latin | Required for `fa`; default for Persian blog content  |
+| `system-sans`    | System UI sans stack | Both                   | Zero-download option, best for reading long articles |
 
 Rules:
 

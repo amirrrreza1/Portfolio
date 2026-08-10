@@ -2,8 +2,6 @@ import React from "react";
 import { ArrowRight } from "lucide-react";
 import { AnimatedLinkProps } from "./Types";
 
-
-
 const AnimatedLink: React.FC<AnimatedLinkProps> = ({
   href,
   children,
@@ -14,32 +12,18 @@ const AnimatedLink: React.FC<AnimatedLinkProps> = ({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`
-        w-fit relative inline-flex items-center gap-2 px-3 py-1 text-secondary
-        transition-colors duration-300
-        group overflow-hidden
-        ${className || ""}
-      `}
+      className={`text-secondary group relative inline-flex w-fit items-center gap-2 overflow-hidden px-3 py-1 transition-colors duration-300 ${className || ""} `}
     >
-      <span className="relative z-10 transition-colors duration-300 group-hover:text-primary">
+      <span className="group-hover:text-primary relative z-10 transition-colors duration-300">
         {children}
       </span>
 
       <ArrowRight
         size={16}
-        className="
-          relative z-10 transition-transform duration-300
-          group-hover:-rotate-45 group-hover:text-primary
-        "
+        className="group-hover:text-primary relative z-10 transition-transform duration-300 group-hover:-rotate-45"
       />
 
-      <span
-        className="
-          absolute left-0 bottom-0 w-full h-[2px] bg-secondary
-          transition-all duration-500 ease-in-out
-          group-hover:h-full group-hover:bottom-0
-        "
-      ></span>
+      <span className="bg-secondary absolute bottom-0 left-0 h-[2px] w-full transition-all duration-500 ease-in-out group-hover:bottom-0 group-hover:h-full"></span>
     </a>
   );
 };

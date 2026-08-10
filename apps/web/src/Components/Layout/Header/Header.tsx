@@ -15,64 +15,59 @@ const Header = () => {
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <header className="fixed top-5 left-0 right-0 z-50 w-full h-15">
-      <div
-        className="w-fit mx-auto flex items-center gap-2 md:gap-4 px-2 md:px-4 py-2
-        backdrop-blur-[5px] bg-secondary/20 rounded
-        border border-secondary/20 
-        shadow-lg"
-      >
+    <header className="fixed top-5 right-0 left-0 z-50 h-15 w-full">
+      <div className="bg-secondary/20 border-secondary/20 mx-auto flex w-fit items-center gap-2 rounded border px-2 py-2 shadow-lg backdrop-blur-[5px] md:gap-4 md:px-4">
         <Tooltip title="Home">
           <button
             onClick={() => scrollToSection("#home")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Home className="w-6 h-6 text-secondary" />
+            <Home className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 
         <Tooltip title="About Me">
           <button
             onClick={() => scrollToSection("#about")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Search className="w-6 h-6 text-secondary" />
+            <Search className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 
         <Tooltip title="Skills">
           <button
             onClick={() => scrollToSection("#skills")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Code2 className="w-6 h-6 text-secondary" />
+            <Code2 className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 
         <Tooltip title="Get In Touch">
           <button
             onClick={() => scrollToSection("#getintouch")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Mail className="w-6 h-6 text-secondary" />
+            <Mail className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 
         <Tooltip title="Projects">
           <button
             onClick={() => scrollToSection("#projects")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Settings className="w-6 h-6 text-secondary" />
+            <Settings className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 
         <Tooltip title="Certificates">
           <button
             onClick={() => scrollToSection("#certificates")}
-            className="p-2 rounded hover:bg-white/20 transition"
+            className="rounded p-2 transition hover:bg-white/20"
           >
-            <Award className="w-6 h-6 text-secondary" />
+            <Award className="text-secondary h-6 w-6" />
           </button>
         </Tooltip>
 

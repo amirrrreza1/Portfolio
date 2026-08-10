@@ -270,14 +270,14 @@ type HeroRubikProps = { className?: string };
 export default function RubikCube({ className }: HeroRubikProps) {
   return (
     <div
-      className={`flex items-center justify-center w-full h-full ${
+      className={`flex h-full w-full items-center justify-center ${
         className ?? ""
       }`}
     >
-      <div className="w-full h-full aspect-square max-w-[400px] max-h-[400px]">
+      <div className="aspect-square h-full max-h-[400px] w-full max-w-[400px]">
         <Canvas
           shadows
-          className="w-full h-full"
+          className="h-full w-full"
           camera={{ position: [6, 6, 8], fov: 45 }}
         >
           <SceneRoot onReady={() => {}} />

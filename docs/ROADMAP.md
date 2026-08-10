@@ -1,8 +1,8 @@
 # Project roadmap
 
-Status snapshot: **2026-08-09**
+Status snapshot: **2026-08-10**
 
-Active milestone: **M0 — Baseline, guardrails, and decisions**
+Active milestone: **M0 — Baseline, guardrails, and decisions** (all repository-owned work complete; the gate is held open by one owner action, see §6)
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -25,35 +25,41 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 ## 2. Current position
 
-The repository is at the end of the structural part of Phase 0, but its cleanup and verification gate is still open.
+Phase 0 stabilization is complete in the repository. One item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds the gate open.
 
-| Area | Current state | Roadmap implication |
-| --- | --- | --- |
-| Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist | Preserve these boundaries; update specs and ADRs with each superseding decision |
-| Public application | The legacy Next.js portfolio is preserved and still reads JSON/hard-coded content | Introduce a server-side rollback adapter before the first cutover, then retain it until migrated output reconciles and the rollback window closes |
-| API | NestJS/Fastify scaffold exposes only the health route | Domain and security modules start in M1 |
-| Contracts and database | Package manifests and placeholder exports exist; there are no shared domain contracts in `packages/contracts` and no Prisma schema or migrations | M1 is the first feature milestone |
-| Markdown and Git content | `packages/markdown` and `content/` do not yet exist | The renderer must be proven before the content store or blog UI |
-| Blog and admin | Feature folders are placeholders; no routes, authentication, or mutation UI exist | No admin mutation work starts before M6 exits |
-| Appearance | Runtime uses a client `localStorage` theme and a fixed global font; blog typography is specification-only | Implement after the locale-aware server layout exists |
-| Operations and quality | No CI configuration or test files exist; current test scripts permit zero tests | Add real smoke/security tests and starter CI in M0–M1, then expand continuously |
+| Area                         | Current state                                                                                                                                                     | Roadmap implication                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                             | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                   |
+| Public application           | The legacy Next.js portfolio is preserved and still reads JSON/hard-coded content, now with `standalone` output, a real `metadataBase`, and a server-computed age | Introduce a server-side rollback adapter before the first cutover, then retain it until migrated output reconciles and the rollback window closes |
+| API                          | NestJS/Fastify scaffold exposes only the health route, covered by a real smoke test                                                                               | Domain and security modules start in M1                                                                                                           |
+| Contracts and database       | Package manifests and placeholder exports exist; there are no shared domain contracts in `packages/contracts` and no Prisma schema or migrations                  | M1 is the first feature milestone                                                                                                                 |
+| Markdown and Git content     | `packages/markdown` and `content/` do not yet exist                                                                                                               | The renderer must be proven before the content store or blog UI                                                                                   |
+| Blog and admin               | Feature folders are placeholders; no routes, authentication, or mutation UI exist                                                                                 | No admin mutation work starts before M6 exits                                                                                                     |
+| Appearance                   | Runtime uses a client `localStorage` theme; fonts are now `woff2`-only with correct numeric weights, and blog typography is still specification-only              | Implement after the locale-aware server layout exists; M5 adds subsetting and `unicode-range` to the reduced font set                             |
+| Operations and quality       | CI runs frozen install, format, lint, typecheck, real tests, builds, and full-history secret scanning; `--passWithNoTests` is gone from every package             | Expand continuously; container, audit, SBOM, and image scanning complete in M9                                                                    |
+| Legacy baseline              | [BASELINE_M0.md](BASELINE_M0.md) records the routes, content counts, and SHA-256 hashes of all 137 legacy source and asset files at the pre-stabilization commit  | Frozen. It is the comparison input for the M2 reconciliation and must not be regenerated                                                          |
 
-The baseline build, lint, typecheck, and test commands must be re-run from a clean, fully hydrated checkout before M0 can close. They are not treated as passed by this audit.
+Two findings from the verification pass carry forward:
+
+- `prettier --check` failed on 48 files before this milestone, so the CI format step could not have passed on any commit. The repository is now formatted, and `.gitattributes` pins LF endings — the CRLF drift in a Windows checkout was both the cause of that failure and the reason `git diff` reported every line of 86 files as changed.
+- The legacy content reconciles against the figures already stated in the plan: 14 projects, 6 skill categories, 26 skills, 5 certificates, 35 quotes, and no orphan skill references. M2 inherits a clean starting point plus a test that keeps it that way.
+
+The quality commands have not yet been run from a clean, fully hydrated checkout on a machine with the pinned Node and pnpm; see §6 for what that leaves outstanding.
 
 ## 3. Decisions that gate implementation
 
 Each decision below requires an ADR or an explicit amendment to an existing ADR before the dependent implementation begins.
 
-| Decision | Must be closed by | Why it blocks work |
-| --- | --- | --- |
-| Per-visitor appearance delivery | **Accepted: ADR-009**; prove in M4/M5 | Dynamic HTML shell emits cookie-specific attributes while public data/render caches stay shared and appearance-free |
-| Persian slug policy | **Accepted: ADR-010**; implement in M1 | Unicode Persian is canonical; normalized ASCII transliterations may be redirect aliases |
-| Git write branch and protection model | **Accepted: ADR-011**; prove in M3 | Protected dedicated `content` branch is not merged into the deployment branch during normal publishing |
-| Recovery after Git succeeds but PostgreSQL or invalidation fails | **Accepted: ADR-012**; prove in M3/M4 | Durable operation log, idempotent apply ledger, reconciliation, and invalidation outbox |
-| MinIO deployment and verified ingestion boundary | Before M2 | Certificate/resume migration and later admin media depend on stable media IDs and checksums |
-| Public API outage strategy | **Accepted: ADR-014**; prove in M4 | Bounded last-known-good published DTOs with per-surface maximum stale windows; cold/expired routes fail with controlled `503` |
-| Scheduler and sync-worker topology | **Accepted: ADR-013**; prove in M3/M8 | Dedicated PostgreSQL-backed worker and advisory-lock scheduler; API replicas run no timers |
-| Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Deadlines assigned in `DECISIONS.md`; each blocks its first dependent milestone | These choices affect adapters, privacy, authorization, runbooks, and final deployment |
+| Decision                                                                                           | Must be closed by                                                               | Why it blocks work                                                                                                            |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Per-visitor appearance delivery                                                                    | **Accepted: ADR-009**; prove in M4/M5                                           | Dynamic HTML shell emits cookie-specific attributes while public data/render caches stay shared and appearance-free           |
+| Persian slug policy                                                                                | **Accepted: ADR-010**; implement in M1                                          | Unicode Persian is canonical; normalized ASCII transliterations may be redirect aliases                                       |
+| Git write branch and protection model                                                              | **Accepted: ADR-011**; prove in M3                                              | Protected dedicated `content` branch is not merged into the deployment branch during normal publishing                        |
+| Recovery after Git succeeds but PostgreSQL or invalidation fails                                   | **Accepted: ADR-012**; prove in M3/M4                                           | Durable operation log, idempotent apply ledger, reconciliation, and invalidation outbox                                       |
+| MinIO deployment and verified ingestion boundary                                                   | Before M2                                                                       | Certificate/resume migration and later admin media depend on stable media IDs and checksums                                   |
+| Public API outage strategy                                                                         | **Accepted: ADR-014**; prove in M4                                              | Bounded last-known-good published DTOs with per-surface maximum stale windows; cold/expired routes fail with controlled `503` |
+| Scheduler and sync-worker topology                                                                 | **Accepted: ADR-013**; prove in M3/M8                                           | Dedicated PostgreSQL-backed worker and advisory-lock scheduler; API replicas run no timers                                    |
+| Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Deadlines assigned in `DECISIONS.md`; each blocks its first dependent milestone | These choices affect adapters, privacy, authorization, runbooks, and final deployment                                         |
 
 ## 4. Delivery map
 
@@ -84,18 +90,18 @@ Two dependencies are non-negotiable:
 
 ## 5. Milestone summary
 
-| Milestone | Status | Relative size | Outcome | Depends on |
-| --- | --- | --- | --- | --- |
-| M0 — Baseline, guardrails, and decisions | In progress | S | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers | — |
-| M1 — Trusted domain and media foundation | Not started | XL | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0 |
-| M2 — Deterministic legacy migration | Not started | M | Repeatable legacy portfolio/media migration with reconciliation and rollback | M1 |
-| M3 — Git content-store proof | Not started | L | Secure Git writes, webhook sync, reconciliation, and drift recovery | M1, M2 |
-| M4 — Public bilingual cutover | Not started | XL | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter | M2, M3 |
-| M5 — Appearance and accessibility | Not started | M | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours | M4 |
-| M6 — Authentication foundation | Not started | L | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline | M1 |
-| M7 — Portfolio CMS | Not started | XL | Every non-blog portfolio field, translation, media item, and resume manageable through admin | M2, M3, M4, M5, M6 |
-| M8 — Blog authoring, publishing, and SEO | Not started | XL | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO | M3, M4, M6, M7 |
-| M9 — Operations, release, and cleanup | Not started | L | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup | M5, M8 |
+| Milestone                                | Status      | Relative size | Outcome                                                                                                              | Depends on         |
+| ---------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| M0 — Baseline, guardrails, and decisions | In progress | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
+| M1 — Trusted domain and media foundation | Not started | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
+| M2 — Deterministic legacy migration      | Not started | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
+| M3 — Git content-store proof             | Not started | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
+| M4 — Public bilingual cutover            | Not started | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
+| M5 — Appearance and accessibility        | Not started | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
+| M6 — Authentication foundation           | Not started | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
+| M7 — Portfolio CMS                       | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
+| M8 — Blog authoring, publishing, and SEO | Not started | XL            | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO                                | M3, M4, M6, M7     |
+| M9 — Operations, release, and cleanup    | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
 
 The detailed plan maps to these milestones as follows: M0 pulls forward the Phase 0 cleanup and starter CI; M1 is Phase 1 plus the media foundation needed by migration; M2 is Phase 2; M3 is Phase 2.5; M4 is Phase 3 plus the public contact replacement; M5 is Phase 3.5; M6 is Phase 4; M7 is Phase 5 plus upload hardening; M8 is Phase 6; and M9 completes Phases 7–9. This mapping is authoritative when the older phase grouping would defer a prerequisite until after its consumer.
 
@@ -116,10 +122,17 @@ Deliverables:
 
 Exit gate:
 
-- the existing web and API builds pass from a clean checkout;
-- starter CI blocks a broken build and does not report a false green from zero tests;
-- exposed EmailJS credentials are confirmed revoked;
-- every decision needed by M1–M3 has an accepted ADR and named follow-up milestone.
+| Condition                                                                          | Status                         | Evidence                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The existing web and API builds pass from a clean checkout                         | **Outstanding**                | Formatting, JSON/YAML validity, asset resolution, and the age logic were verified directly, and no type or syntax errors were found in the changed files. The pinned toolchain has not yet been exercised end to end; run `pnpm install --frozen-lockfile && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` on Node 24.13 / pnpm 11.9 to close this |
+| Starter CI blocks a broken build and does not report a false green from zero tests | **Met**                        | `.github/workflows/ci.yml` runs format, lint, typecheck, tests, and builds; `--passWithNoTests` is removed from every package and `apps/web` has real suites                                                                                                                                                                                                                      |
+| Exposed EmailJS credentials are confirmed revoked                                  | **Outstanding — owner action** | Deferred at the owner's request. The keys ship in the client bundle via `NEXT_PUBLIC_`, so anyone can send mail through the account until they are rotated at the provider. Deleting them from source would not help; only revocation does                                                                                                                                        |
+| Every decision needed by M1–M3 has an accepted ADR and named follow-up milestone   | **Met**                        | ADR-003 through ADR-014 in [DECISIONS.md](DECISIONS.md), each with its proving milestone recorded in §3                                                                                                                                                                                                                                                                           |
+
+Two guardrails were added beyond the original deliverables, because the first exit condition could not otherwise be met:
+
+- the repository is formatted and `prettier --check` passes; it failed on 48 files beforehand, which would have made the CI format step red on every commit;
+- `.gitattributes` pins LF line endings, removing the CRLF drift that caused formatting to behave differently in a Windows checkout than in CI.
 
 ### M1 — Trusted domain and media foundation
 
@@ -317,14 +330,14 @@ Exit gate:
 
 ## 7. Release checkpoints
 
-| Checkpoint | Required milestones | What may be demonstrated |
-| --- | --- | --- |
-| Foundation ready | M0–M1 | Trusted schemas, database, render pipeline, and CI baseline |
-| Data/content proof | M2–M3 | Reconciled portfolio data and direct-push bilingual article |
-| Public preview | M4–M5 | API-backed bilingual portfolio/blog reads and final appearance behavior |
-| Owner beta | M5–M7 | Private/access-restricted secure admin and full non-blog portfolio management |
-| Release candidate | M8 | Complete blog lifecycle and SEO surfaces |
-| Production | M9 | Operational, security, recovery, and launch gates complete |
+| Checkpoint         | Required milestones | What may be demonstrated                                                      |
+| ------------------ | ------------------- | ----------------------------------------------------------------------------- |
+| Foundation ready   | M0–M1               | Trusted schemas, database, render pipeline, and CI baseline                   |
+| Data/content proof | M2–M3               | Reconciled portfolio data and direct-push bilingual article                   |
+| Public preview     | M4–M5               | API-backed bilingual portfolio/blog reads and final appearance behavior       |
+| Owner beta         | M5–M7               | Private/access-restricted secure admin and full non-blog portfolio management |
+| Release candidate  | M8                  | Complete blog lifecycle and SEO surfaces                                      |
+| Production         | M9                  | Operational, security, recovery, and launch gates complete                    |
 
 No public preview may expose `/admin`. Owner beta remains private/access-restricted after M6–M7 and may be exposed to the public internet only after the independent security review and M9 release gates pass.
 
@@ -341,32 +354,33 @@ The feature-level definition of done in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_
 
 ## 9. Risk register
 
-| Risk | Earliest trigger | Required mitigation / proof |
-| --- | --- | --- |
-| Git/PostgreSQL split-brain | M3 | Idempotent retry/reconciliation; force a database failure after commit and prove convergence |
-| Content credential can modify code/workflows | M3 | GitHub App with minimal permission, protected branch/path checks, short-lived token, audited refusal tests |
-| Appearance preference conflicts with shared caching | M0/M4 | Choose one delivery architecture and test first-byte correctness plus cache sharing before M5 exits |
-| Migration loses or silently changes content | M2 | Deterministic counts, checksums, byte comparisons, collision reports, and retained rollback reads |
-| Passkey/session recovery locks out the owner | M6 | Recovery codes, recent-auth policy, revocation procedure, and manual recovery drill |
-| Draft or wrong-locale content leaks through caches | M4/M8 | Published-only predicates, explicit locale keys, disclosure tests, and targeted invalidation |
-| Malicious uploads or contact abuse | M4/M7/M9 | Server-side contact controls in M4; complete upload verification/quarantine in M7; operational retention and regression in M9 |
-| Duplicate scheduler publishes twice | M8 | Exactly one logical scheduler, database lock/idempotency, duplicate-trigger tests, observable retries |
-| Restore omits one authoritative store | M9 | Restore drill always combines PostgreSQL, Git, and MinIO, then runs reconciliation |
-| Scope exceeds sustainable throughput | Every milestone | Keep v1 non-goals closed, ship vertical slices, measure cycle time, and reforecast only at milestone reviews |
+| Risk                                                | Earliest trigger | Required mitigation / proof                                                                                                   |
+| --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Git/PostgreSQL split-brain                          | M3               | Idempotent retry/reconciliation; force a database failure after commit and prove convergence                                  |
+| Content credential can modify code/workflows        | M3               | GitHub App with minimal permission, protected branch/path checks, short-lived token, audited refusal tests                    |
+| Appearance preference conflicts with shared caching | M0/M4            | Choose one delivery architecture and test first-byte correctness plus cache sharing before M5 exits                           |
+| Migration loses or silently changes content         | M2               | Deterministic counts, checksums, byte comparisons, collision reports, and retained rollback reads                             |
+| Passkey/session recovery locks out the owner        | M6               | Recovery codes, recent-auth policy, revocation procedure, and manual recovery drill                                           |
+| Draft or wrong-locale content leaks through caches  | M4/M8            | Published-only predicates, explicit locale keys, disclosure tests, and targeted invalidation                                  |
+| Malicious uploads or contact abuse                  | M4/M7/M9         | Server-side contact controls in M4; complete upload verification/quarantine in M7; operational retention and regression in M9 |
+| Duplicate scheduler publishes twice                 | M8               | Exactly one logical scheduler, database lock/idempotency, duplicate-trigger tests, observable retries                         |
+| Restore omits one authoritative store               | M9               | Restore drill always combines PostgreSQL, Git, and MinIO, then runs reconciliation                                            |
+| Scope exceeds sustainable throughput                | Every milestone  | Keep v1 non-goals closed, ship vertical slices, measure cycle time, and reforecast only at milestone reviews                  |
 
 ## 10. Immediate implementation queue
 
-The next reviewable changes should be:
+Items 1–3 are complete. The next reviewable changes should be:
 
-1. **M0 baseline PR:** capture the original legacy baseline, fix repository-owned Phase 0 defects, disable the revoked EmailJS path honestly, and make clean quality commands reproducible.
-2. **M0 decision review:** resolve the appearance-cache, slug, content-branch, dual-write recovery, worker, and outage questions; record ADRs. MinIO is already selected by ADR-008; M1 must prove its private adapter contract.
-3. **M0 CI PR:** add starter CI and real health/smoke tests so zero-test runs cannot be mistaken for coverage.
-4. **M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).
-5. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus.
-6. **M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.
-7. **M1 media-foundation PR:** chosen MinIO adapter, verified media identity/ingestion contract, and local/test implementation.
+1. ~~**M0 baseline PR:** capture the original legacy baseline, fix repository-owned Phase 0 defects, disable the revoked EmailJS path honestly, and make clean quality commands reproducible.~~ Done, except the EmailJS provider-side revocation, which is deferred to the owner.
+2. ~~**M0 decision review:** resolve the appearance-cache, slug, content-branch, dual-write recovery, worker, and outage questions; record ADRs.~~ Done — ADR-009 through ADR-014. MinIO is selected by ADR-008; M1 must prove its private adapter contract.
+3. ~~**M0 CI PR:** add starter CI and real health/smoke tests so zero-test runs cannot be mistaken for coverage.~~ Done, plus full-history secret scanning.
+4. **Owner action, not a PR:** rotate and revoke the EmailJS keys at the provider. This is the last thing holding the M0 gate open, and it does not block starting M1.
+5. **M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).
+6. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus.
+7. **M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.
+8. **M1 media-foundation PR:** chosen MinIO adapter, verified media identity/ingestion contract, and local/test implementation.
 
-After item 7, re-plan M2–M3 using observed cycle time and the accepted infrastructure decisions. Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished.
+After item 8, re-plan M2–M3 using observed cycle time and the accepted infrastructure decisions. Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished.
 
 ## 11. Roadmap maintenance
 

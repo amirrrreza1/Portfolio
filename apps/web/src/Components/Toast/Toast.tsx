@@ -37,7 +37,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
       {mounted &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed pointer-events-none bottom-3 right-3 z-50 space-y-2">
+          <div className="pointer-events-none fixed right-3 bottom-3 z-50 space-y-2">
             {toasts.map((t) => (
               <Toast key={t.id} message={t.message} />
             ))}
@@ -60,9 +60,9 @@ const Toast = ({ message }: { message: string }) => {
 
   return (
     <div
-      className={`bg-secondary text-primary px-4 py-2 shadow-md text-sm ${
+      className={`bg-secondary text-primary px-4 py-2 text-sm shadow-md ${
         exit ? "toast-out" : "toast-in"
-      } select-none pointer-events-auto`}
+      } pointer-events-auto select-none`}
       style={{
         userSelect: "none",
         WebkitUserSelect: "none",

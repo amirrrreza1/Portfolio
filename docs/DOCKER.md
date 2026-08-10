@@ -6,15 +6,15 @@ Docker artifacts are delivered after the application/database contracts are impl
 
 ## 2. Images and services
 
-| Service | Image/build | Network exposure | Persistent data |
-| --- | --- | --- | --- |
-| `web` | multi-stage Next.js standalone runtime | internal `3000`; edge only | none |
-| `api` | multi-stage NestJS compiled runtime | internal `4000`; edge only | none |
-| `migrate` | same application artifact or dedicated migration target | no listener; one-shot | database changes |
-| `scheduler` | same application artifact, scheduler entrypoint | no listener | none; holds a database advisory lock |
-| `postgres` | pinned supported PostgreSQL image for local/self-hosted use | private network only | named database volume |
-| `minio` | pinned MinIO service for local/self-hosted use | private/admin network only | named MinIO volume |
-| `edge` | chosen TLS reverse proxy in self-hosted topology | public `80/443` | certificates/config as required |
+| Service     | Image/build                                                 | Network exposure           | Persistent data                      |
+| ----------- | ----------------------------------------------------------- | -------------------------- | ------------------------------------ |
+| `web`       | multi-stage Next.js standalone runtime                      | internal `3000`; edge only | none                                 |
+| `api`       | multi-stage NestJS compiled runtime                         | internal `4000`; edge only | none                                 |
+| `migrate`   | same application artifact or dedicated migration target     | no listener; one-shot      | database changes                     |
+| `scheduler` | same application artifact, scheduler entrypoint             | no listener                | none; holds a database advisory lock |
+| `postgres`  | pinned supported PostgreSQL image for local/self-hosted use | private network only       | named database volume                |
+| `minio`     | pinned MinIO service for local/self-hosted use              | private/admin network only | named MinIO volume                   |
+| `edge`      | chosen TLS reverse proxy in self-hosted topology            | public `80/443`            | certificates/config as required      |
 
 The MinIO deployment uses the same private adapter contract in local and production environments. `DATABASE_URL` remains the database contract; MinIO settings are server-only `MINIO_*` configuration.
 

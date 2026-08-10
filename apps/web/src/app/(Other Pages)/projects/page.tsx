@@ -61,24 +61,24 @@ export default function ProjectsPage() {
       {mounted &&
         typeof document !== "undefined" &&
         createPortal(
-          <header className="fixed top-5 left-0 right-0 z-50 flex justify-center px-4">
-            <div className="flex items-center gap-3 md:gap-4 px-3 md:px-5 py-2 backdrop-blur-md bg-secondary/20 border border-secondary/20 shadow-xl w-full max-w-lg rounded">
+          <header className="fixed top-5 right-0 left-0 z-50 flex justify-center px-4">
+            <div className="bg-secondary/20 border-secondary/20 flex w-full max-w-lg items-center gap-3 rounded border px-3 py-2 shadow-xl backdrop-blur-md md:gap-4 md:px-5">
               <Tooltip title="Back">
-                <Link href="/" aria-label="Back to home" className="w-fit h-10">
-                  <Button className="flex items-center justify-center !px-0 h-10 w-10">
-                    <ArrowLeft className="w-4 h-4" />
+                <Link href="/" aria-label="Back to home" className="h-10 w-fit">
+                  <Button className="flex h-10 w-10 items-center justify-center !px-0">
+                    <ArrowLeft className="h-4 w-4" />
                   </Button>
                 </Link>
               </Tooltip>
 
-              <div className="relative flex-1 group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-secondary transition-colors" />
+              <div className="group relative flex-1">
+                <Search className="group-focus-within:text-secondary absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search anything..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-10 bg-secondary/5 cursor-none border border-secondary/20 py-2 pl-10 pr-10 text-sm outline-none focus:border-secondary/40 focus:bg-secondary/10 transition-all placeholder:text-gray-500"
+                  className="bg-secondary/5 border-secondary/20 focus:border-secondary/40 focus:bg-secondary/10 h-10 w-full cursor-none border py-2 pr-10 pl-10 text-sm transition-all outline-none placeholder:text-gray-500"
                 />
               </div>
               <Tooltip title="Theme">
@@ -86,21 +86,21 @@ export default function ProjectsPage() {
               </Tooltip>
             </div>
           </header>,
-          document.body,
+          document.body
         )}
 
-      <section className="Container backdrop-blur-sm p-4 border mx-auto mt-6">
-        <div className="flex items-center justify-between gap-4 mb-4 px-2">
+      <section className="Container mx-auto mt-6 border p-4 backdrop-blur-sm">
+        <div className="mb-4 flex items-center justify-between gap-4 px-2">
           <ScrambleText text="All Projects" className="text-2xl" speed={30} />
         </div>
 
         <Devider />
 
-        <div className="grid grid-cols-1 gap-6 px-1 md:px-4 lg:px-6 my-6">
+        <div className="my-6 grid grid-cols-1 gap-6 px-1 md:px-4 lg:px-6">
           {filteredProjects.length > 0 ? (
             filteredProjects.map((pj) => <ProjectCard key={pj.id} pj={pj} />)
           ) : (
-            <div className="py-20 text-center border border-dashed opacity-50">
+            <div className="border border-dashed py-20 text-center opacity-50">
               <p>No projects found matching your search.</p>
             </div>
           )}

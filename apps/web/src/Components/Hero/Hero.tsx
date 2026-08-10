@@ -5,24 +5,24 @@ const Hero = () => {
   return (
     <>
       <main
-        className="h-screen flex flex-col lg:flex-row justify-center items-center gap-5 Container"
+        className="Container flex h-screen flex-col items-center justify-center gap-5 lg:flex-row"
         id="home"
       >
-        <section className="lg:w-1/2 h-fit">
-          <div className="w-full flex flex-col justify-center items-start gap-4 p-2 rounded">
+        <section className="h-fit lg:w-1/2">
+          <div className="flex w-full flex-col items-start justify-center gap-4 rounded p-2">
             <CodeStyleText
               strings={["Hello There!", "I'm Amirreza Azarioun"]}
               typingSpeed={50}
               deletingSpeed={30}
-              className="text-xl md:text-2xl lg:text-3xl min-w-[270px]"
+              className="min-w-[270px] text-xl md:text-2xl lg:text-3xl"
               pauseBetween={3000}
             />
-            <p className="text-sm lg:text-lg lg:text-center">
+            <p className="text-sm lg:text-center lg:text-lg">
               A Developer / Student / Learner
             </p>
-          </div> 
+          </div>
         </section>
-        <section className="w-full h-[300px] lg:w-1/2 flex justify-center items-end">
+        <section className="flex h-[300px] w-full items-end justify-center lg:w-1/2">
           <RubikCube />
         </section>
       </main>

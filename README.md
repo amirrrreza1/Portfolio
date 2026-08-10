@@ -9,20 +9,20 @@ What that means concretely:
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
 - **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
-The current change establishes the architecture, documentation, workspace layout, and package boundaries. It intentionally does **not** migrate the existing JSON content or implement the admin and blog features yet; those steps are sequenced in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+The current change establishes the architecture, documentation, workspace layout, package boundaries, starter CI, and the frozen legacy baseline in [docs/BASELINE_M0.md](docs/BASELINE_M0.md). It intentionally does **not** migrate the existing JSON content or implement the admin and blog features yet; those steps are sequenced in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 ## Workspace
 
-| Path | Responsibility |
-| --- | --- |
-| `apps/web` | Next.js public site (locale-prefixed) and the `/admin` interface |
-| `apps/api` | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here |
-| `packages/contracts` | Shared Zod request/response schemas and TypeScript types |
-| `packages/database` | Prisma schema, migrations, and PostgreSQL client |
-| `packages/markdown` | Frontmatter schema, directive allowlist, and the server-side render pipeline |
-| `content/` | Article bodies as Markdown files — the source of truth for article text |
-| `infrastructure/docker` | Production and local Docker assets in the implementation phase |
-| `docs` | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
+| Path                    | Responsibility                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `apps/web`              | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
+| `apps/api`              | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here      |
+| `packages/contracts`    | Shared Zod request/response schemas and TypeScript types                                         |
+| `packages/database`     | Prisma schema, migrations, and PostgreSQL client                                                 |
+| `packages/markdown`     | Frontmatter schema, directive allowlist, and the server-side render pipeline                     |
+| `content/`              | Article bodies as Markdown files — the source of truth for article text                          |
+| `infrastructure/docker` | Production and local Docker assets in the implementation phase                                   |
+| `docs`                  | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
 
 ## Chosen stack
 
@@ -54,11 +54,14 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm format:check
 ```
 
 `pnpm dev` starts the preserved frontend at `http://localhost:3000`. Use `pnpm dev:api` for the API scaffold at `http://localhost:4000`; its only current route is `GET /api/v1/health`.
 
-Copy `.env.example` to `.env` only for local development. Never commit real credentials.
+CI runs all of the above on every pull request, plus a full-history secret scan. Every package either has a real test suite or no `test` script — `--passWithNoTests` is deliberately absent, so a green run means assertions ran.
+
+Copy `.env.example` to `.env` only for local development. Never commit real credentials. `PUBLIC_SITE_URL` and `BIRTH_DATE` are required for a production build; the build fails rather than defaulting to `localhost` or rendering an empty age.
 
 ## Documentation
 

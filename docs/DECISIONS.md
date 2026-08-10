@@ -2,22 +2,22 @@
 
 Each decision is dated, has an owner-approved status, and lists what was rejected and why. A decision may only be changed by adding a superseding entry; entries are never edited into silence.
 
-| ID | Decision | Status | Date |
-| --- | --- | --- | --- |
-| ADR-001 | Modular monorepo with separate Next.js web and NestJS API | Accepted | 2026-08-05 |
-| ADR-002 | PostgreSQL as the operational source of truth, accessed only by the API | Accepted | 2026-08-05 |
-| ADR-003 | Git repository is the source of truth for article bodies | Accepted | 2026-08-08 |
-| ADR-004 | Markdown with an allowlisted directive set; no runtime MDX execution | Accepted | 2026-08-08 |
-| ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering | Accepted | 2026-08-08 |
-| ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist | Accepted | 2026-08-08 |
-| ADR-007 | Portfolio content is database-backed and fully admin-editable | Accepted | 2026-08-05 |
-| ADR-008 | MinIO is the object store for media and backups | Accepted | 2026-08-09 |
-| ADR-009 | Dynamic HTML shell with shared cached public data for visitor appearance | Accepted | 2026-08-09 |
-| ADR-010 | Unicode Persian slugs are canonical | Accepted | 2026-08-09 |
-| ADR-011 | Article bodies use a protected dedicated content branch | Accepted | 2026-08-09 |
+| ID      | Decision                                                                           | Status   | Date       |
+| ------- | ---------------------------------------------------------------------------------- | -------- | ---------- |
+| ADR-001 | Modular monorepo with separate Next.js web and NestJS API                          | Accepted | 2026-08-05 |
+| ADR-002 | PostgreSQL as the operational source of truth, accessed only by the API            | Accepted | 2026-08-05 |
+| ADR-003 | Git repository is the source of truth for article bodies                           | Accepted | 2026-08-08 |
+| ADR-004 | Markdown with an allowlisted directive set; no runtime MDX execution               | Accepted | 2026-08-08 |
+| ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering   | Accepted | 2026-08-08 |
+| ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist           | Accepted | 2026-08-08 |
+| ADR-007 | Portfolio content is database-backed and fully admin-editable                      | Accepted | 2026-08-05 |
+| ADR-008 | MinIO is the object store for media and backups                                    | Accepted | 2026-08-09 |
+| ADR-009 | Dynamic HTML shell with shared cached public data for visitor appearance           | Accepted | 2026-08-09 |
+| ADR-010 | Unicode Persian slugs are canonical                                                | Accepted | 2026-08-09 |
+| ADR-011 | Article bodies use a protected dedicated content branch                            | Accepted | 2026-08-09 |
 | ADR-012 | Durable operation log, idempotent recovery, and invalidation outbox for Git writes | Accepted | 2026-08-09 |
-| ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers | Accepted | 2026-08-09 |
-| ADR-014 | Bounded last-known-good public reads during API outages | Accepted | 2026-08-09 |
+| ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers                   | Accepted | 2026-08-09 |
+| ADR-014 | Bounded last-known-good public reads during API outages                            | Accepted | 2026-08-09 |
 
 ---
 
@@ -31,7 +31,7 @@ Article bodies must exist as real `.md` files, be writable from the admin panel,
 
 ### Decision
 
-The Git repository at `origin` holds the canonical article body files under `content/`. PostgreSQL holds a **derived index** of every article: identity, slug history, taxonomy, status, timestamps, the Git blob SHA of each translation, and the sanitized render cache. The database is authoritative for *operational* state; Git is authoritative for *text*.
+The Git repository at `origin` holds the canonical article body files under `content/`. PostgreSQL holds a **derived index** of every article: identity, slug history, taxonomy, status, timestamps, the Git blob SHA of each translation, and the sanitized render cache. The database is authoritative for _operational_ state; Git is authoritative for _text_.
 
 Writes go one direction only: admin panel → API → Git commit → webhook → API sync → database index → cache invalidation. The API never edits the index row for body content without a corresponding commit, and never serves a body that does not match a recorded blob SHA.
 
@@ -48,7 +48,7 @@ Publishing does **not** require a redeploy. The web app reads the index and rend
 
 - **MinIO object storage for article bodies.** Operationally useful for media, but it gives no diff or history without building versioning by hand, and makes local authoring awkward.
 - **Mounted disk volume.** Ties content to one host, needs its own backup story, and turns every path into an attack surface.
-- **PostgreSQL column with import/export only.** Least new machinery, but the requirement that content *be* files would only be half met.
+- **PostgreSQL column with import/export only.** Least new machinery, but the requirement that content _be_ files would only be half met.
 
 ### Consequences and accepted risks
 
@@ -365,12 +365,12 @@ M4 implements one typed client policy and tests cold outage, warm outage, expiry
 
 These decisions are intentionally not made before implementation evidence exists, but they have named owners and hard milestone deadlines.
 
-| Decision | Owner | Deadline | Required output |
-| --- | --- | --- | --- |
-| Production host and TLS reverse proxy | Owner/developer | Before M4 starts | Deployment ADR preserving same-origin `/api/v1`, dynamic appearance shell, private database/MinIO, and worker processes |
-| v1 editor permissions | Owner | Before M6 starts | Authorization matrix ADR; until accepted, provisioning remains owner-only and `EDITOR` is not assignable |
-| Contact and audit retention defaults | Owner/security review | Before M7 starts | Retention ADR and configured deletion windows before those admin records are exposed |
-| Error monitoring and alert routing | Owner/operations | Before M9 starts | Vendor/adaptor ADR, redaction verification, and incident destination |
-| Privacy-preserving analytics or no analytics | Owner | Before M9 starts | Privacy decision, consent impact, retention, and product-spec update if analytics is enabled |
+| Decision                                     | Owner                 | Deadline         | Required output                                                                                                         |
+| -------------------------------------------- | --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Production host and TLS reverse proxy        | Owner/developer       | Before M4 starts | Deployment ADR preserving same-origin `/api/v1`, dynamic appearance shell, private database/MinIO, and worker processes |
+| v1 editor permissions                        | Owner                 | Before M6 starts | Authorization matrix ADR; until accepted, provisioning remains owner-only and `EDITOR` is not assignable                |
+| Contact and audit retention defaults         | Owner/security review | Before M7 starts | Retention ADR and configured deletion windows before those admin records are exposed                                    |
+| Error monitoring and alert routing           | Owner/operations      | Before M9 starts | Vendor/adaptor ADR, redaction verification, and incident destination                                                    |
+| Privacy-preserving analytics or no analytics | Owner                 | Before M9 starts | Privacy decision, consent impact, retention, and product-spec update if analytics is enabled                            |
 
 Missing a deadline blocks its dependent milestone; it is not permission to choose an adapter implicitly.

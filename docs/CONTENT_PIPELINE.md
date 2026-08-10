@@ -6,15 +6,15 @@ Normative decisions: [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-sourc
 
 ## 1. Roles of the two stores
 
-| Concern | Authority |
-| --- | --- |
-| Article body text | Git repository |
-| Frontmatter as authored intent | Git repository |
-| Post identity, slug history, taxonomy | PostgreSQL |
-| Realized publication state and timestamps | PostgreSQL |
-| Sanitized render cache, reading time, heading tree | PostgreSQL |
-| Blob SHA and sync state per translation | PostgreSQL |
-| Media binaries | MinIO object storage |
+| Concern                                            | Authority            |
+| -------------------------------------------------- | -------------------- |
+| Article body text                                  | Git repository       |
+| Frontmatter as authored intent                     | Git repository       |
+| Post identity, slug history, taxonomy              | PostgreSQL           |
+| Realized publication state and timestamps          | PostgreSQL           |
+| Sanitized render cache, reading time, heading tree | PostgreSQL           |
+| Blob SHA and sync state per translation            | PostgreSQL           |
+| Media binaries                                     | MinIO object storage |
 
 The rule that resolves every ambiguity: **Git is authoritative for what the text says; PostgreSQL is authoritative for what the site is currently doing with it.**
 
@@ -53,7 +53,7 @@ postId: clx8k2p9q0000abcd1234efgh
 locale: en
 title: Rendering Markdown without shipping a Markdown renderer
 slug: rendering-markdown-server-side
-status: published            # draft | scheduled | published | archived
+status: published # draft | scheduled | published | archived
 publishedAt: 2026-08-04T09:00:00Z
 scheduledFor: null
 updatedAt: 2026-08-06T11:20:00Z
@@ -167,13 +167,13 @@ Cache invalidation for the render cache is keyed on the blob SHA plus a `rendere
 
 Each directive has a name, a Zod attribute schema, a reviewed React component, an accessibility contract, and sanitizer allowances. Adding one is a code change with a test, by design.
 
-| Directive | Form | Attributes | Notes |
-| --- | --- | --- | --- |
-| `::callout` | container | `type` ∈ {note, tip, warning, danger}, optional `title` | Renders a labeled region; type conveyed by text and icon, never colour alone |
-| `::figure` | container | `src` (MediaAsset ID), `alt`, optional `caption` | `figure`/`figcaption`; known dimensions to prevent layout shift |
-| `::video` | leaf | `provider` ∈ {youtube, vimeo}, `id`, `title` | Facade image that loads the iframe on interaction; sandboxed, no autoplay, host allowlisted |
-| `::details` | container | `summary` | Native `details`/`summary`, keyboard accessible |
-| `::steps` | container | optional `start` | Ordered procedure list with correct list semantics |
+| Directive   | Form      | Attributes                                              | Notes                                                                                       |
+| ----------- | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `::callout` | container | `type` ∈ {note, tip, warning, danger}, optional `title` | Renders a labeled region; type conveyed by text and icon, never colour alone                |
+| `::figure`  | container | `src` (MediaAsset ID), `alt`, optional `caption`        | `figure`/`figcaption`; known dimensions to prevent layout shift                             |
+| `::video`   | leaf      | `provider` ∈ {youtube, vimeo}, `id`, `title`            | Facade image that loads the iframe on interaction; sandboxed, no autoplay, host allowlisted |
+| `::details` | container | `summary`                                               | Native `details`/`summary`, keyboard accessible                                             |
+| `::steps`   | container | optional `start`                                        | Ordered procedure list with correct list semantics                                          |
 
 Rules:
 

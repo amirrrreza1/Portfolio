@@ -14,9 +14,9 @@ export default function DailyQuote() {
   const quote: Quote = quotes[index];
 
   return (
-    <div className="Container backdrop-blur-sm border my-10 p-6">
+    <div className="Container my-10 border p-6 backdrop-blur-sm">
       <q className="italic">{quote.text}</q>
-      <p className="mt-4 text-sm text-right">— {quote.author}</p>
+      <p className="mt-4 text-right text-sm">— {quote.author}</p>
     </div>
   );
 }

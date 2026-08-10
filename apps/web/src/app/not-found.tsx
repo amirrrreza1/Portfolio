@@ -7,18 +7,18 @@ import Button from "@/Components/UI/Buttons/CustomBTN";
 
 export default function NotFound() {
   return (
-    <main className="h-dvh flex items-center justify-center px-4">
-      <section className="Container backdrop-blur-sm p-8 border max-w-2xl w-full text-center">
+    <main className="flex h-dvh items-center justify-center px-4">
+      <section className="Container w-full max-w-2xl border p-8 text-center backdrop-blur-sm">
         <ScrambleText
           text="404"
-          className="text-6xl font-bold mb-2"
+          className="mb-2 text-6xl font-bold"
           speed={50}
         />
 
         <Devider />
 
         <div className="my-8">
-          <p className="text-xl leading-7 mb-4">
+          <p className="mb-4 text-xl leading-7">
             Oops! It seems you have wandered into uncharted territory.
           </p>
           <p>

@@ -33,13 +33,13 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
   return (
     <motion.div
       id={`pj-${pj.id}`}
-      className="p-6 shadow-lg border"
+      className="border p-6 shadow-lg"
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
       viewport={{ once: true, amount: 0.2 }}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <h3 className="text-2xl font-bold">{pj.title}</h3>
         <p
           className={`text-sm font-medium ${
@@ -52,14 +52,14 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
 
       <p className="text-secondary/70 mb-4">{pj.description}</p>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         {visibleTechs.map((techId, idx) => {
           const skill = findSkillById(techId);
           if (!skill) return null;
           return (
             <span
               key={`${pj.id}-${techId}-${idx}`}
-              className="px-3 py-1 text-sm font-medium border-[1px] border-secondary"
+              className="border-secondary border-[1px] px-3 py-1 text-sm font-medium"
               style={{
                 backgroundColor: skill.color,
                 color: getTextColor(skill.color),
@@ -81,12 +81,12 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
       </div>
 
       {stats ? (
-        <div className="flex gap-6 text-sm mb-4">
+        <div className="mb-4 flex gap-6 text-sm">
           <span className="text-[#E2B340]">{stats.stars || 0} Stars</span>
           <span>{stats.commits} Commits</span>
         </div>
       ) : (
-        <p className="text-sm text-gray-400 mb-4">Loading stats...</p>
+        <p className="mb-4 text-sm text-gray-400">Loading stats...</p>
       )}
 
       <div className="flex gap-6">

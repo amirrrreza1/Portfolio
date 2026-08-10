@@ -1,0 +1,22 @@
+# Normalize every text file to LF in the repository and in the working tree.
+#
+# Without this, a Windows checkout with `core.autocrlf=true` rewrites files to
+# CRLF on disk while git stores LF. Two things then break:
+#
+#   1. `prettier --check` uses `endOfLine: "lf"`, so it fails locally on files
+#      that are perfectly fine in CI — or passes locally and fails in CI.
+#   2. `git diff` reports every line of every file as changed, which buries
+#      real changes and makes review useless.
+#
+# The runtime targets (Linux containers, GitHub Actions) are LF-only, so LF
+# everywhere is also what actually ships.
+* text=auto eol=lf
+
+# Binary assets: never transformed, never diffed as text.
+*.pdf binary
+*.png binary
+*.ico binary
+*.woff2 binary
+
+# Generated. Marked so GitHub collapses it in review and diffs stay readable.
+pnpm-lock.yaml linguist-generated=true -diff

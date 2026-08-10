@@ -62,7 +62,7 @@ export default function CustomCursor() {
   return (
     <>
       <motion.div
-        className="fixed top-0 left-0 rounded-full bg-secondary pointer-events-none z-[999]"
+        className="bg-secondary pointer-events-none fixed top-0 left-0 z-[999] rounded-full"
         animate={{
           x: pos.x - (isActive ? 12 : 4),
           y: pos.y - (isActive ? 12 : 4),
@@ -73,7 +73,7 @@ export default function CustomCursor() {
       />
 
       <motion.div
-        className="fixed top-0 left-0 w-6 h-6 rounded-full border-2 border-secondary pointer-events-none z-40"
+        className="border-secondary pointer-events-none fixed top-0 left-0 z-40 h-6 w-6 rounded-full border-2"
         animate={{
           x: pos.x - 12,
           y: pos.y - 12,

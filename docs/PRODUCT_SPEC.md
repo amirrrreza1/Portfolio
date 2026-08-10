@@ -22,20 +22,20 @@ Articles are authored and stored as Markdown files in the Git repository. Portfo
 
 The four decisions that shape this specification are recorded with rationale and rejected alternatives in [DECISIONS.md](DECISIONS.md):
 
-| Decision | Summary | Detail |
-| --- | --- | --- |
-| ADR-003 | Git holds article bodies; PostgreSQL holds the operational index | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) |
-| ADR-004 | Markdown plus an allowlisted directive set; no runtime MDX execution | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §9 |
-| ADR-005 | Per-locale translations of one post, no fallback rendering | [I18N.md](I18N.md) |
-| ADR-006 | Visitor-selectable appearance from an owner-defined allowlist | [THEMING.md](THEMING.md) |
+| Decision | Summary                                                              | Detail                                        |
+| -------- | -------------------------------------------------------------------- | --------------------------------------------- |
+| ADR-003  | Git holds article bodies; PostgreSQL holds the operational index     | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md)    |
+| ADR-004  | Markdown plus an allowlisted directive set; no runtime MDX execution | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §9 |
+| ADR-005  | Per-locale translations of one post, no fallback rendering           | [I18N.md](I18N.md)                            |
+| ADR-006  | Visitor-selectable appearance from an owner-defined allowlist        | [THEMING.md](THEMING.md)                      |
 
 ## 3. Users and roles
 
-| Role | Capabilities |
-| --- | --- |
-| Visitor | Read published portfolio content and blog posts; download the active public resume; submit a contact message |
-| Editor | Create/edit/preview blog and portfolio content but cannot manage users, credentials, or destructive system settings |
-| Owner | All editor actions plus publish/unpublish, restore revisions, manage media/resume, users, sessions, security settings, and audit logs |
+| Role    | Capabilities                                                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Visitor | Read published portfolio content and blog posts; download the active public resume; submit a contact message                          |
+| Editor  | Create/edit/preview blog and portfolio content but cannot manage users, credentials, or destructive system settings                   |
+| Owner   | All editor actions plus publish/unpublish, restore revisions, manage media/resume, users, sessions, security settings, and audit logs |
 
 The first production release may provision only one `OWNER`; the role model still exists so authorization is explicit rather than based on hidden UI.
 
@@ -172,18 +172,18 @@ The dashboard MUST surface content-store health: translations that failed valida
 
 ## 7. Quality attributes
 
-| Attribute | Release target |
-| --- | --- |
-| Accessibility | WCAG 2.2 AA for public and admin critical paths |
-| Public performance | Lighthouse lab targets: Performance ≥ 90, SEO ≥ 95, Accessibility ≥ 95 on representative mobile runs |
-| Availability | Health/readiness endpoints and graceful shutdown; target 99.9% when deployed on suitable infrastructure |
-| API correctness | All mutation payloads runtime-validated; OpenAPI contract generated in CI |
-| Internationalization | Both locales render with correct `lang`/`dir`; `hreflang` reciprocal for published pairs; no untranslated UI string reaches production |
-| Appearance | Every enabled theme passes AA contrast; correct theme and blog typography in the first HTML byte; blog typography never affects non-blog UI; no layout shift on font swap |
-| Content integrity | Every published translation matches a file at its recorded blob SHA; reconciliation reports zero unexplained differences |
-| Recovery | Automated encrypted backups plus an independent content-repository clone; restore drill documented and tested before production launch |
-| Observability | Structured redacted logs, request IDs, health metrics, and actionable error reporting |
-| Browser support | Current and previous major versions of evergreen browsers; progressive enhancement for public reading |
+| Attribute            | Release target                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility        | WCAG 2.2 AA for public and admin critical paths                                                                                                                           |
+| Public performance   | Lighthouse lab targets: Performance ≥ 90, SEO ≥ 95, Accessibility ≥ 95 on representative mobile runs                                                                      |
+| Availability         | Health/readiness endpoints and graceful shutdown; target 99.9% when deployed on suitable infrastructure                                                                   |
+| API correctness      | All mutation payloads runtime-validated; OpenAPI contract generated in CI                                                                                                 |
+| Internationalization | Both locales render with correct `lang`/`dir`; `hreflang` reciprocal for published pairs; no untranslated UI string reaches production                                    |
+| Appearance           | Every enabled theme passes AA contrast; correct theme and blog typography in the first HTML byte; blog typography never affects non-blog UI; no layout shift on font swap |
+| Content integrity    | Every published translation matches a file at its recorded blob SHA; reconciliation reports zero unexplained differences                                                  |
+| Recovery             | Automated encrypted backups plus an independent content-repository clone; restore drill documented and tested before production launch                                    |
+| Observability        | Structured redacted logs, request IDs, health metrics, and actionable error reporting                                                                                     |
+| Browser support      | Current and previous major versions of evergreen browsers; progressive enhancement for public reading                                                                     |
 
 Lighthouse scores can vary by environment and do not alone prove ranking, accessibility, or security.
 

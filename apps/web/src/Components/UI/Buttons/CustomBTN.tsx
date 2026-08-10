@@ -26,22 +26,15 @@ const Button: FC<CodeButtonProps> = ({
       {...props}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className={`
-        relative overflow-hidden font-mono transition-all duration-300 shadow-md hover:shadow-lg group
-        ${sizeClasses[size]}
-        border border-secondary cursor-pointer
-        ${
-          isFill ? "bg-secondary text-primary" : "bg-transparent text-secondary"
-        }
-        active:scale-95
-        ${className}
-      `}
+      className={`group relative overflow-hidden font-mono shadow-md transition-all duration-300 hover:shadow-lg ${sizeClasses[size]} border-secondary cursor-pointer border ${
+        isFill ? "bg-secondary text-primary" : "text-secondary bg-transparent"
+      } active:scale-95 ${className} `}
     >
       <AnimatePresence mode="wait">
         {hovered && (
           <motion.span
             key="cover"
-            className="absolute top-0 left-0 h-full w-full bg-primary z-10"
+            className="bg-primary absolute top-0 left-0 z-10 h-full w-full"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -57,14 +50,14 @@ const Button: FC<CodeButtonProps> = ({
               ? "text-secondary"
               : "text-primary"
             : hovered
-            ? "text-secondary"
-            : "text-secondary"
+              ? "text-secondary"
+              : "text-secondary"
         }`}
       >
         {children}
       </span>
 
-      <span className="absolute inset-0 bg-current opacity-0 group-active:opacity-20 rounded-md pointer-events-none z-30"></span>
+      <span className="pointer-events-none absolute inset-0 z-30 rounded-md bg-current opacity-0 group-active:opacity-20"></span>
     </button>
   );
 };

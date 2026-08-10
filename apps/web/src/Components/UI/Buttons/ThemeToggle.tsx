@@ -10,7 +10,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative flex items-center justify-center w-7 h-7 overflow-hidden"
+      className="relative flex h-7 w-7 items-center justify-center overflow-hidden"
     >
       <AnimatePresence initial={false} mode="wait">
         {theme === "light" ? (
@@ -23,7 +23,7 @@ export default function ThemeToggle() {
             transition={{ duration: 0.5, ease: "easeInOut" }}
             className="absolute"
           >
-            <Sun className="w-6 h-6 text-secondary" />
+            <Sun className="text-secondary h-6 w-6" />
           </motion.span>
         ) : (
           <motion.span
@@ -35,7 +35,7 @@ export default function ThemeToggle() {
             transition={{ duration: 0.5, ease: "easeInOut" }}
             className="absolute"
           >
-            <Moon className="w-6 h-6 text-secondary" />
+            <Moon className="text-secondary h-6 w-6" />
           </motion.span>
         )}
       </AnimatePresence>

@@ -4,27 +4,28 @@ These documents define the approved target before feature implementation begins.
 
 ## Start here
 
-| Document | Purpose |
-| --- | --- |
-| [DECISIONS.md](DECISIONS.md) | Architecture decision record: what was chosen, why, what was rejected, and what risks were accepted |
-| [PRODUCT_SPEC.md](PRODUCT_SPEC.md) | Scope, users, requirements, acceptance criteria, and non-goals |
-| [ROADMAP.md](ROADMAP.md) | Current status, milestone dependencies, delivery gates, risks, and immediate execution queue |
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered delivery phases, legacy migration, testing, and definition of done |
+| Document                                         | Purpose                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| [DECISIONS.md](DECISIONS.md)                     | Architecture decision record: what was chosen, why, what was rejected, and what risks were accepted |
+| [PRODUCT_SPEC.md](PRODUCT_SPEC.md)               | Scope, users, requirements, acceptance criteria, and non-goals                                      |
+| [ROADMAP.md](ROADMAP.md)                         | Current status, milestone dependencies, delivery gates, risks, and immediate execution queue        |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered delivery phases, legacy migration, testing, and definition of done                          |
+| [BASELINE_M0.md](BASELINE_M0.md)                 | Frozen pre-stabilization record of the legacy site: routes, content counts, and file hashes         |
 
 ## Design specifications
 
-| Document | Purpose |
-| --- | --- |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime topology, workspace boundaries, request flows, and engineering rules |
-| [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) | Git content store, frontmatter contract, file upload/import, sync and conflict handling, scheduled publishing, and the render pipeline |
-| [DATA_MODEL.md](DATA_MODEL.md) | PostgreSQL entities, relationships, constraints, publishing states, translations, and revisions |
-| [API_SPEC.md](API_SPEC.md) | Public/admin endpoints, contracts, caching, errors, and concurrency rules |
-| [I18N.md](I18N.md) | Locales, routing, per-locale translations, `hreflang`, and RTL typography |
-| [THEMING.md](THEMING.md) | Site-wide theme and blog-only typography model, settings modal, flash-free server rendering, and appearance security |
-| [SEO.md](SEO.md) | Technical SEO, structured data, publishing checklist, and measurable targets |
-| [SECURITY.md](SECURITY.md) | Threat model, mandatory controls, secure defaults, content-store controls, and release gates |
-| [DOCKER.md](DOCKER.md) | Container topology, hardening, health checks, migrations, and operations |
-| [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) | Every current content item, its target admin field, and the defects found in it |
+| Document                                     | Purpose                                                                                                                                |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| [ARCHITECTURE.md](ARCHITECTURE.md)           | Runtime topology, workspace boundaries, request flows, and engineering rules                                                           |
+| [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md)   | Git content store, frontmatter contract, file upload/import, sync and conflict handling, scheduled publishing, and the render pipeline |
+| [DATA_MODEL.md](DATA_MODEL.md)               | PostgreSQL entities, relationships, constraints, publishing states, translations, and revisions                                        |
+| [API_SPEC.md](API_SPEC.md)                   | Public/admin endpoints, contracts, caching, errors, and concurrency rules                                                              |
+| [I18N.md](I18N.md)                           | Locales, routing, per-locale translations, `hreflang`, and RTL typography                                                              |
+| [THEMING.md](THEMING.md)                     | Site-wide theme and blog-only typography model, settings modal, flash-free server rendering, and appearance security                   |
+| [SEO.md](SEO.md)                             | Technical SEO, structured data, publishing checklist, and measurable targets                                                           |
+| [SECURITY.md](SECURITY.md)                   | Threat model, mandatory controls, secure defaults, content-store controls, and release gates                                           |
+| [DOCKER.md](DOCKER.md)                       | Container topology, hardening, health checks, migrations, and operations                                                               |
+| [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) | Every current content item, its target admin field, and the defects found in it                                                        |
 
 ## What this product is
 
@@ -43,6 +44,8 @@ A bilingual portfolio and blog. Article bodies are Markdown files in the Git rep
 
 ## Status
 
-The repository currently contains documentation, workspace/package scaffolding, the original frontend, and an API health probe. Feature code, the Prisma model, the markdown package, and the content store are intentionally deferred to the implementation phases.
+The repository contains documentation, workspace/package scaffolding, the original frontend, an API health probe, starter CI, and the frozen legacy baseline. Feature code, the Prisma model, the markdown package, and the content store are intentionally deferred to the implementation phases.
 
-Known defects in the current code, documented rather than silently carried forward: publicly exposed EmailJS credentials, an undeclared `NEXT_PUBLIC_BIRTHDAY` that renders an empty age on a fresh checkout, two case-mismatched certificate paths that only work on a case-insensitive filesystem, a missing `metadataBase`, a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, two skill colours that fail contrast, and 17 font faces shipped in four formats. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Defects fixed during M0 stabilization: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, and two `@font-face` weight collisions that made the ExtraBold faces unusable. A repository-wide formatting failure that would have made the CI format step red on every commit was fixed at the same time.
+
+Defects documented and still scheduled: publicly exposed EmailJS credentials — the keys ship in the client bundle, so only provider-side revocation removes the exposure — a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, and two skill colours that fail contrast. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

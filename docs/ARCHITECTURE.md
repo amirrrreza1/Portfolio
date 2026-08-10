@@ -84,18 +84,18 @@ Rules:
 
 ## 4. API module ownership
 
-| Module | Owns |
-| --- | --- |
-| `auth` | bootstrap owner, login, WebAuthn, recovery, sessions, re-authentication |
-| `content` | site settings, sections, projects, skills, certificates, quotes, nav/social links, resume metadata, portfolio translations |
-| `blog` | post/translation index, taxonomy, publishing transitions, revisions, slug redirects, feeds |
+| Module          | Owns                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`          | bootstrap owner, login, WebAuthn, recovery, sessions, re-authentication                                                         |
+| `content`       | site settings, sections, projects, skills, certificates, quotes, nav/social links, resume metadata, portfolio translations      |
+| `blog`          | post/translation index, taxonomy, publishing transitions, revisions, slug redirects, feeds                                      |
 | `content-store` | the only holder of the Git credential: commit, read-by-SHA, webhook verification, sync, reconciliation, drift detection, import |
-| `appearance` | enabled site themes/blog fonts, defaults, preference cookie validation against the allowlist |
-| `media` | signed upload flow, MIME verification, metadata, object lifecycle, resume activation |
-| `contact` | form validation, anti-abuse, persistence/retention, mail delivery adapter |
-| `admin` | admin-specific query composition, audit log access, dashboard summaries, content-store health |
-| `health` | liveness and dependency-aware readiness probes |
-| `common` | configuration validation, guards, policies, error mapping, request IDs, redaction |
+| `appearance`    | enabled site themes/blog fonts, defaults, preference cookie validation against the allowlist                                    |
+| `media`         | signed upload flow, MIME verification, metadata, object lifecycle, resume activation                                            |
+| `contact`       | form validation, anti-abuse, persistence/retention, mail delivery adapter                                                       |
+| `admin`         | admin-specific query composition, audit log access, dashboard summaries, content-store health                                   |
+| `health`        | liveness and dependency-aware readiness probes                                                                                  |
+| `common`        | configuration validation, guards, policies, error mapping, request IDs, redaction                                               |
 
 Each module follows controller → application service → repository/adapter. Controllers contain transport concerns only. Business rules and authorization decisions are testable outside controllers.
 
@@ -210,10 +210,10 @@ Those choices may change adapters or deployment files but MUST NOT weaken the bo
 
 ## 11. Related specifications
 
-| Topic | Document |
-| --- | --- |
-| Decision rationale and rejected alternatives | [DECISIONS.md](DECISIONS.md) |
-| Content storage, frontmatter, sync, render pipeline | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) |
-| Locales, routing, `hreflang`, RTL | [I18N.md](I18N.md) |
-| Site theme, blog typography, settings modal, no-flash SSR | [THEMING.md](THEMING.md) |
-| Field-level admin coverage of current content | [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) |
+| Topic                                                     | Document                                     |
+| --------------------------------------------------------- | -------------------------------------------- |
+| Decision rationale and rejected alternatives              | [DECISIONS.md](DECISIONS.md)                 |
+| Content storage, frontmatter, sync, render pipeline       | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md)   |
+| Locales, routing, `hreflang`, RTL                         | [I18N.md](I18N.md)                           |
+| Site theme, blog typography, settings modal, no-flash SSR | [THEMING.md](THEMING.md)                     |
+| Field-level admin coverage of current content             | [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) |

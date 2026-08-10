@@ -4,9 +4,9 @@ import { Github, Linkedin, Heart, Mail } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="w-full backdrop-blur-sm border-t border-secondary/20">
-      <div className="Container text-secondary text-[13px] py-3 flex flex-col gap-2">
-        <div className="flex flex-col-reverse md:flex-row justify-between items-center gap-3">
+    <footer className="border-secondary/20 w-full border-t backdrop-blur-sm">
+      <div className="Container text-secondary flex flex-col gap-2 py-3 text-[13px]">
+        <div className="flex flex-col-reverse items-center justify-between gap-3 md:flex-row">
           <p className="FooterSmallText">
             <CodeStyleText
               strings={[
@@ -24,7 +24,7 @@ const Footer = () => {
                 href="https://github.com/amirrrreza1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
+                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
               >
                 <Github size={19} className="hover:text-primary" />
               </a>
@@ -32,13 +32,13 @@ const Footer = () => {
                 href="https://www.linkedin.com/in/amirrrreza1/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
+                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
               >
                 <Linkedin size={19} className="hover:text-primary" />
               </a>
               <a
                 href="mailto:arazarioun83@gmail.com"
-                className="hover:text-black dark:hover:bg-secondary border border-secondary p-1 transition-all duration-400"
+                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
               >
                 <Mail size={19} className="hover:text-primary" />
               </a>

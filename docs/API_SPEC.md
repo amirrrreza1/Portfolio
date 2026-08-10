@@ -66,24 +66,24 @@ Stable codes include `VALIDATION_FAILED`, `AUTHENTICATION_REQUIRED`, `AUTHENTICA
 
 All public read paths are locale-scoped. `:locale` is validated against the allowlist in [I18N.md](I18N.md) §1.
 
-| Method | Path | Purpose | Cache |
-| --- | --- | --- | --- |
-| `GET` | `/public/:locale/site` | Enabled settings, navigation, sections, social links | short ISR/public cache |
-| `GET` | `/public/:locale/appearance` | Enabled site themes, blog typography options, and defaults for the settings modal | long public cache |
-| `GET` | `/public/:locale/projects` | Enabled projects and associated skills | public cache |
-| `GET` | `/public/:locale/projects/:slug` | One public project | public cache |
-| `GET` | `/public/:locale/blog/posts` | Published translation summaries, cursor pagination | public cache |
-| `GET` | `/public/:locale/blog/posts/:slug` | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache |
-| `GET` | `/public/:locale/blog/categories/:slug` | Published posts in category | public cache |
-| `GET` | `/public/:locale/blog/tags/:slug` | Published posts with tag | public cache/noindex policy may apply |
-| `GET` | `/public/:locale/blog/feed-index` | Ordered published entries for RSS and sitemap generation | public cache |
-| `GET` | `/public/resume` | Active resume metadata/download location | short cache |
-| `POST` | `/contact` | Validate, persist, and queue contact delivery | no-store, strict limit |
+| Method | Path                                    | Purpose                                                                                    | Cache                                 |
+| ------ | --------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `GET`  | `/public/:locale/site`                  | Enabled settings, navigation, sections, social links                                       | short ISR/public cache                |
+| `GET`  | `/public/:locale/appearance`            | Enabled site themes, blog typography options, and defaults for the settings modal          | long public cache                     |
+| `GET`  | `/public/:locale/projects`              | Enabled projects and associated skills                                                     | public cache                          |
+| `GET`  | `/public/:locale/projects/:slug`        | One public project                                                                         | public cache                          |
+| `GET`  | `/public/:locale/blog/posts`            | Published translation summaries, cursor pagination                                         | public cache                          |
+| `GET`  | `/public/:locale/blog/posts/:slug`      | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache                          |
+| `GET`  | `/public/:locale/blog/categories/:slug` | Published posts in category                                                                | public cache                          |
+| `GET`  | `/public/:locale/blog/tags/:slug`       | Published posts with tag                                                                   | public cache/noindex policy may apply |
+| `GET`  | `/public/:locale/blog/feed-index`       | Ordered published entries for RSS and sitemap generation                                   | public cache                          |
+| `GET`  | `/public/resume`                        | Active resume metadata/download location                                                   | short cache                           |
+| `POST` | `/contact`                              | Validate, persist, and queue contact delivery                                              | no-store, strict limit                |
 
 Rules:
 
 - Draft, scheduled, archived, disabled, and soft-deleted records MUST behave as `404` on public endpoints, in every locale.
-- A post with no `PUBLISHED` translation in the requested locale returns `404` with `TRANSLATION_NOT_FOUND` and, in `meta`, the locales in which it *is* available — so the web app can render a helpful page without a second request. It MUST NOT return another locale's body.
+- A post with no `PUBLISHED` translation in the requested locale returns `404` with `TRANSLATION_NOT_FOUND` and, in `meta`, the locales in which it _is_ available — so the web app can render a helpful page without a second request. It MUST NOT return another locale's body.
 - The post detail response includes only the alternates that are actually published, and the web app emits `hreflang` from exactly that list.
 - Article responses carry pre-rendered sanitized HTML. The API never returns raw Markdown on a public endpoint.
 - A translation whose `syncState` is not `SYNCED` is excluded from listings and feed indexes.
@@ -94,18 +94,18 @@ Rules:
 
 ## 5. Authentication endpoints
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/auth/csrf` | Issue/rotate a session-bound CSRF token |
-| `POST` | `/auth/login/password` | Verify password and create a short-lived WebAuthn challenge flow |
-| `POST` | `/auth/webauthn/options` | Return assertion options for an active login/re-auth flow |
-| `POST` | `/auth/webauthn/verify` | Verify assertion and issue/rotate opaque session cookie |
-| `POST` | `/auth/recovery/verify` | Consume recovery code under stricter limits and security notification |
-| `GET` | `/auth/session` | Return minimal current actor/session state |
-| `POST` | `/auth/reauthenticate` | Establish short recent-auth window for high-risk action |
-| `POST` | `/auth/logout` | Revoke current session and clear cookies |
-| `GET` | `/auth/sessions` | List current user’s session summaries |
-| `DELETE` | `/auth/sessions/:id` | Revoke a session; recent auth required for another session |
+| Method   | Path                     | Purpose                                                               |
+| -------- | ------------------------ | --------------------------------------------------------------------- |
+| `GET`    | `/auth/csrf`             | Issue/rotate a session-bound CSRF token                               |
+| `POST`   | `/auth/login/password`   | Verify password and create a short-lived WebAuthn challenge flow      |
+| `POST`   | `/auth/webauthn/options` | Return assertion options for an active login/re-auth flow             |
+| `POST`   | `/auth/webauthn/verify`  | Verify assertion and issue/rotate opaque session cookie               |
+| `POST`   | `/auth/recovery/verify`  | Consume recovery code under stricter limits and security notification |
+| `GET`    | `/auth/session`          | Return minimal current actor/session state                            |
+| `POST`   | `/auth/reauthenticate`   | Establish short recent-auth window for high-risk action               |
+| `POST`   | `/auth/logout`           | Revoke current session and clear cookies                              |
+| `GET`    | `/auth/sessions`         | List current user’s session summaries                                 |
+| `DELETE` | `/auth/sessions/:id`     | Revoke a session; recent auth required for another session            |
 
 Initial owner provisioning is a one-time deployment CLI/command with an expiring bootstrap secret, not an always-on public registration endpoint.
 
@@ -139,35 +139,35 @@ Translatable resources expose their translations as explicit subresources, for e
 
 Article bodies are addressed per translation. Editorial state transitions are commands, not arbitrary status patches:
 
-| Method | Path | Rule |
-| --- | --- | --- |
-| `GET` | `/admin/blog/posts/:id/translations/:locale` | Returns frontmatter, raw Markdown, blob SHA, sync state, and any newer draft |
-| `PUT` | `/admin/blog/posts/:id/translations/:locale` | Explicit save: validate, commit to Git with `If-Match` blob SHA, then update index in one transaction. `409` with a diff on a stale SHA; `503 CONTENT_STORE_UNAVAILABLE` if Git is unreachable, with nothing written |
-| `PUT` | `/admin/blog/posts/:id/translations/:locale/draft` | Autosave to `PostDraft` only. Never commits, never publishes, no `If-Match` required |
-| `POST` | `/admin/blog/posts/:id/translations/:locale/preview` | Render through the production pipeline; returns a short-lived, unguessable, `noindex`, `no-store` preview URL |
-| `POST` | `/admin/blog/posts/:id/translations/:locale/publish` | Validate the publish checklist, set realized state, create revision, invalidate that locale's routes, enqueue the bot reconciliation commit |
-| `POST` | `/admin/blog/posts/:id/translations/:locale/schedule` | Future UTC timestamp; commits the intent and mirrors it to the index |
-| `POST` | `/admin/blog/posts/:id/translations/:locale/unpublish` | Recent auth; immediate invalidation because a withdrawn article left cached is a disclosure issue |
-| `DELETE` | `/admin/blog/posts/:id/translations/:locale` | Owner only; blocked while `PUBLISHED`; removes the file by commit and archives the index row |
-| `POST` | `/admin/blog/import` | Multipart `.md`/`.mdx` upload. **Dry run by default:** returns the normalized document, a line-referenced report, and the exact diff. Committing requires a second call with `confirm: true` and the returned report token |
-| `POST` | `/admin/revisions/:id/restore` | Writes a new commit and a new revision; never mutates history |
-| `POST` | `/admin/resumes/:id/activate` | Atomic single-active update and cache invalidation |
-| `POST` | `/admin/media` | Stream bounded upload through verification/quarantine |
-| `POST` | `/admin/media/:id/archive` | Reject if still referenced unless replacement supplied |
+| Method   | Path                                                   | Rule                                                                                                                                                                                                                       |
+| -------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/admin/blog/posts/:id/translations/:locale`           | Returns frontmatter, raw Markdown, blob SHA, sync state, and any newer draft                                                                                                                                               |
+| `PUT`    | `/admin/blog/posts/:id/translations/:locale`           | Explicit save: validate, commit to Git with `If-Match` blob SHA, then update index in one transaction. `409` with a diff on a stale SHA; `503 CONTENT_STORE_UNAVAILABLE` if Git is unreachable, with nothing written       |
+| `PUT`    | `/admin/blog/posts/:id/translations/:locale/draft`     | Autosave to `PostDraft` only. Never commits, never publishes, no `If-Match` required                                                                                                                                       |
+| `POST`   | `/admin/blog/posts/:id/translations/:locale/preview`   | Render through the production pipeline; returns a short-lived, unguessable, `noindex`, `no-store` preview URL                                                                                                              |
+| `POST`   | `/admin/blog/posts/:id/translations/:locale/publish`   | Validate the publish checklist, set realized state, create revision, invalidate that locale's routes, enqueue the bot reconciliation commit                                                                                |
+| `POST`   | `/admin/blog/posts/:id/translations/:locale/schedule`  | Future UTC timestamp; commits the intent and mirrors it to the index                                                                                                                                                       |
+| `POST`   | `/admin/blog/posts/:id/translations/:locale/unpublish` | Recent auth; immediate invalidation because a withdrawn article left cached is a disclosure issue                                                                                                                          |
+| `DELETE` | `/admin/blog/posts/:id/translations/:locale`           | Owner only; blocked while `PUBLISHED`; removes the file by commit and archives the index row                                                                                                                               |
+| `POST`   | `/admin/blog/import`                                   | Multipart `.md`/`.mdx` upload. **Dry run by default:** returns the normalized document, a line-referenced report, and the exact diff. Committing requires a second call with `confirm: true` and the returned report token |
+| `POST`   | `/admin/revisions/:id/restore`                         | Writes a new commit and a new revision; never mutates history                                                                                                                                                              |
+| `POST`   | `/admin/resumes/:id/activate`                          | Atomic single-active update and cache invalidation                                                                                                                                                                         |
+| `POST`   | `/admin/media`                                         | Stream bounded upload through verification/quarantine                                                                                                                                                                      |
+| `POST`   | `/admin/media/:id/archive`                             | Reject if still referenced unless replacement supplied                                                                                                                                                                     |
 
 ### Content-store operations
 
-| Method | Path | Rule |
-| --- | --- | --- |
-| `GET` | `/admin/content-store/status` | Sync state counts, drift list, pending bot commits, last successful reconciliation |
-| `POST` | `/admin/content-store/reconcile` | Owner-triggered full reconciliation; idempotent, rate-limited, reports differences without changing published output |
-| `POST` | `/admin/content-store/translations/:id/resync` | Re-read and re-validate one translation from Git |
-| `POST` | `/admin/content-store/translations/:id/force-save` | Overwrite a conflicting blob; owner only, recent auth, separately audited, requires the acknowledged diff |
+| Method | Path                                               | Rule                                                                                                                 |
+| ------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/admin/content-store/status`                      | Sync state counts, drift list, pending bot commits, last successful reconciliation                                   |
+| `POST` | `/admin/content-store/reconcile`                   | Owner-triggered full reconciliation; idempotent, rate-limited, reports differences without changing published output |
+| `POST` | `/admin/content-store/translations/:id/resync`     | Re-read and re-validate one translation from Git                                                                     |
+| `POST` | `/admin/content-store/translations/:id/force-save` | Overwrite a conflicting blob; owner only, recent auth, separately audited, requires the acknowledged diff            |
 
 ### Git webhook
 
-| Method | Path | Rule |
-| --- | --- | --- |
+| Method | Path                    | Rule                                                                                                                                                                                                                                                                            |
+| ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/webhooks/content-git` | Verify HMAC signature over the raw body in constant time, enforce a narrow timestamp window and a nonce replay store, then enqueue sync. Returns `202` with no content. Unauthenticated in the session sense, authenticated by signature. Never trusts payload contents as data |
 
 The webhook path is exempt from CSRF (it is not cookie-authenticated) and is explicitly excluded from the session middleware, so a browser cannot reach it with ambient credentials.
@@ -195,21 +195,21 @@ After a committed publish, unpublish, redirect, active-resume, or sync transacti
 
 ## 9. Authorization matrix
 
-| Action | Visitor | Editor | Owner |
-| --- | ---: | ---: | ---: |
-| Read published content | yes | yes | yes |
-| Read/edit drafts | no | yes | yes |
-| Save an article body (commit to Git) | no | yes | yes |
-| Import a Markdown file | no | dry run only | yes |
-| Publish/schedule content | no | configurable | yes |
-| Force-overwrite a conflicting blob | no | no | yes + recent auth |
-| Trigger reconciliation | no | no | yes |
-| Change appearance settings | no | no | yes |
-| Manage media/resume | no | upload/select | yes |
-| View contact bodies | no | no by default | yes |
-| Restore revision | no | own content if allowed | yes |
-| Manage users/security | no | no | yes |
-| View audit events | no | no | yes |
-| Permanent delete | no | no | yes + recent auth |
+| Action                               | Visitor |                 Editor |             Owner |
+| ------------------------------------ | ------: | ---------------------: | ----------------: |
+| Read published content               |     yes |                    yes |               yes |
+| Read/edit drafts                     |      no |                    yes |               yes |
+| Save an article body (commit to Git) |      no |                    yes |               yes |
+| Import a Markdown file               |      no |           dry run only |               yes |
+| Publish/schedule content             |      no |           configurable |               yes |
+| Force-overwrite a conflicting blob   |      no |                     no | yes + recent auth |
+| Trigger reconciliation               |      no |                     no |               yes |
+| Change appearance settings           |      no |                     no |               yes |
+| Manage media/resume                  |      no |          upload/select |               yes |
+| View contact bodies                  |      no |          no by default |               yes |
+| Restore revision                     |      no | own content if allowed |               yes |
+| Manage users/security                |      no |                     no |               yes |
+| View audit events                    |      no |                     no |               yes |
+| Permanent delete                     |      no |                     no | yes + recent auth |
 
 Every API action checks permission server-side. The admin UI hiding a control is not authorization.

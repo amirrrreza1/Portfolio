@@ -46,11 +46,45 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Every workspace package now has a real suite or no `test` script at all.
+      # `--passWithNoTests` was removed package by package so a green run here
+      # means assertions actually executed. Do not reintroduce the flag.
       - name: Run real test suites
         run: pnpm test
+
+      # docs/BASELINE_M0.md is deliberately NOT regenerated or drift-checked
+      # here. It is a frozen pre-stabilization capture, so a CI job that kept it
+      # matching `main` would destroy the only thing it is for. The counts that
+      # must not drift are asserted in apps/web/test/legacy-assets.spec.ts,
+      # which the test step above already runs.
 
       - name: Build production artifacts
         env:
           PUBLIC_SITE_URL: https://example.com
           BIRTH_DATE: 2000-01-01
         run: pnpm build
+
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Full history: the point is to catch a credential that was committed and
+      # then "removed" in a later commit, which is exactly how the EmailJS keys
+      # became a problem. A shallow clone would miss those.
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Free for personal accounts and public repositories. Moving this
+      # repository under a GitHub organization requires a GITLEAKS_LICENSE
+      # secret, or this step will start failing.
+      #
+      # M3 extends scanning to the protected `content` branch before automated
+      # or direct content commits are accepted (ROADMAP.md §6).
+      - name: Scan repository for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

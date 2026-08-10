@@ -4,7 +4,7 @@ import Link from "next/link";
 
 const DownloadResume = () => {
   return (
-    <section className="Container backdrop-blur-sm p-6 border my-10 flex justify-center items-center">
+    <section className="Container my-10 flex items-center justify-center border p-6 backdrop-blur-sm">
       <Button className="flex items-center gap-2">
         <Link href="/resume.pdf" download className="flex items-center gap-2">
           <Download size={18} />

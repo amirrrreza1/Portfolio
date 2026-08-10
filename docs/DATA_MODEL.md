@@ -235,7 +235,7 @@ erDiagram
 ## 9. Backup and retention
 
 - Daily encrypted database backups plus provider point-in-time recovery where available.
-- **Article bodies have a second, independent recovery path:** a clone of the content repository. A valid restore requires the database backup *and* a repository clone to reconcile — every index row matching a file at its recorded blob SHA, every file having an index row, and every published translation rendering. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
+- **Article bodies have a second, independent recovery path:** a clone of the content repository. A valid restore requires the database backup _and_ a repository clone to reconcile — every index row matching a file at its recorded blob SHA, every file having an index row, and every published translation rendering. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
 - `renderedHtml` is a cache and need not be backed up; it is regenerable from Git. It MUST NOT be the only surviving copy of any article.
 - `PostDraft` rows are working state with a short retention window and are excluded from revision snapshots.
 - MinIO versioning or equivalent retention for resume/blog assets.

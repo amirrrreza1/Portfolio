@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export function useAutoLang<
-  T extends HTMLInputElement | HTMLTextAreaElement
+  T extends HTMLInputElement | HTMLTextAreaElement,
 >() {
   const ref = useRef<T | null>(null);
 
