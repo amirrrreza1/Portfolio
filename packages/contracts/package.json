@@ -17,6 +17,18 @@
     "./appearance": {
       "types": "./dist/appearance/index.d.ts",
       "import": "./dist/appearance/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js"
+    },
+    "./content": {
+      "types": "./dist/content/index.d.ts",
+      "import": "./dist/content/index.js"
+    },
+    "./blog": {
+      "types": "./dist/blog/index.d.ts",
+      "import": "./dist/blog/index.js"
     }
   },
   "sideEffects": false,

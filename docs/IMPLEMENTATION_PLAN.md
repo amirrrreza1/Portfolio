@@ -28,7 +28,8 @@ Small corrections that are cheap now and expensive later. Status as of 2026-08-1
 
 1. Encode shared Zod schemas for IDs, locales, pagination, errors, portfolio resources, frontmatter, auth flows, appearance preferences, and admin mutations.
    - **Done:** IDs, locales, ADR-010 slug normalization, scalar value objects, pagination, the error contract, and the full appearance surface (registry, `portfolio_prefs` cookie resolution, `AppearanceSettings` validation). 175 tests, plus a boundary test that fails if the package ever imports the database client or a Node-only module.
-   - **Deferred to after step 3:** portfolio resources, frontmatter, auth flows, and admin mutations. Writing them before the Prisma models means guessing the persisted shapes and rewriting them afterwards.
+   - **Done after step 3, as planned:** auth flows (password policy, login, WebAuthn, sessions, CSRF, recovery), article frontmatter, content-store sync state, and the blog lifecycle commands. 266 tests.
+   - **Remaining:** the portfolio resource DTOs, which belong with their M7 admin slices rather than ahead of them — writing a projects DTO now would anticipate a UI that does not exist.
 2. Build `packages/markdown`: frontmatter schema, deterministic serializer, directive allowlist with attribute schemas, and the full render pipeline from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8. Test it against the XSS, unsafe-link, and malformed-YAML corpora before anything depends on it.
 3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, and `ContentSyncLog`.
    - **Done:** 35 models, 16 enums, 64 relation fields, plus 54 `CHECK` constraints and 6 partial indexes in `prisma/sql/integrity_constraints.sql` for what Prisma's schema language cannot express.

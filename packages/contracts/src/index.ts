@@ -7,14 +7,18 @@
  *
  * This package is imported by browser code. It therefore must never import the
  * database client, a server secret, or anything with a Node-only dependency;
- * M1's exit gate tests that boundary explicitly.
+ * `test/boundaries.spec.ts` enforces that, and it is part of M1's exit gate.
  *
- * Delivered so far:
+ * Modules:
  *
  * - `common` — IDs, locales, slugs, scalar values, pagination, errors
  * - `appearance` — theme, blog typography, motion, and the preferences cookie
- *
- * Still to come in M1: `auth`, `content`, and the blog command schemas.
+ * - `auth` — credentials, password policy, sessions, CSRF, WebAuthn
+ * - `content` — article frontmatter and content-store sync state
+ * - `blog` — the article lifecycle commands
  */
 export * from "./appearance/index.js";
+export * from "./auth/index.js";
+export * from "./blog/index.js";
 export * from "./common/index.js";
+export * from "./content/index.js";
