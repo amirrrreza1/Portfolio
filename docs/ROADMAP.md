@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-10**
 
-Active milestone: **M2 — Deterministic legacy migration** (the validated dry-run and reconciliation report are delivered; the applied write remains gated by M1's media adapter and a real PostgreSQL database). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestones: **M2, M3, and M6**. M2's applied write remains gated by a real PostgreSQL database and object store; M3/M6 have secure implementation foundations but remain open until their real Git/database/API exit gates are demonstrated. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -33,9 +33,9 @@ Phase 0 stabilization is complete in the repository, and every M1 implementation
 | Public application           | The legacy Next.js portfolio is preserved and still reads JSON/hard-coded content, now with `standalone` output, a real `metadataBase`, and a server-computed age | Introduce a server-side rollback adapter before the first cutover, then retain it until migrated output reconciles and the rollback window closes |
 | API                          | NestJS/Fastify scaffold exposes only the health route, covered by a real smoke test                                                                               | Domain and security modules start in M1                                                                                                           |
 | Contracts                    | `packages/contracts` exports the common, appearance, auth, content, and blog-command schemas with 266 tests                                                       | Complete for M1. Portfolio resource DTOs land with their M7 admin slices rather than ahead of them                                                |
-| Database                     | `packages/database` has the full Prisma schema (35 models, 16 enums), the constraint SQL, the pooled client, concurrency helpers, and a deterministic seed        | Migrations have not been generated or applied against a real PostgreSQL yet; see §6                                                               |
-| Markdown and Git content     | `packages/markdown` is delivered and security-tested; the Git-backed `content/` store does not yet exist                                                          | M3 can build the content store on the proven renderer boundary                                                                                    |
-| Blog and admin               | Feature folders are placeholders; no routes, authentication, or mutation UI exist                                                                                 | No admin mutation work starts before M6 exits                                                                                                     |
+| Database                     | `packages/database` has a 41-model/19-enum Prisma schema, constraint SQL, pooled client, concurrency helpers, and deterministic seed                              | Migrations have not been generated or applied against a real PostgreSQL yet; see §6                                                               |
+| Markdown and Git content     | Renderer is delivered; `packages/content-store` provides GitHub App auth, secure writes, webhook trigger handling, and reconciliation primitives                  | Integrate with the API worker and prove a real content-branch run before M3 exits                                                                 |
+| Blog and admin               | Feature folders have no routes yet; `packages/auth-core` now supplies password/session/CSRF/recovery/WebAuthn challenge primitives                                | API boundary, full passkey verification, authorization, and admin shell remain M6 work                                                            |
 | Appearance                   | Runtime uses a client `localStorage` theme; fonts are now `woff2`-only with correct numeric weights, and blog typography is still specification-only              | Implement after the locale-aware server layout exists; M5 adds subsetting and `unicode-range` to the reduced font set                             |
 | Operations and quality       | CI runs frozen install, format, lint, typecheck, real tests, builds, and full-history secret scanning; `--passWithNoTests` is gone from every package             | Expand continuously; container, audit, SBOM, and image scanning complete in M9                                                                    |
 | Legacy baseline              | [BASELINE_M0.md](BASELINE_M0.md) records the routes, content counts, and SHA-256 hashes of all 137 legacy source and asset files at the pre-stabilization commit  | Frozen. It is the comparison input for the M2 reconciliation and must not be regenerated                                                          |
@@ -96,10 +96,10 @@ Two dependencies are non-negotiable:
 | M0 — Baseline, guardrails, and decisions | Blocked     | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
 | M1 — Trusted domain and media foundation | In progress | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
 | M2 — Deterministic legacy migration      | In progress | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
-| M3 — Git content-store proof             | Not started | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
+| M3 — Git content-store proof             | In progress | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
 | M4 — Public bilingual cutover            | Not started | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
 | M5 — Appearance and accessibility        | Not started | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
-| M6 — Authentication foundation           | Not started | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
+| M6 — Authentication foundation           | In progress | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
 | M7 — Portfolio CMS                       | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
 | M8 — Blog authoring, publishing, and SEO | Not started | XL            | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO                                | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup    | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
@@ -207,6 +207,13 @@ Exit gate:
 
 Objective: prove Git-backed article integrity and recovery before any editor depends on it.
 
+Current slice: `packages/content-store` now confines writes to `content/` on the
+dedicated branch, exchanges GitHub App installation tokens, verifies and
+deduplicates raw webhook deliveries, and reconciles Git trees through the
+production Markdown renderer. The PostgreSQL apply ledger/outbox schema and
+adapter are present. A real protected content branch, API worker, Git service,
+and forced cross-system failure drill remain required exit evidence.
+
 Deliverables:
 
 - GitHub App authentication with least privilege, content-prefix enforcement, safe commit metadata, branch protection, and blob-SHA `If-Match` writes;
@@ -272,6 +279,14 @@ Exit gate:
 ### M6 — Authentication foundation
 
 Objective: make the admin boundary safe before any mutation UI is exposed.
+
+Current slice: `packages/auth-core` delivers opaque keyed session/CSRF tokens,
+Argon2id password hashing, uniform password-step failures, recovery-code
+hashing, single-use WebAuthn challenges, and cookie-mutation guards.
+`provision:owner` is explicit-apply and bootstrap-file/expiry gated. Prisma
+adapters persist password sessions and one-time challenges. The API login and
+passkey verification endpoints, authorization policy, audit events, and
+credential-revocation drill are still outstanding.
 
 Deliverables:
 
