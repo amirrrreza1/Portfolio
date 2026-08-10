@@ -5,7 +5,11 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import { localeSchema, postIdSchema } from "@portfolio/contracts";
+import {
+  blobShaSchema,
+  localeSchema,
+  postIdSchema,
+} from "@portfolio/contracts";
 import { parseArticle, renderArticle } from "@portfolio/markdown";
 
 const CONTENT_PREFIX = "content/";
@@ -373,6 +377,36 @@ export async function synchronizeGitFile(input: {
   }
 }
 
+export interface ContentReconciliationSummary {
+  readonly applied: number;
+  readonly alreadyApplied: number;
+  readonly missing: number;
+  readonly invalid: number;
+}
+
+/** Reconciles the complete content tree at a Git commit, not webhook data. */
+export async function reconcileGitCommit(input: {
+  readonly store: GitHubContentStore;
+  readonly index: ContentIndexStore;
+  readonly commitSha: string;
+}): Promise<ContentReconciliationSummary> {
+  const paths = await input.store.articlePathsAtCommit(input.commitSha);
+  const summary = {
+    applied: 0,
+    alreadyApplied: 0,
+    missing: 0,
+    invalid: 0,
+  };
+  for (const path of paths) {
+    const outcome = await synchronizeGitFile({ ...input, path });
+    if (outcome === "applied") summary.applied += 1;
+    else if (outcome === "already-applied") summary.alreadyApplied += 1;
+    else if (outcome === "missing") summary.missing += 1;
+    else summary.invalid += 1;
+  }
+  return summary;
+}
+
 export class ContentConflictError extends Error {
   constructor() {
     super("The content file changed since its expected blob SHA.");
@@ -443,6 +477,42 @@ export class GitHubContentStore {
       throw new Error("Git returned no blob SHA for the content write.");
     }
     return body.content.sha;
+  }
+
+  async articlePathsAtCommit(commitSha: string): Promise<readonly string[]> {
+    if (!blobShaSchema.safeParse(commitSha).success) {
+      throw new ContentStoreValidationError("Commit SHA is invalid.");
+    }
+    const response = await this.transport.request({
+      method: "GET",
+      url:
+        GITHUB_API +
+        "/repos/" +
+        this.config.repository +
+        "/git/trees/" +
+        encodeURIComponent(commitSha) +
+        "?recursive=1",
+      headers: this.headers(),
+    });
+    if (response.status !== 200)
+      throw new Error("Git content tree read failed.");
+    const body = response.body as { tree?: unknown };
+    if (!Array.isArray(body.tree)) {
+      throw new Error("Git returned an invalid content tree.");
+    }
+    return body.tree.flatMap((entry) => {
+      const candidate = entry as { path?: unknown; type?: unknown };
+      if (candidate.type !== "blob" || typeof candidate.path !== "string")
+        return [];
+      try {
+        assertContentPath(candidate.path);
+        return /^content\/blog\/[a-z0-9]+\/(?:en|fa)\.md$/.test(candidate.path)
+          ? [candidate.path]
+          : [];
+      } catch {
+        return [];
+      }
+    });
   }
 
   private url(path: string, includeRef = true): string {

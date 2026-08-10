@@ -14,6 +14,7 @@ import {
   InMemoryWebhookDeliveryStore,
   loadContentStoreRuntimeConfig,
   synchronizeGitFile,
+  reconcileGitCommit,
   translationContentPath,
   verifyGitHubWebhookSignature,
 } from "../src/index.js";
@@ -246,5 +247,61 @@ describe("content-store boundary", () => {
     expect(applied).toMatchObject([
       { title: "Safe Markdown", blobSha: "c".repeat(40) },
     ]);
+  });
+
+  it("reconciles only canonical article files discovered from the Git tree", async () => {
+    const source = [
+      "---",
+      "schemaVersion: 1",
+      "postId: clx8k2p9q0000abcd1234efg",
+      "locale: en",
+      "title: Safe Markdown",
+      "slug: safe-markdown",
+      "excerpt: A compact description for the test article.",
+      "status: draft",
+      "---",
+      "## Heading",
+    ].join("\n");
+    const store = new GitHubContentStore(
+      { repository: "owner/repository", branch: "content", token: "app-token" },
+      {
+        request: async (request) =>
+          request.url.includes("/git/trees/")
+            ? {
+                status: 200,
+                body: {
+                  tree: [
+                    {
+                      type: "blob",
+                      path: "content/blog/clx8k2p9q0000abcd1234efg/en.md",
+                    },
+                    { type: "blob", path: ".github/workflows/ci.yml" },
+                  ],
+                },
+              }
+            : {
+                status: 200,
+                body: {
+                  content: Buffer.from(source).toString("base64"),
+                  sha: "c".repeat(40),
+                },
+              },
+      }
+    );
+    await expect(
+      reconcileGitCommit({
+        store,
+        commitSha: "d".repeat(40),
+        index: {
+          apply: async () => "already-applied",
+          recordFailure: async () => undefined,
+        },
+      })
+    ).resolves.toEqual({
+      applied: 0,
+      alreadyApplied: 1,
+      missing: 0,
+      invalid: 0,
+    });
   });
 });
