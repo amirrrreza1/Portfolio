@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 import {
   assertContentPath,
   authenticateGitHubWebhook,
+  createFetchGitContentTransport,
   ContentConflictError,
   ContentStoreValidationError,
   createGitHubInstallationToken,
   GitHubContentStore,
   InMemoryWebhookDeliveryStore,
+  loadContentStoreRuntimeConfig,
   synchronizeGitFile,
   translationContentPath,
   verifyGitHubWebhookSignature,
@@ -132,6 +134,43 @@ describe("content-store boundary", () => {
     );
     expect(result.token).toBe("installation-token");
     expect(calls[0]?.headers.Authorization).toMatch(/^Bearer eyJ.+\..+\..+$/);
+  });
+
+  it("loads only the fixed GitHub/content runtime configuration", async () => {
+    const config = await loadContentStoreRuntimeConfig({
+      environment: {
+        CONTENT_GIT_PROVIDER: "github",
+        CONTENT_GIT_REPO: "owner/repository",
+        CONTENT_GIT_BRANCH: "content",
+        CONTENT_GIT_CONTENT_PREFIX: "content/",
+        CONTENT_GIT_APP_ID: "123",
+        CONTENT_GIT_INSTALLATION_ID: "456",
+        CONTENT_GIT_PRIVATE_KEY_PATH: "/run/secrets/key.pem",
+        CONTENT_GIT_WEBHOOK_SECRET: "independent-webhook-secret",
+      },
+      readPrivateKey: async () => "private key",
+    });
+    expect(config).toMatchObject({
+      repository: "owner/repository",
+      branch: "content",
+    });
+  });
+
+  it("serializes transport bodies and parses a Git JSON response", async () => {
+    const transport = createFetchGitContentTransport(async (_url, init) => {
+      expect(init?.body).toBe('{"value":"ok"}');
+      return new Response(JSON.stringify({ sha: "a".repeat(40) }), {
+        status: 200,
+      });
+    });
+    await expect(
+      transport.request({
+        method: "POST",
+        url: "https://example.test",
+        headers: {},
+        body: { value: "ok" },
+      })
+    ).resolves.toEqual({ status: 200, body: { sha: "a".repeat(40) } });
   });
 
   it("re-reads, validates, renders, and idempotently applies Git content", async () => {

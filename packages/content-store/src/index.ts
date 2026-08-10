@@ -119,6 +119,30 @@ export interface GitContentTransport {
   }): Promise<GitContentResponse>;
 }
 
+/** Production transport; callers may supply a test fetch without widening the port. */
+export function createFetchGitContentTransport(
+  fetcher: typeof fetch = fetch
+): GitContentTransport {
+  return {
+    request: async (input) => {
+      const response = await fetcher(input.url, {
+        method: input.method,
+        headers: input.headers,
+        ...(input.body === undefined
+          ? {}
+          : { body: JSON.stringify(input.body) }),
+      });
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        // GitHub errors may legitimately arrive without a JSON document.
+      }
+      return { status: response.status, body };
+    },
+  };
+}
+
 export interface GitHubContentStoreConfig {
   readonly repository: string;
   readonly branch: string;
@@ -130,6 +154,54 @@ export interface GitHubAppConfig {
   readonly installationId: string;
   /** PEM loaded from a server-only secret file, never a browser variable. */
   readonly privateKeyPem: string;
+}
+
+export interface ContentStoreRuntimeConfig extends GitHubAppConfig {
+  readonly repository: string;
+  readonly branch: "content";
+  readonly webhookSecret: string;
+}
+
+/** Validates non-public environment values before the API begins listening. */
+export async function loadContentStoreRuntimeConfig(input: {
+  readonly environment: Readonly<Record<string, string | undefined>>;
+  readonly readPrivateKey: (path: string) => Promise<string>;
+}): Promise<ContentStoreRuntimeConfig> {
+  const value = (name: string): string => {
+    const candidate = input.environment[name]?.trim();
+    if (!candidate || candidate.startsWith("replace_")) {
+      throw new ContentStoreValidationError(name + " is required.");
+    }
+    return candidate;
+  };
+  const provider = value("CONTENT_GIT_PROVIDER");
+  const branch = value("CONTENT_GIT_BRANCH");
+  const prefix = value("CONTENT_GIT_CONTENT_PREFIX");
+  if (
+    provider !== "github" ||
+    branch !== "content" ||
+    prefix !== CONTENT_PREFIX
+  ) {
+    throw new ContentStoreValidationError(
+      "Content store provider, branch, or prefix is unsafe."
+    );
+  }
+  const privateKeyPem = await input.readPrivateKey(
+    value("CONTENT_GIT_PRIVATE_KEY_PATH")
+  );
+  if (!privateKeyPem.trim()) {
+    throw new ContentStoreValidationError(
+      "Content Git private key file is empty."
+    );
+  }
+  return {
+    repository: value("CONTENT_GIT_REPO"),
+    branch: "content",
+    appId: value("CONTENT_GIT_APP_ID"),
+    installationId: value("CONTENT_GIT_INSTALLATION_ID"),
+    privateKeyPem,
+    webhookSecret: value("CONTENT_GIT_WEBHOOK_SECRET"),
+  };
 }
 
 export interface GitHubInstallationToken {
