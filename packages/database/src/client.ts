@@ -1,6 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient } from "../generated/client/client.js";
+import { PrismaClient } from "./generated/client/client.js";
 
 /**
  * The pooled Prisma client.

@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 /**
  * Proves the integrity constraints actually reject what they claim to reject.
@@ -52,7 +52,7 @@ beforeAll(async () => {
       "migrate",
       "diff",
       "--from-empty",
-      "--to-schema-datamodel",
+      "--to-schema",
       path.join(packageRoot, "prisma/schema.prisma"),
       "--script",
     ],
@@ -90,6 +90,10 @@ beforeAll(async () => {
     `INSERT INTO "skill_categories" (id, key, "updatedAt") VALUES ('sc1', 'languages', now());`
   );
 }, 120_000);
+
+beforeEach(async () => {
+  await db.exec('DELETE FROM "post_translations";');
+});
 
 function translation(id: string, columns: Record<string, string>): string {
   const names = Object.keys(columns)

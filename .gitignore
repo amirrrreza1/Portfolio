@@ -40,4 +40,4 @@ yarn-error.log*
 Thumbs.db
 
 # Prisma generated client
-packages/database/generated/
+packages/database/src/generated/

@@ -23,12 +23,11 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/client"
+  output   = "../src/generated/client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------
