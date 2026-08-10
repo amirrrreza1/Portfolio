@@ -14,8 +14,6 @@ function securityPolicy(nonce: string): string {
     "object-src 'none'",
     "frame-ancestors 'none'",
     `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
-    // Framer Motion currently writes transient transform styles. Removing that
-    // remaining style-attribute dependency is tracked with the M5 token pass.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self'",

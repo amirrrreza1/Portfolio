@@ -85,9 +85,10 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
     <span className={className} role="text">
       <span>{reducedMotion ? full : text}</span>
       <span
-        className={`typewriter-cursor ${reducedMotion ? "hidden" : cursorClassName}`}
+        className={`typewriter-cursor ${
+          reducedMotion || finishedNoLoop ? "invisible" : cursorClassName
+        }`}
         aria-hidden="true"
-        style={{ visibility: finishedNoLoop ? "hidden" : "visible" }}
       >
         |
       </span>

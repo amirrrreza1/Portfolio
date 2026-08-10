@@ -2,7 +2,6 @@
 
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
-import { getTextColor } from "@/Utils/getTextColor";
 import { SkillCategory } from "./Types";
 
 const Skills = ({ skills }: { readonly skills: readonly SkillCategory[] }) => {
@@ -31,11 +30,7 @@ const Skills = ({ skills }: { readonly skills: readonly SkillCategory[] }) => {
               {category.items.map((skill, index) => (
                 <span
                   key={index}
-                  className="border-primary border-[1px] px-3 py-1 text-sm font-medium"
-                  style={{
-                    backgroundColor: skill.color,
-                    color: getTextColor(skill.color),
-                  }}
+                  className="border-secondary/40 bg-secondary/10 text-secondary border px-3 py-1 text-sm font-medium"
                 >
                   {skill.name}
                 </span>

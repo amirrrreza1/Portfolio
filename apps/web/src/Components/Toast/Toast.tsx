@@ -63,11 +63,6 @@ const Toast = ({ message }: { message: string }) => {
       className={`bg-secondary text-primary px-4 py-2 text-sm shadow-md ${
         exit ? "toast-out" : "toast-in"
       } pointer-events-auto select-none`}
-      style={{
-        userSelect: "none",
-        WebkitUserSelect: "none",
-        WebkitTapHighlightColor: "transparent",
-      }}
     >
       {message}
     </div>

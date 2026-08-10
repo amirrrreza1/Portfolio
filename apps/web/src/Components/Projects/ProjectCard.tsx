@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import Button from "../UI/Buttons/CustomBTN";
-import { getTextColor } from "@/Utils/getTextColor";
 import { useGitHubStats } from "@/Utils/getGithubStats";
 import type { SkillCategory } from "@/Components/Skills/Types";
 import { Projects } from "./Types";
@@ -65,11 +64,7 @@ export default function ProjectCard({
           return (
             <span
               key={`${pj.id}-${techId}-${idx}`}
-              className="border-secondary border-[1px] px-3 py-1 text-sm font-medium"
-              style={{
-                backgroundColor: skill.color,
-                color: getTextColor(skill.color),
-              }}
+              className="border-secondary/40 bg-secondary/10 text-secondary border px-3 py-1 text-sm font-medium"
             >
               {skill.name}
             </span>
