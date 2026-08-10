@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "@/Contexts/ThemeContext";
 import { ScrumbleTextProps } from "./Types";
 
 const ScrambleText: React.FC<ScrumbleTextProps> = ({
@@ -10,12 +11,14 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
   className = "",
   delayBeforeFix = 1000,
 }) => {
+  const reducedMotion = useReducedMotion();
   const [displayed, setDisplayed] = useState<string>("");
   const [visible, setVisible] = useState(false);
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
+    if (reducedMotion) return;
     if (!ref.current) return;
 
     const observer = new IntersectionObserver(
@@ -33,9 +36,10 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
     observer.observe(ref.current);
 
     return () => observer.disconnect();
-  }, []);
+  }, [reducedMotion]);
 
   useEffect(() => {
+    if (reducedMotion) return;
     if (!visible) return;
 
     const delayInterval = setInterval(() => {
@@ -57,9 +61,10 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
       clearInterval(delayInterval);
       clearTimeout(delayTimer);
     };
-  }, [visible, text, scrambleChars, delayBeforeFix, speed]);
+  }, [visible, text, scrambleChars, delayBeforeFix, speed, reducedMotion]);
 
   useEffect(() => {
+    if (reducedMotion) return;
     if (!started) return;
 
     let frame = 0;
@@ -89,11 +94,11 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
     }, speed);
 
     return () => clearInterval(interval);
-  }, [started, text, speed, scrambleChars]);
+  }, [started, text, speed, scrambleChars, reducedMotion]);
 
   return (
     <span ref={ref} className={className}>
-      {visible ? displayed : ""}
+      {reducedMotion ? text : visible ? displayed : ""}
     </span>
   );
 };

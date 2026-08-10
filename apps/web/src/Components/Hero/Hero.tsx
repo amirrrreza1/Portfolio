@@ -1,7 +1,11 @@
+"use client";
+
 import RubikCube from "../RubikCube/RubikCube";
 import CodeStyleText from "../UI/CodeTyleText/CodeTyleText";
+import { useReducedMotion } from "@/Contexts/ThemeContext";
 
 const Hero = () => {
+  const reducedMotion = useReducedMotion();
   return (
     <>
       <main
@@ -23,7 +27,13 @@ const Hero = () => {
           </div>
         </section>
         <section className="flex h-[300px] w-full items-end justify-center lg:w-1/2">
-          <RubikCube />
+          {reducedMotion ? (
+            <div className="border-secondary/40 flex aspect-square h-full max-h-[300px] w-full max-w-[300px] items-center justify-center border text-sm">
+              Interactive cube disabled for reduced motion
+            </div>
+          ) : (
+            <RubikCube />
+          )}
         </section>
       </main>
     </>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CodeStyleTextProps } from "./Types";
+import { useReducedMotion } from "@/Contexts/ThemeContext";
 
 const CodeStyleText: React.FC<CodeStyleTextProps> = ({
   strings,
@@ -12,6 +13,7 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
   className = "",
   cursorClassName = "",
 }) => {
+  const reducedMotion = useReducedMotion();
   const [text, setText] = useState("");
   const [strIndex, setStrIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -22,6 +24,7 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
   }, [strings]);
 
   useEffect(() => {
+    if (reducedMotion) return;
     const full = safeStrings[strIndex % safeStrings.length];
 
     const stepDelay = isDeleting ? deletingSpeed : typingSpeed;
@@ -71,6 +74,7 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
     deletingSpeed,
     pauseBetween,
     loop,
+    reducedMotion,
   ]);
 
   const full = safeStrings[strIndex % safeStrings.length];
@@ -79,9 +83,9 @@ const CodeStyleText: React.FC<CodeStyleTextProps> = ({
 
   return (
     <span className={className} role="text">
-      <span>{text}</span>
+      <span>{reducedMotion ? full : text}</span>
       <span
-        className={`typewriter-cursor ${cursorClassName}`}
+        className={`typewriter-cursor ${reducedMotion ? "hidden" : cursorClassName}`}
         aria-hidden="true"
         style={{ visibility: finishedNoLoop ? "hidden" : "visible" }}
       >
