@@ -190,6 +190,55 @@
   }
 }
 
+/* Typography preferences are deliberately scoped to article content only. */
+.blog-reading-surface[data-blog-font="jetbrains-mono"] {
+  font-family: "JetBrains_Mono", monospace;
+}
+
+.blog-reading-surface[data-blog-font="vazir-code"] {
+  font-family: "VazirCode", tahoma, sans-serif;
+}
+
+.blog-reading-surface[data-blog-font="system-sans"] {
+  font-family: system-ui, sans-serif;
+}
+
+.blog-reading-surface[data-blog-size="sm"] {
+  font-size: 0.875rem;
+}
+
+.blog-reading-surface[data-blog-size="md"] {
+  font-size: 1rem;
+}
+
+.blog-reading-surface[data-blog-size="lg"] {
+  font-size: 1.125rem;
+}
+
+.blog-reading-surface[data-blog-size="xl"] {
+  font-size: 1.25rem;
+}
+
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="system"] *,
+  html[data-motion="system"] *::before,
+  html[data-motion="system"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @theme {
   --color-primary: var(--color-primary);
   --color-secondary: var(--color-secondary);

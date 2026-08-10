@@ -1,6 +1,7 @@
 import Button from "@/Components/UI/Buttons/CustomBTN";
 import CodeStyleText from "@/Components/UI/CodeTyleText/CodeTyleText";
 import { Github, Linkedin, Heart, Mail } from "lucide-react";
+import AppearanceSettingsDialog from "@/Components/Appearance/AppearanceSettingsDialog";
 
 const Footer = () => {
   return (
@@ -19,6 +20,7 @@ const Footer = () => {
           </p>
 
           <div className="flex items-center gap-4">
+            <AppearanceSettingsDialog />
             <div className="flex gap-3">
               <a
                 href="https://github.com/amirrrreza1"

@@ -68,6 +68,11 @@ export default async function RootLayout({
     DEFAULT_APPEARANCE_SETTINGS,
     locale
   );
+  const defaultAppearance = resolveAppearance(
+    null,
+    DEFAULT_APPEARANCE_SETTINGS,
+    locale
+  );
 
   return (
     <html
@@ -76,7 +81,10 @@ export default async function RootLayout({
       {...appearanceRootAttributes(appearance)}
     >
       <body>
-        <ThemeProvider initialTheme={appearance.theme}>
+        <ThemeProvider
+          initialAppearance={appearance}
+          defaultAppearance={defaultAppearance}
+        >
           <ToastProvider>
             <MainLayout>{children}</MainLayout>
           </ToastProvider>

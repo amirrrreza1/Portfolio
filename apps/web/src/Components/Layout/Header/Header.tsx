@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { scrollToSection } from "@/Components/SmoothScroll/SmoothScroll";
 import ThemeToggle from "@/Components/UI/Buttons/ThemeToggle";
+import AppearanceSettingsDialog from "@/Components/Appearance/AppearanceSettingsDialog";
 import Tooltip from "@/Components/UI/Tooltip/Tooltip";
 import { Home, Search, Settings, Code2, Mail, Award } from "lucide-react";
 
@@ -74,6 +75,7 @@ const Header = () => {
         <Tooltip title="Theme">
           <ThemeToggle />
         </Tooltip>
+        <AppearanceSettingsDialog />
       </div>
     </header>,
     document.body
