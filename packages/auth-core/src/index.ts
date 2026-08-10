@@ -1,4 +1,9 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  createHmac,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 
 import argon2 from "argon2";
 
@@ -20,6 +25,53 @@ const RECOVERY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 export interface RecoveryCodeIssue {
   readonly displayCode: string;
   readonly hash: string;
+}
+
+export type WebAuthnChallengePurpose = "LOGIN" | "ENROLL" | "REAUTH";
+
+export interface WebAuthnChallengeRecord {
+  readonly id: string;
+  readonly challenge: string;
+  readonly purpose: WebAuthnChallengePurpose;
+  readonly userId: string | null;
+  readonly expiresAt: Date;
+}
+
+export interface WebAuthnChallengeStore {
+  create(record: WebAuthnChallengeRecord): Promise<void>;
+  /** Atomically retrieves and removes the record, so a response cannot replay. */
+  consume(id: string): Promise<WebAuthnChallengeRecord | null>;
+}
+
+export async function issueWebAuthnChallenge(input: {
+  readonly store: WebAuthnChallengeStore;
+  readonly purpose: WebAuthnChallengePurpose;
+  readonly userId: string | null;
+  readonly now?: Date;
+}): Promise<WebAuthnChallengeRecord> {
+  const now = input.now ?? new Date();
+  const record: WebAuthnChallengeRecord = {
+    id: randomUUID(),
+    challenge: randomBytes(32).toString("base64url"),
+    purpose: input.purpose,
+    userId: input.userId,
+    expiresAt: new Date(now.getTime() + 5 * 60_000),
+  };
+  await input.store.create(record);
+  return record;
+}
+
+export async function consumeWebAuthnChallenge(input: {
+  readonly store: WebAuthnChallengeStore;
+  readonly id: string;
+  readonly purpose: WebAuthnChallengePurpose;
+  readonly now?: Date;
+}): Promise<WebAuthnChallengeRecord | null> {
+  const record = await input.store.consume(input.id);
+  const now = input.now ?? new Date();
+  if (!record || record.purpose !== input.purpose || record.expiresAt <= now)
+    return null;
+  return record;
 }
 
 /** Generates codes once; only their keyed hashes belong in `RecoveryCode`. */

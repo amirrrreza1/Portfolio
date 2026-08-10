@@ -2,19 +2,49 @@ import { describe, expect, it } from "vitest";
 
 import {
   authorizeCookieMutation,
+  consumeWebAuthnChallenge,
   hashPassword,
   issueSession,
   PasswordLoginService,
   issueRecoveryCodes,
+  issueWebAuthnChallenge,
   verifyRecoveryCode,
   verifyCsrfToken,
   verifyPasswordHash,
   verifySessionToken,
+  type WebAuthnChallengeRecord,
 } from "../src/index.js";
 
 const secrets = { sessionSecret: "s".repeat(32), csrfSecret: "c".repeat(32) };
 
 describe("opaque session primitives", () => {
+  it("issues short-lived WebAuthn challenges that are consumed exactly once", async () => {
+    const records = new Map<string, WebAuthnChallengeRecord>();
+    const store = {
+      create: async (record: WebAuthnChallengeRecord) =>
+        void records.set(record.id, record),
+      consume: async (id: string) => {
+        const record = records.get(id) ?? null;
+        records.delete(id);
+        return record;
+      },
+    };
+    const now = new Date("2026-01-01T00:00:00Z");
+    const issued = await issueWebAuthnChallenge({
+      store,
+      purpose: "LOGIN",
+      userId: "user-1",
+      now,
+    });
+    expect(issued.challenge).toHaveLength(43);
+    await expect(
+      consumeWebAuthnChallenge({ store, id: issued.id, purpose: "LOGIN", now })
+    ).resolves.toMatchObject({ id: issued.id });
+    await expect(
+      consumeWebAuthnChallenge({ store, id: issued.id, purpose: "LOGIN", now })
+    ).resolves.toBeNull();
+  });
+
   it("generates unique recovery codes and stores only keyed hashes", () => {
     const codes = issueRecoveryCodes("r".repeat(32), 4);
     expect(new Set(codes.map((code) => code.displayCode)).size).toBe(4);
