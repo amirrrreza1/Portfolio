@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-10**
 
-Active milestone: **M1 — Trusted domain and media foundation** (contracts and database slices delivered; markdown and media remain). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestone: **M2 — Deterministic legacy migration** (the validated dry-run and reconciliation report are delivered; the applied write remains gated by M1's media adapter and a real PostgreSQL database). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -25,7 +25,7 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 ## 2. Current position
 
-Phase 0 stabilization is complete in the repository, and three of five M1 slices are delivered. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing in M1.
+Phase 0 stabilization is complete in the repository, and every M1 implementation slice is present. Its real-database migration and clean-seed exit gate remains unproven. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing in M1.
 
 | Area                         | Current state                                                                                                                                                     | Roadmap implication                                                                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,7 +34,7 @@ Phase 0 stabilization is complete in the repository, and three of five M1 slices
 | API                          | NestJS/Fastify scaffold exposes only the health route, covered by a real smoke test                                                                               | Domain and security modules start in M1                                                                                                           |
 | Contracts                    | `packages/contracts` exports the common, appearance, auth, content, and blog-command schemas with 266 tests                                                       | Complete for M1. Portfolio resource DTOs land with their M7 admin slices rather than ahead of them                                                |
 | Database                     | `packages/database` has the full Prisma schema (35 models, 16 enums), the constraint SQL, the pooled client, concurrency helpers, and a deterministic seed        | Migrations have not been generated or applied against a real PostgreSQL yet; see §6                                                               |
-| Markdown and Git content     | `packages/markdown` and `content/` do not yet exist                                                                                                               | The renderer must be proven before the content store or blog UI                                                                                   |
+| Markdown and Git content     | `packages/markdown` is delivered and security-tested; the Git-backed `content/` store does not yet exist                                                          | M3 can build the content store on the proven renderer boundary                                                                                    |
 | Blog and admin               | Feature folders are placeholders; no routes, authentication, or mutation UI exist                                                                                 | No admin mutation work starts before M6 exits                                                                                                     |
 | Appearance                   | Runtime uses a client `localStorage` theme; fonts are now `woff2`-only with correct numeric weights, and blog typography is still specification-only              | Implement after the locale-aware server layout exists; M5 adds subsetting and `unicode-range` to the reduced font set                             |
 | Operations and quality       | CI runs frozen install, format, lint, typecheck, real tests, builds, and full-history secret scanning; `--passWithNoTests` is gone from every package             | Expand continuously; container, audit, SBOM, and image scanning complete in M9                                                                    |
@@ -95,7 +95,7 @@ Two dependencies are non-negotiable:
 | ---------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | M0 — Baseline, guardrails, and decisions | Blocked     | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
 | M1 — Trusted domain and media foundation | In progress | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
-| M2 — Deterministic legacy migration      | Not started | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
+| M2 — Deterministic legacy migration      | In progress | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
 | M3 — Git content-store proof             | Not started | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
 | M4 — Public bilingual cutover            | Not started | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
 | M5 — Appearance and accessibility        | Not started | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
@@ -159,7 +159,7 @@ Slice status:
 | Database — schema and constraints        | **Delivered, unapplied** | `packages/database`: 35 models, 16 enums, 64 relation fields, 54 `CHECK` constraints and 6 partial indexes, pooled client, optimistic-concurrency and advisory-lock helpers, deterministic seed. Verified against an in-process PostgreSQL; **migrations have not been generated or run against a real server** |
 | Contracts — auth, content, blog commands | **Delivered**            | Password policy, login, WebAuthn, sessions and CSRF; the frontmatter contract every authoring path converges on; sync state; and the article lifecycle commands                                                                                                                                                 |
 | Markdown pipeline                        | **Delivered**            | packages/markdown now provides bounded safe YAML/frontmatter parsing, byte-stable serialization, GFM/directive validation, server-only Shiki output, sanitize-last rendering, heading/reading-time derivation, and an XSS/YAML/URL corpus                                                                       |
-| Media foundation                         | Not started              | MinIO adapter, media identity and ingestion contract                                                                                                                                                                                                                                                            |
+| Media foundation                         | **Delivered**            | packages/media provides private S3/MinIO and local/test object-store adapters, magic-byte MIME verification, SHA-256 identity, safe public names, and traversal-proof object-key handling                                                                                                                       |
 
 Exit gate:
 
@@ -175,6 +175,19 @@ The constraint suite (`packages/database/test/constraints.spec.ts`) proves each 
 ### M2 — Deterministic legacy migration
 
 Objective: move legacy portfolio data without losing fidelity, using the media primitives proven in M1.
+
+Current slice: **preflight and reconciliation delivered.** The migration package
+loads the preserved JSON snapshot, validates it before any write, normalizes only
+reviewed values, and emits a deterministic report. The current snapshot has zero
+errors and four explained warnings: the Portfolio placeholder URL becomes null
+and three black skill colours need owner-selected accessible replacements. The
+transactional writer and Prisma adapter now require verified media references
+before they can write. `pnpm --filter @portfolio/database migrate:legacy --
+--local-media-root <directory>` is explicit-apply only, records the exact
+source checksum, skips a matching replay before creating objects, and removes
+new objects if the database transaction fails. Applying it remains an
+environment gate: a real PostgreSQL database and private object store must be
+available for the final media-ingestion/reconciliation run.
 
 Deliverables:
 

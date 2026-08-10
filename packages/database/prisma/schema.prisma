@@ -913,6 +913,18 @@ model ContentSyncLog {
 // Governance and operations
 // ---------------------------------------------------------------------------
 
+/// Idempotency ledger for versioned, repository-owned data migrations. A
+/// changed legacy snapshot under the same version is rejected rather than
+/// silently overwriting the prior migration's provenance.
+model DataMigration {
+  version  String   @id
+  checksum String
+  report   Json
+  appliedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("data_migrations")
+}
+
 /// Complete redacted before/after snapshots. Authentication secrets and session
 /// tokens are never snapshotted — a revision history that contains password
 /// hashes is a second copy of the credential store with weaker access control.

@@ -21,12 +21,15 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force",
     "db:constraints": "node scripts/stage-constraints.mjs",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "migrate:legacy": "pnpm --filter @portfolio/media build && pnpm --filter @portfolio/migration build && tsx scripts/migrate-legacy.ts --apply"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@portfolio/media": "workspace:*",
+    "@portfolio/migration": "workspace:*",
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "pg": "8.22.0"

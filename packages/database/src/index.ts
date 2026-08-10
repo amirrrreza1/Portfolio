@@ -27,3 +27,5 @@ export {
   type TransactionCapable,
   type VersionedDelegate,
 } from "./concurrency.js";
+
+export { createLegacyMigrationStore } from "./legacy-migration.js";

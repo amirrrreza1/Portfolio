@@ -21,6 +21,7 @@ next-env.d.ts
 # local runtime data
 infrastructure/docker/data/
 uploads/
+migration-reconciliation.json
 
 # environment and secrets
 .env*
