@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-10**
 
-Active milestone: **M0 — Baseline, guardrails, and decisions** (all repository-owned work complete; the gate is held open by one owner action, see §6)
+Active milestone: **M1 — Trusted domain and media foundation** (contracts slice delivered). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -25,14 +25,14 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 ## 2. Current position
 
-Phase 0 stabilization is complete in the repository. One item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds the gate open.
+Phase 0 stabilization is complete in the repository, and the first M1 slice is delivered. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing in M1.
 
 | Area                         | Current state                                                                                                                                                     | Roadmap implication                                                                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                             | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                   |
 | Public application           | The legacy Next.js portfolio is preserved and still reads JSON/hard-coded content, now with `standalone` output, a real `metadataBase`, and a server-computed age | Introduce a server-side rollback adapter before the first cutover, then retain it until migrated output reconciles and the rollback window closes |
 | API                          | NestJS/Fastify scaffold exposes only the health route, covered by a real smoke test                                                                               | Domain and security modules start in M1                                                                                                           |
-| Contracts and database       | Package manifests and placeholder exports exist; there are no shared domain contracts in `packages/contracts` and no Prisma schema or migrations                  | M1 is the first feature milestone                                                                                                                 |
+| Contracts                    | `packages/contracts` exports the common and appearance schemas with 175 tests; the auth, content, and blog command schemas and the Prisma schema do not exist yet | Auth and content contracts follow the database slice so they can mirror the persisted shapes                                                      |
 | Markdown and Git content     | `packages/markdown` and `content/` do not yet exist                                                                                                               | The renderer must be proven before the content store or blog UI                                                                                   |
 | Blog and admin               | Feature folders are placeholders; no routes, authentication, or mutation UI exist                                                                                 | No admin mutation work starts before M6 exits                                                                                                     |
 | Appearance                   | Runtime uses a client `localStorage` theme; fonts are now `woff2`-only with correct numeric weights, and blog typography is still specification-only              | Implement after the locale-aware server layout exists; M5 adds subsetting and `unicode-range` to the reduced font set                             |
@@ -148,12 +148,22 @@ Deliverables:
 - security corpora for XSS, unsafe links, YAML abuse, path traversal, unknown directives, and malformed input;
 - CI checks for contracts, migration validation, renderer tests, dependency/secret scanning, lint, typecheck, and builds.
 
+Slice status:
+
+| Slice                                    | Status        | Notes                                                                                                                                                                                                                                        |
+| ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts — common and appearance        | **Delivered** | `packages/contracts`: branded IDs, locale allowlist, ADR-010 slug normalization, scalar value objects, cursor pagination, the error contract, the appearance registry, and the `portfolio_prefs` cookie with allowlist resolution. 175 tests |
+| Contracts — auth, content, blog commands | Not started   | Follows the database slice, so the command schemas can mirror the persisted shapes                                                                                                                                                           |
+| Markdown pipeline                        | Not started   | Proven before the content store accepts content                                                                                                                                                                                              |
+| Database                                 | Not started   | Prisma models, migration-from-zero, deterministic seed, test database                                                                                                                                                                        |
+| Media foundation                         | Not started   | MinIO adapter, media identity and ingestion contract                                                                                                                                                                                         |
+
 Exit gate:
 
 - a clean database migrates from zero and seeds deterministically;
 - frontmatter round-trips without semantic drift;
 - the renderer and all security corpora pass;
-- public/browser packages cannot import the database client or server secrets.
+- public/browser packages cannot import the database client or server secrets — the contracts half of this is enforced by `packages/contracts/test/boundaries.spec.ts`; the database and API halves land with their own slices.
 
 ### M2 — Deterministic legacy migration
 
@@ -375,10 +385,12 @@ Items 1–3 are complete. The next reviewable changes should be:
 2. ~~**M0 decision review:** resolve the appearance-cache, slug, content-branch, dual-write recovery, worker, and outage questions; record ADRs.~~ Done — ADR-009 through ADR-014. MinIO is selected by ADR-008; M1 must prove its private adapter contract.
 3. ~~**M0 CI PR:** add starter CI and real health/smoke tests so zero-test runs cannot be mistaken for coverage.~~ Done, plus full-history secret scanning.
 4. **Owner action, not a PR:** rotate and revoke the EmailJS keys at the provider. This is the last thing holding the M0 gate open, and it does not block starting M1.
-5. **M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).
+5. ~~**M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).~~ Done — also covers ADR-010 slug normalization, the scalar value objects, and the `portfolio_prefs` cookie resolution.
 6. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus.
 7. **M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.
 8. **M1 media-foundation PR:** chosen MinIO adapter, verified media identity/ingestion contract, and local/test implementation.
+
+The auth and content contract schemas are deliberately sequenced after the database slice rather than with the common ones, so they mirror the persisted shapes instead of anticipating them.
 
 After item 8, re-plan M2–M3 using observed cycle time and the accepted infrastructure decisions. Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished.
 
