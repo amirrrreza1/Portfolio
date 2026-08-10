@@ -1,0 +1,181 @@
+import { createHmac, generateKeyPairSync } from "node:crypto";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  assertContentPath,
+  authenticateGitHubWebhook,
+  ContentConflictError,
+  ContentStoreValidationError,
+  createGitHubInstallationToken,
+  GitHubContentStore,
+  InMemoryWebhookDeliveryStore,
+  synchronizeGitFile,
+  translationContentPath,
+  verifyGitHubWebhookSignature,
+} from "../src/index.js";
+
+describe("content-store boundary", () => {
+  it("constructs only canonical article paths and rejects escape attempts", () => {
+    const path = translationContentPath("clx8k2p9q0000abcd1234efg", "en");
+    expect(path).toBe("content/blog/clx8k2p9q0000abcd1234efg/en.md");
+    expect(() =>
+      assertContentPath("content/../.github/workflows/ci.yml")
+    ).toThrow(ContentStoreValidationError);
+    expect(() => assertContentPath("content\\blog\\post\\en.md")).toThrow(
+      ContentStoreValidationError
+    );
+  });
+
+  it("writes only through the content branch and turns a stale SHA into a conflict", async () => {
+    const calls: unknown[] = [];
+    const store = new GitHubContentStore(
+      { repository: "owner/repository", branch: "content", token: "app-token" },
+      {
+        request: async (request) => {
+          calls.push(request);
+          return { status: 201, body: { content: { sha: "a".repeat(40) } } };
+        },
+      }
+    );
+    await expect(
+      store.write({
+        path: "content/blog/clx8k2p9q0000abcd1234efg/en.md",
+        bytes: Buffer.from("body"),
+        expectedSha: null,
+      })
+    ).resolves.toBe("a".repeat(40));
+    expect(calls).toMatchObject([
+      {
+        body: {
+          branch: "content",
+          message: "chore(content): update indexed article",
+        },
+      },
+    ]);
+
+    const stale = new GitHubContentStore(
+      { repository: "owner/repository", branch: "content", token: "app-token" },
+      { request: async () => ({ status: 409, body: {} }) }
+    );
+    await expect(
+      stale.write({
+        path: "content/blog/clx8k2p9q0000abcd1234efg/en.md",
+        bytes: Buffer.from("body"),
+        expectedSha: "b".repeat(40),
+      })
+    ).rejects.toThrow(ContentConflictError);
+  });
+
+  it("accepts only a constant-time-valid GitHub raw-body signature", () => {
+    const body = Buffer.from('{"ref":"refs/heads/content"}');
+    const signature =
+      "sha256=" +
+      createHmac("sha256", "webhook-secret").update(body).digest("hex");
+    expect(
+      verifyGitHubWebhookSignature("webhook-secret", body, signature)
+    ).toBe(true);
+    expect(
+      verifyGitHubWebhookSignature(
+        "webhook-secret",
+        body,
+        "sha256=" + "0".repeat(64)
+      )
+    ).toBe(false);
+    expect(
+      verifyGitHubWebhookSignature("webhook-secret", body, undefined)
+    ).toBe(false);
+  });
+
+  it("rejects a replay only after the raw body signature authenticates", async () => {
+    const body = Buffer.from('{"ref":"refs/heads/content"}');
+    const signature =
+      "sha256=" +
+      createHmac("sha256", "webhook-secret").update(body).digest("hex");
+    const deliveryStore = new InMemoryWebhookDeliveryStore();
+    const input = {
+      secret: "webhook-secret",
+      rawBody: body,
+      signature,
+      deliveryId: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      deliveryStore,
+    };
+    await expect(authenticateGitHubWebhook(input)).resolves.toBe(true);
+    await expect(authenticateGitHubWebhook(input)).resolves.toBe(false);
+  });
+
+  it("exchanges a short-lived GitHub App JWT for an installation token", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const calls: Array<{ readonly headers: Readonly<Record<string, string>> }> =
+      [];
+    const result = await createGitHubInstallationToken(
+      {
+        appId: "123",
+        installationId: "456",
+        privateKeyPem: privateKey
+          .export({ type: "pkcs8", format: "pem" })
+          .toString(),
+      },
+      {
+        request: async (request) => {
+          calls.push(request);
+          return {
+            status: 201,
+            body: {
+              token: "installation-token",
+              expires_at: "2030-01-01T00:00:00Z",
+            },
+          };
+        },
+      },
+      new Date("2029-12-31T23:00:00Z")
+    );
+    expect(result.token).toBe("installation-token");
+    expect(calls[0]?.headers.Authorization).toMatch(/^Bearer eyJ.+\..+\..+$/);
+  });
+
+  it("re-reads, validates, renders, and idempotently applies Git content", async () => {
+    const source = [
+      "---",
+      "schemaVersion: 1",
+      "postId: clx8k2p9q0000abcd1234efg",
+      "locale: en",
+      "title: Safe Markdown",
+      "slug: safe-markdown",
+      "excerpt: A compact description for the test article.",
+      "status: draft",
+      "---",
+      "## Heading",
+    ].join("\n");
+    const applied: unknown[] = [];
+    const store = new GitHubContentStore(
+      { repository: "owner/repository", branch: "content", token: "app-token" },
+      {
+        request: async () => ({
+          status: 200,
+          body: {
+            content: Buffer.from(source).toString("base64"),
+            sha: "c".repeat(40),
+          },
+        }),
+      }
+    );
+    await expect(
+      synchronizeGitFile({
+        store,
+        commitSha: "d".repeat(40),
+        path: "content/blog/clx8k2p9q0000abcd1234efg/en.md",
+        index: {
+          apply: async (value) => {
+            applied.push(value);
+            return "applied";
+          },
+          recordFailure: async () => undefined,
+        },
+      })
+    ).resolves.toBe("applied");
+    expect(applied).toMatchObject([
+      { title: "Safe Markdown", blobSha: "c".repeat(40) },
+    ]);
+  });
+});
