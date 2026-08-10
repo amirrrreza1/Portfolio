@@ -1,0 +1,16 @@
+import { LOCALES, isLocale } from "@portfolio/contracts/common";
+import { notFound } from "next/navigation";
+
+import HomePage from "../(Home Page)/page";
+
+export function generateStaticParams() {
+  return LOCALES.map((locale) => ({ locale }));
+}
+
+export default async function LocaleHomePage({
+  params,
+}: Readonly<{ params: Promise<{ locale: string }> }>) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  return <HomePage />;
+}
