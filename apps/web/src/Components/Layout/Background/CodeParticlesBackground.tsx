@@ -105,7 +105,9 @@ export const CodeParticlesBackground: React.FC = () => {
         context.textBaseline = "middle";
 
         const char = CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-        context.fillStyle = "#6b7280";
+        context.fillStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue("--color-particle")
+          .trim();
         context.fillText(char, canvas.width / 2, canvas.height / 2);
 
         const texture = new THREE.CanvasTexture(canvas);
@@ -167,18 +169,5 @@ export const CodeParticlesBackground: React.FC = () => {
     };
   }, [size]);
 
-  return (
-    <div
-      ref={mountRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: -1,
-        pointerEvents: "none",
-      }}
-    />
-  );
+  return <div ref={mountRef} className="code-particles-background" />;
 };

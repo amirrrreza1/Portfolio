@@ -88,7 +88,7 @@ export default function ProjectCard({
 
       {stats ? (
         <div className="mb-4 flex gap-6 text-sm">
-          <span className="text-[#E2B340]">{stats.stars || 0} Stars</span>
+          <span className="text-Gold">{stats.stars || 0} Stars</span>
           <span>{stats.commits} Commits</span>
         </div>
       ) : (

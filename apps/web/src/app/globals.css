@@ -160,6 +160,7 @@
   --color-Gold: #d0c39d;
   --color-main-red: #e11d48;
   --color-main-green: #22c55d;
+  --color-particle: #6b7280;
 }
 
 :root[data-theme="light"] {
@@ -169,6 +170,7 @@
   --color-Gold: #d0c39d;
   --color-main-red: #e11d48;
   --color-main-green: #22c55d;
+  --color-particle: #6b7280;
 }
 
 /* `system` is the only preference the server cannot resolve. CSS keeps the
@@ -301,6 +303,13 @@ html[data-motion="reduced"] *::after {
 }
 
 @layer components {
+  .code-particles-background {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+
   .Container {
     width: 95%;
     max-width: 1100px;
