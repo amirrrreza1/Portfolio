@@ -108,6 +108,35 @@ export async function authenticateGitHubWebhook(input: {
   );
 }
 
+export class ContentWebhookHandler {
+  constructor(
+    private readonly secret: string,
+    private readonly deliveryStore: WebhookDeliveryStore,
+    private readonly enqueueReconciliation: () => Promise<void>
+  ) {}
+
+  /** Payload bytes authenticate a trigger only; they are never parsed as content. */
+  async receive(input: {
+    readonly rawBody: Uint8Array;
+    readonly signature: string | undefined;
+    readonly deliveryId: string | undefined;
+  }): Promise<"accepted" | "duplicate" | "rejected"> {
+    if (
+      !verifyGitHubWebhookSignature(this.secret, input.rawBody, input.signature)
+    ) {
+      return "rejected";
+    }
+    if (!input.deliveryId) return "rejected";
+    const claimed = await this.deliveryStore.claim(
+      input.deliveryId,
+      new Date(Date.now() + 10 * 60 * 1000)
+    );
+    if (!claimed) return "duplicate";
+    await this.enqueueReconciliation();
+    return "accepted";
+  }
+}
+
 export interface GitContentResponse {
   readonly status: number;
   readonly body: unknown;
@@ -407,6 +436,17 @@ export async function reconcileGitCommit(input: {
   return summary;
 }
 
+/** Reconciliation always targets the branch's fresh Git reference. */
+export async function reconcileContentHead(input: {
+  readonly store: GitHubContentStore;
+  readonly index: ContentIndexStore;
+}): Promise<ContentReconciliationSummary> {
+  return reconcileGitCommit({
+    ...input,
+    commitSha: await input.store.headCommitSha(),
+  });
+}
+
 export class ContentConflictError extends Error {
   constructor() {
     super("The content file changed since its expected blob SHA.");
@@ -513,6 +553,27 @@ export class GitHubContentStore {
         return [];
       }
     });
+  }
+
+  async headCommitSha(): Promise<string> {
+    const response = await this.transport.request({
+      method: "GET",
+      url:
+        GITHUB_API +
+        "/repos/" +
+        this.config.repository +
+        "/git/ref/heads/" +
+        encodeURIComponent(this.config.branch),
+      headers: this.headers(),
+    });
+    const body = response.body as { object?: { sha?: unknown } };
+    if (response.status !== 200 || typeof body.object?.sha !== "string") {
+      throw new Error("Git content branch reference read failed.");
+    }
+    if (!blobShaSchema.safeParse(body.object.sha).success) {
+      throw new Error("Git returned an invalid content branch commit SHA.");
+    }
+    return body.object.sha;
   }
 
   private url(path: string, includeRef = true): string {

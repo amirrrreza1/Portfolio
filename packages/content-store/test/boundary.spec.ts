@@ -8,6 +8,7 @@ import {
   createFetchGitContentTransport,
   GitHubAppTokenProvider,
   ContentConflictError,
+  ContentWebhookHandler,
   ContentStoreValidationError,
   createGitHubInstallationToken,
   GitHubContentStore,
@@ -106,6 +107,36 @@ describe("content-store boundary", () => {
     };
     await expect(authenticateGitHubWebhook(input)).resolves.toBe(true);
     await expect(authenticateGitHubWebhook(input)).resolves.toBe(false);
+  });
+
+  it("uses authenticated webhooks only as reconciliation triggers", async () => {
+    const body = Buffer.from('{"untrusted":"payload"}');
+    const signature =
+      "sha256=" +
+      createHmac("sha256", "webhook-secret").update(body).digest("hex");
+    let enqueues = 0;
+    const handler = new ContentWebhookHandler(
+      "webhook-secret",
+      new InMemoryWebhookDeliveryStore(),
+      async () => {
+        enqueues += 1;
+      }
+    );
+    await expect(
+      handler.receive({
+        rawBody: body,
+        signature,
+        deliveryId: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      })
+    ).resolves.toBe("accepted");
+    await expect(
+      handler.receive({
+        rawBody: body,
+        signature: "sha256=" + "0".repeat(64),
+        deliveryId: "other-delivery-id",
+      })
+    ).resolves.toBe("rejected");
+    expect(enqueues).toBe(1);
   });
 
   it("exchanges a short-lived GitHub App JWT for an installation token", async () => {
