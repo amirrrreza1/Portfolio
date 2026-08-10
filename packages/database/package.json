@@ -28,6 +28,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@portfolio/auth-core": "workspace:*",
     "@portfolio/content-store": "workspace:*",
     "@portfolio/media": "workspace:*",
     "@portfolio/migration": "workspace:*",

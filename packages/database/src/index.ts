@@ -30,3 +30,4 @@ export {
 
 export { createLegacyMigrationStore } from "./legacy-migration.js";
 export { createContentIndexStore } from "./content-sync.js";
+export { createPasswordLoginStore } from "./auth.js";

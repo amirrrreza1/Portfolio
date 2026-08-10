@@ -296,6 +296,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@portfolio/auth-core':
+        specifier: workspace:*
+        version: link:../auth-core
       '@portfolio/content-store':
         specifier: workspace:*
         version: link:../content-store
