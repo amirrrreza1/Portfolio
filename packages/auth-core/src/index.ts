@@ -144,6 +144,60 @@ export function verifyCsrfToken(
   return equalHash(keyedHash(secret, token), storedBindingHash);
 }
 
+export function isSessionUsable(input: {
+  readonly expiresAt: Date;
+  readonly lastSeenAt: Date;
+  readonly revokedAt: Date | null;
+  readonly now?: Date;
+}): boolean {
+  const now = input.now ?? new Date();
+  return (
+    input.revokedAt === null &&
+    input.expiresAt > now &&
+    input.lastSeenAt.getTime() + SESSION_IDLE_TIMEOUT_MINUTES * 60_000 >
+      now.getTime()
+  );
+}
+
+/**
+ * Validates all browser-mutation defenses together. `same-site` is not enough:
+ * a compromised sibling subdomain is still cross-origin, so only same-origin
+ * requests are accepted for cookie-authenticated changes.
+ */
+export function authorizeCookieMutation(input: {
+  readonly origin: string | undefined;
+  readonly expectedOrigin: string;
+  readonly secFetchSite: string | undefined;
+  readonly csrfToken: string | undefined;
+  readonly csrfSecret: string;
+  readonly csrfBindingHash: string;
+  readonly session: {
+    readonly expiresAt: Date;
+    readonly lastSeenAt: Date;
+    readonly revokedAt: Date | null;
+  };
+  readonly now?: Date;
+}): boolean {
+  if (
+    !isSessionUsable(
+      input.now === undefined
+        ? input.session
+        : { ...input.session, now: input.now }
+    )
+  )
+    return false;
+  if (
+    input.origin !== input.expectedOrigin ||
+    input.secFetchSite !== "same-origin"
+  ) {
+    return false;
+  }
+  return (
+    input.csrfToken !== undefined &&
+    verifyCsrfToken(input.csrfSecret, input.csrfToken, input.csrfBindingHash)
+  );
+}
+
 function assertSecrets(secrets: SessionSecrets): void {
   if (
     secrets.sessionSecret.length < 32 ||

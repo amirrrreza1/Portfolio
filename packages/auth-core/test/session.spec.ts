@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  authorizeCookieMutation,
   hashPassword,
   issueSession,
   PasswordLoginService,
@@ -12,6 +13,35 @@ import {
 const secrets = { sessionSecret: "s".repeat(32), csrfSecret: "c".repeat(32) };
 
 describe("opaque session primitives", () => {
+  it("requires same-origin, session-bound CSRF for cookie mutations", () => {
+    const now = new Date("2026-01-01T00:00:00Z");
+    const issued = issueSession(secrets, now);
+    const input = {
+      origin: "https://portfolio.example",
+      expectedOrigin: "https://portfolio.example",
+      secFetchSite: "same-origin",
+      csrfToken: issued.csrfToken,
+      csrfSecret: secrets.csrfSecret,
+      csrfBindingHash: issued.csrfBindingHash,
+      session: {
+        expiresAt: issued.expiresAt,
+        lastSeenAt: now,
+        revokedAt: null,
+      },
+      now,
+    };
+    expect(authorizeCookieMutation(input)).toBe(true);
+    expect(
+      authorizeCookieMutation({ ...input, origin: "https://evil.example" })
+    ).toBe(false);
+    expect(
+      authorizeCookieMutation({ ...input, secFetchSite: "same-site" })
+    ).toBe(false);
+    expect(
+      authorizeCookieMutation({ ...input, csrfToken: "wrong-token" })
+    ).toBe(false);
+  });
+
   it("uses Argon2id and rejects malformed or wrong credentials", async () => {
     const hash = await hashPassword("correct horse battery staple");
     expect(hash).toMatch(/^\$argon2id\$/);
