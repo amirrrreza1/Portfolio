@@ -56,7 +56,7 @@ Initial registry:
 
 Rules:
 
-- Font files are self-hosted, `woff2` only. The current `.eot`, `.ttf`, and `.woff` copies of 16 JetBrains Mono faces and one Vazir Code face are dead weight in the repository and MUST be removed: `.eot` exists only for Internet Explorer, and `woff2` covers every supported browser. Keep only the weights and styles the design actually uses.
+- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. Reducing to only the weights and styles the design actually uses is still open, and belongs with the subsetting work below.
 - Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs.
 - `font-display: swap` with a metric-compatible fallback, so a font swap does not reflow the article.
 - Preload only the critical variant for the active family and locale. Non-default families load on selection.

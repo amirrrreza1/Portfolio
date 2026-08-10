@@ -44,8 +44,10 @@ A bilingual portfolio and blog. Article bodies are Markdown files in the Git rep
 
 ## Status
 
-The repository contains documentation, workspace/package scaffolding, the original frontend, an API health probe, starter CI, and the frozen legacy baseline. Feature code, the Prisma model, the markdown package, and the content store are intentionally deferred to the implementation phases.
+The repository contains documentation, workspace/package scaffolding, the original frontend, an API health probe, starter CI, the frozen legacy baseline, and the first shared contracts. The Prisma model, the markdown package, and the content store are intentionally deferred to their slices.
 
-Defects fixed during M0 stabilization: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, and two `@font-face` weight collisions that made the ExtraBold faces unusable. A repository-wide formatting failure that would have made the CI format step red on every commit was fixed at the same time.
+`packages/contracts` currently exports the `common` module (IDs, locales, ADR-010 slug normalization, scalar values, pagination, errors) and the `appearance` module (theme and blog typography registry, the `portfolio_prefs` cookie, `AppearanceSettings` validation). The auth, content, and blog command schemas follow the Prisma slice so they mirror the persisted shapes.
+
+Defects fixed in M0: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, and two `@font-face` weight collisions that made the ExtraBold faces unusable. A repository-wide formatting failure that would have made the CI format step red on every commit was fixed at the same time.
 
 Defects documented and still scheduled: publicly exposed EmailJS credentials — the keys ship in the client bundle, so only provider-side revocation removes the exposure — a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, and two skill colours that fail contrast. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

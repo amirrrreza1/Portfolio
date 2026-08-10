@@ -46,15 +46,17 @@ Currently two paragraphs of prose in `AboutMe.tsx`, with emphasis applied throug
 | Location    | short text, translatable                 | Currently `"Tehran, Iran"`                                                           |
 | Role        | short text, translatable                 | Currently `"frontend developer"`                                                     |
 
-**Corrections.** `Utils/Age.ts` reads the birth date from `process.env.NEXT_PUBLIC_BIRTHDAY`, which has three problems:
+**Corrections — the environment half is done; the database half is not.** `Utils/Age.ts` read the birth date from `process.env.NEXT_PUBLIC_BIRTHDAY`, which had three problems:
 
-- A `NEXT_PUBLIC_*` variable is compiled into the browser bundle, so the exact birth date is published to every visitor whether or not the page displays it.
-- `NEXT_PUBLIC_BIRTHDAY` is not declared in `.env.example`, so a fresh checkout renders `null` where the age should be — the About Me paragraph reads "Hello, I'm Amirreza Azarioun, , years old". A required value that is absent from the example environment is a setup trap.
-- The age is computed at render time from the client's clock, so it can disagree between server and client and cannot be cached confidently.
+- A `NEXT_PUBLIC_*` variable is compiled into the browser bundle, so the exact birth date was published to every visitor whether or not the page displayed it.
+- `NEXT_PUBLIC_BIRTHDAY` was not declared in `.env.example`, so a fresh checkout rendered `null` where the age should be — the About Me paragraph read "Hello, I'm Amirreza Azarioun, , years old". A required value absent from the example environment is a setup trap.
+- The age was computed at render time from the client's clock, so it could disagree between server and client and could not be cached confidently.
 
-Once the birth date is a database setting, substitution happens server-side from the server clock, the value never enters the client bundle, and startup validation catches its absence instead of a visitor noticing it.
+**Fixed in M0.** The value is now the server-only `BIRTH_DATE`, declared in `.env.example`, validated, and computed in UTC by a server component; `AboutMe` drops the clause entirely rather than rendering an empty gap when it is absent. All three problems are closed.
 
-`NEXT_PUBLIC_BIRTHDAY` and the three EmailJS keys are the only `NEXT_PUBLIC_*` values in use besides the API base URL. All four are removed by this migration.
+**Still owed by M2.** The date moves from the environment into `SiteSettings`, so the owner can change it without a deployment and startup validation is replaced by a database constraint.
+
+`NEXT_PUBLIC_BIRTHDAY` is gone. The three EmailJS keys are the only remaining `NEXT_PUBLIC_*` values besides the API base URL; they are removed when M4 replaces the contact path, and they must be revoked at the provider regardless.
 
 ## 4. Skills — `SkillCategory` and `Skill`
 
@@ -114,15 +116,17 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 | Credential URL                  | URL, optional                 | Not present today                                                       |
 | Enabled, sort order             | boolean, integer              |                                                                         |
 
-**Correction — a real bug, currently masked.** Two `filePath` values disagree in case with the files on disk:
+**Correction — a real bug, fixed in M0.** Two `filePath` values disagreed in case with the files on disk:
 
-| JSON value                | Actual file   |
-| ------------------------- | ------------- |
-| `/Certificates/Web-1.pdf` | `Web-1.pdf` ✓ |
-| `/Certificates/web-2.pdf` | `Web-2.pdf` ✗ |
-| `/Certificates/web-3.pdf` | `Web-3.pdf` ✗ |
+| JSON value (before M0)    | Actual file | Status                   |
+| ------------------------- | ----------- | ------------------------ |
+| `/Certificates/Web-1.pdf` | `Web-1.pdf` | was already correct      |
+| `/Certificates/web-2.pdf` | `Web-2.pdf` | corrected to `Web-2.pdf` |
+| `/Certificates/web-3.pdf` | `Web-3.pdf` | corrected to `Web-3.pdf` |
 
-These resolve today only because the development filesystem is case-insensitive. In a Linux container both links return `404`. Migration matches files case-sensitively, fails on a miss, and records the verified checksum, MIME type, and byte size for each. This is exactly the class of defect that only appears after deployment, and it is why the reconciliation report is a release gate.
+They resolved only because the development filesystem is case-insensitive; in a Linux container both links returned `404`. `apps/web/test/legacy-assets.spec.ts` now resolves every certificate path segment by segment against the real directory listing, which reproduces the container's case sensitivity on any machine, so the defect cannot silently return.
+
+Migration still matches files case-sensitively, fails on a miss, and records the verified checksum, MIME type, and byte size for each. This is exactly the class of defect that only appears after deployment, and it is why the reconciliation report is a release gate.
 
 Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certificates MUST NOT be marked up as credentials or qualifications, per [SEO.md](SEO.md) §4.
 
@@ -212,7 +216,7 @@ The `useAutoLang` hook, which sets `lang` on inputs based on whether the value c
 
 **Corrections:**
 
-- `metadataBase` is not set, so Open Graph and canonical URLs resolve as relative paths and will be wrong in production. This is a concrete SEO defect today.
+- ~~`metadataBase` is not set, so Open Graph and canonical URLs resolve as relative paths and will be wrong in production.~~ **Fixed in M0:** it is resolved from `PUBLIC_SITE_URL`, and a production build without that value now fails rather than silently resolving canonicals against `localhost`. The value moves into `SiteSettings` in M7; the environment variable stays, because the origin differs per deployment.
 - The `keywords` meta tag has had no effect on major search engines for many years. It is retained only as an optional owner-editable field, and [SEO.md](SEO.md) does not count it as a ranking surface.
 - `lang="en"` is hard-coded on `<html>` and must become dynamic per [I18N.md](I18N.md) §5.
 - There is no `robots.txt`, `sitemap.xml`, RSS feed, `og:image`, or JSON-LD today. All are additions, not migrations.

@@ -254,7 +254,7 @@ An owner may record an ASCII transliteration as a redirect alias, but it is neve
 
 ### Consequences
 
-M1 owns normalization contracts and database uniqueness tests. M2 reports every generated legacy project slug for review. M8 owns redirect-history and canonical/hreflang tests.
+M1 owns normalization contracts and database uniqueness tests. The normalization contract is delivered in `packages/contracts/src/common/slug.ts`: one function shared by validation, storage, and lookup, folding Arabic kaf/yeh and Arabic-Indic digits, stripping ZWNJ and bidi controls, and reducing Arabic presentation forms. The database uniqueness tests wait on the Prisma slice. M2 reports every generated legacy project slug for review. M8 owns redirect-history and canonical/hreflang tests.
 
 ---
 

@@ -92,8 +92,8 @@ Two dependencies are non-negotiable:
 
 | Milestone                                | Status      | Relative size | Outcome                                                                                                              | Depends on         |
 | ---------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| M0 — Baseline, guardrails, and decisions | In progress | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
-| M1 — Trusted domain and media foundation | Not started | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
+| M0 — Baseline, guardrails, and decisions | Blocked     | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
+| M1 — Trusted domain and media foundation | In progress | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
 | M2 — Deterministic legacy migration      | Not started | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
 | M3 — Git content-store proof             | Not started | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
 | M4 — Public bilingual cutover            | Not started | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
@@ -102,6 +102,8 @@ Two dependencies are non-negotiable:
 | M7 — Portfolio CMS                       | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
 | M8 — Blog authoring, publishing, and SEO | Not started | XL            | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO                                | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup    | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
+
+M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing in M1, so work continues in parallel.
 
 The detailed plan maps to these milestones as follows: M0 pulls forward the Phase 0 cleanup and starter CI; M1 is Phase 1 plus the media foundation needed by migration; M2 is Phase 2; M3 is Phase 2.5; M4 is Phase 3 plus the public contact replacement; M5 is Phase 3.5; M6 is Phase 4; M7 is Phase 5 plus upload hardening; M8 is Phase 6; and M9 completes Phases 7–9. This mapping is authoritative when the older phase grouping would defer a prerequisite until after its consumer.
 

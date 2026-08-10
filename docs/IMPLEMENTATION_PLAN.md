@@ -2,7 +2,7 @@
 
 Current milestone status, dependencies, risks, and the immediate execution queue are tracked in [ROADMAP.md](ROADMAP.md). This document remains the detailed implementation sequence.
 
-## Phase 0 — Architecture scaffold (current)
+## Phase 0 — Architecture scaffold (complete in the repository)
 
 - Preserve the frontend under `apps/web`.
 - Add pnpm workspace, API health scaffold, shared contracts/database package boundaries, and pinned planned dependencies.
@@ -24,9 +24,11 @@ Small corrections that are cheap now and expensive later. Status as of 2026-08-1
 - **Done, beyond the original list.** `prettier --check` failed on 48 files at the start of this phase, so the CI format step could never have passed. The repository is now formatted, and `.gitattributes` pins LF endings so a Windows checkout cannot reintroduce the failure or bury real changes under whole-file diffs.
 - **Open — owner action, deliberately deferred.** Revoke and rotate the published EmailJS keys at the provider, and replace the browser integration. The key values were never committed, so secret scanning does not flag them; they are exposed because `NEXT_PUBLIC_` compiles them into the bundle every visitor downloads. Anyone can therefore send mail through the account until the keys are rotated. The integration was kept at the owner's request; submission now fails with a generic message instead of leaking provider errors, and Phase 3 replaces the path entirely. **This keeps the M0 exit gate open.**
 
-## Phase 1 — Contracts, database, and markdown package
+## Phase 1 — Contracts, database, and markdown package (current)
 
 1. Encode shared Zod schemas for IDs, locales, pagination, errors, portfolio resources, frontmatter, auth flows, appearance preferences, and admin mutations.
+   - **Done:** IDs, locales, ADR-010 slug normalization, scalar value objects, pagination, the error contract, and the full appearance surface (registry, `portfolio_prefs` cookie resolution, `AppearanceSettings` validation). 175 tests, plus a boundary test that fails if the package ever imports the database client or a Node-only module.
+   - **Deferred to after step 3:** portfolio resources, frontmatter, auth flows, and admin mutations. Writing them before the Prisma models means guessing the persisted shapes and rewriting them afterwards.
 2. Build `packages/markdown`: frontmatter schema, deterministic serializer, directive allowlist with attribute schemas, and the full render pipeline from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8. Test it against the XSS, unsafe-link, and malformed-YAML corpora before anything depends on it.
 3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, and `ContentSyncLog`.
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
@@ -54,7 +56,7 @@ Create a versioned, repeatable migration command that reads the preserved legacy
 | hard-coded header nav (6 items)                               | `NavItem`                                                      |
 | hard-coded footer links (3 social, 1 donate)                  | `SocialLink`                                                   |
 | hard-coded root-layout metadata                               | `SiteSettings`                                                 |
-| `NEXT_PUBLIC_BIRTHDAY` read by `Utils/Age.ts`                 | `SiteSettings` / about section field, computed server-side     |
+| `BIRTH_DATE` read by `Utils/Age.ts`                           | `SiteSettings` / about section field, computed server-side     |
 | `apps/web/public/resume.pdf`                                  | `MediaAsset` plus active `ResumeVersion`                       |
 | certificate PDFs and public images                            | checksummed `MediaAsset` records/objects                       |
 
@@ -65,7 +67,7 @@ The field-by-field mapping, including every current value and the defects found 
 - Normalize legacy project statuses such as `Completed` to the approved enum rather than silently coercing unknown values. All 14 projects are currently `"Completed"`; an unrecognized value must fail the migration.
 - Resolve numeric technology references and fail on orphan skill IDs. Verified: no orphans exist today across the 26 skill IDs, and the migration must keep it that way rather than assume it.
 - Detect and correct text encoding/mojibake before approval; never “fix” text without showing the report. Several quotes and project descriptions contain typographic apostrophes.
-- Reconcile path casing. The current JSON uses `web-2.pdf`/`web-3.pdf` while files are named `Web-2.pdf`/`Web-3.pdf`; Linux containers are case-sensitive, and this currently only works by accident.
+- Reconcile path casing. The JSON was corrected in M0 (`web-2.pdf`/`web-3.pdf` to `Web-2.pdf`/`Web-3.pdf`) and a case-sensitive test now guards it, but migration still resolves every media path case-sensitively rather than trusting that, because a case-insensitive filesystem can reintroduce the mismatch at any time.
 - Validate every link/protocol and distinguish absent URLs from placeholder `#`. The `Portfolio` project's `"link": "#"` becomes null; `Taksize`'s null `repo` stays null.
 - Report skill colours that fail contrast on an enabled theme (two are `#000000`) for the owner to re-pick, rather than adjusting them silently.
 - Generate stable slugs with an explicit collision report. Projects have no slugs today.
