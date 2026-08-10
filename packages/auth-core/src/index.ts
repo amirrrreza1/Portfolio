@@ -3,6 +3,8 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import argon2 from "argon2";
 
 import {
+  RECOVERY_CODE_GROUP_LENGTH,
+  RECOVERY_CODE_GROUPS,
   SESSION_ABSOLUTE_TIMEOUT_HOURS,
   SESSION_IDLE_TIMEOUT_MINUTES,
   SESSION_TOKEN_BYTES,
@@ -11,6 +13,52 @@ import {
 export interface SessionSecrets {
   readonly sessionSecret: string;
   readonly csrfSecret: string;
+}
+
+const RECOVERY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+
+export interface RecoveryCodeIssue {
+  readonly displayCode: string;
+  readonly hash: string;
+}
+
+/** Generates codes once; only their keyed hashes belong in `RecoveryCode`. */
+export function issueRecoveryCodes(
+  recoverySecret: string,
+  count = 10
+): readonly RecoveryCodeIssue[] {
+  if (
+    recoverySecret.length < 32 ||
+    !Number.isSafeInteger(count) ||
+    count < 1 ||
+    count > 20
+  ) {
+    throw new Error("A recovery secret and a bounded code count are required.");
+  }
+  const codes = new Set<string>();
+  while (codes.size < count) {
+    let raw = "";
+    for (const byte of randomBytes(
+      RECOVERY_CODE_GROUPS * RECOVERY_CODE_GROUP_LENGTH
+    )) {
+      raw += RECOVERY_ALPHABET[byte % RECOVERY_ALPHABET.length];
+    }
+    codes.add(raw);
+  }
+  return [...codes].map((raw) => ({
+    displayCode: raw.match(/.{1,5}/g)?.join("-") ?? raw,
+    hash: keyedHash(recoverySecret, raw),
+  }));
+}
+
+export function verifyRecoveryCode(
+  recoverySecret: string,
+  suppliedCode: string,
+  storedHash: string
+): boolean {
+  const normalized = suppliedCode.toLowerCase().replace(/[\s-]/g, "");
+  if (!/^[a-z0-9]{20}$/.test(normalized)) return false;
+  return equalHash(keyedHash(recoverySecret, normalized), storedHash);
 }
 
 /** OWASP-aligned memory-hard profile; changes require an explicit migration. */

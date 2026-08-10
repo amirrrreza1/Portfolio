@@ -5,6 +5,8 @@ import {
   hashPassword,
   issueSession,
   PasswordLoginService,
+  issueRecoveryCodes,
+  verifyRecoveryCode,
   verifyCsrfToken,
   verifyPasswordHash,
   verifySessionToken,
@@ -13,6 +15,29 @@ import {
 const secrets = { sessionSecret: "s".repeat(32), csrfSecret: "c".repeat(32) };
 
 describe("opaque session primitives", () => {
+  it("generates unique recovery codes and stores only keyed hashes", () => {
+    const codes = issueRecoveryCodes("r".repeat(32), 4);
+    expect(new Set(codes.map((code) => code.displayCode)).size).toBe(4);
+    expect(codes[0]?.displayCode).toMatch(/^[a-z0-9]{5}(?:-[a-z0-9]{5}){3}$/);
+    expect(codes[0]?.hash).not.toContain(
+      codes[0]?.displayCode.replaceAll("-", "") ?? ""
+    );
+    expect(
+      verifyRecoveryCode(
+        "r".repeat(32),
+        codes[0]?.displayCode ?? "",
+        codes[0]?.hash ?? ""
+      )
+    ).toBe(true);
+    expect(
+      verifyRecoveryCode(
+        "r".repeat(32),
+        "aaaaa-aaaaa-aaaaa-aaaaa",
+        codes[0]?.hash ?? ""
+      )
+    ).toBe(false);
+  });
+
   it("requires same-origin, session-bound CSRF for cookie mutations", () => {
     const now = new Date("2026-01-01T00:00:00Z");
     const issued = issueSession(secrets, now);
