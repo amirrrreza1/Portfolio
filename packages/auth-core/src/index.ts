@@ -1,5 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+import argon2 from "argon2";
+
 import {
   SESSION_ABSOLUTE_TIMEOUT_HOURS,
   SESSION_IDLE_TIMEOUT_MINUTES,
@@ -9,6 +11,34 @@ import {
 export interface SessionSecrets {
   readonly sessionSecret: string;
   readonly csrfSecret: string;
+}
+
+/** OWASP-aligned memory-hard profile; changes require an explicit migration. */
+const ARGON2_OPTIONS = {
+  type: argon2.argon2id,
+  memoryCost: 65_536,
+  timeCost: 3,
+  parallelism: 1,
+} as const;
+
+export async function hashPassword(password: string): Promise<string> {
+  if (password.length === 0 || password.length > 256) {
+    throw new Error("Password is outside the allowed length.");
+  }
+  return argon2.hash(password.normalize("NFC"), ARGON2_OPTIONS);
+}
+
+/** Invalid encodings deliberately return false rather than expose parser detail. */
+export async function verifyPasswordHash(
+  password: string,
+  encodedHash: string
+): Promise<boolean> {
+  if (password.length === 0 || password.length > 256) return false;
+  try {
+    return await argon2.verify(encodedHash, password.normalize("NFC"));
+  } catch {
+    return false;
+  }
 }
 
 export interface IssuedSession {

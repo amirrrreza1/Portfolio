@@ -245,6 +245,9 @@ importers:
       '@portfolio/contracts':
         specifier: workspace:*
         version: link:../contracts
+      argon2:
+        specifier: 0.45.1
+        version: 0.45.1
     devDependencies:
       '@types/node':
         specifier: 24.13.3

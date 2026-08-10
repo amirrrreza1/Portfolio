@@ -18,7 +18,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@portfolio/contracts": "workspace:*"
+    "@portfolio/contracts": "workspace:*",
+    "argon2": "0.45.1"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
