@@ -302,6 +302,9 @@ importers:
       '@portfolio/content-store':
         specifier: workspace:*
         version: link:../content-store
+      '@portfolio/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@portfolio/media':
         specifier: workspace:*
         version: link:../media

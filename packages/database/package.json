@@ -22,6 +22,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:constraints": "node scripts/stage-constraints.mjs",
     "db:seed": "tsx prisma/seed.ts",
+    "provision:owner": "pnpm --filter @portfolio/auth-core build && tsx scripts/provision-owner.ts --apply",
     "migrate:legacy": "pnpm --filter @portfolio/media build && pnpm --filter @portfolio/migration build && tsx scripts/migrate-legacy.ts --apply"
   },
   "prisma": {
@@ -30,6 +31,7 @@
   "dependencies": {
     "@portfolio/auth-core": "workspace:*",
     "@portfolio/content-store": "workspace:*",
+    "@portfolio/contracts": "workspace:*",
     "@portfolio/media": "workspace:*",
     "@portfolio/migration": "workspace:*",
     "@prisma/adapter-pg": "7.9.1",
