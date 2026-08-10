@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-10**
 
-Active milestone: **M1 — Trusted domain and media foundation** (contracts slice delivered). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestone: **M1 — Trusted domain and media foundation** (contracts and database slices delivered). M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -25,14 +25,15 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 ## 2. Current position
 
-Phase 0 stabilization is complete in the repository, and the first M1 slice is delivered. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing in M1.
+Phase 0 stabilization is complete in the repository, and the first two M1 slices are delivered. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing in M1.
 
 | Area                         | Current state                                                                                                                                                     | Roadmap implication                                                                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                             | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                   |
 | Public application           | The legacy Next.js portfolio is preserved and still reads JSON/hard-coded content, now with `standalone` output, a real `metadataBase`, and a server-computed age | Introduce a server-side rollback adapter before the first cutover, then retain it until migrated output reconciles and the rollback window closes |
 | API                          | NestJS/Fastify scaffold exposes only the health route, covered by a real smoke test                                                                               | Domain and security modules start in M1                                                                                                           |
-| Contracts                    | `packages/contracts` exports the common and appearance schemas with 175 tests; the auth, content, and blog command schemas and the Prisma schema do not exist yet | Auth and content contracts follow the database slice so they can mirror the persisted shapes                                                      |
+| Contracts                    | `packages/contracts` exports the common and appearance schemas with 175 tests; the auth, content, and blog command schemas do not exist yet                       | Now unblocked — the persisted shapes exist, so these can mirror rather than anticipate them                                                       |
+| Database                     | `packages/database` has the full Prisma schema (35 models, 16 enums), the constraint SQL, the pooled client, concurrency helpers, and a deterministic seed        | Migrations have not been generated or applied against a real PostgreSQL yet; see §6                                                               |
 | Markdown and Git content     | `packages/markdown` and `content/` do not yet exist                                                                                                               | The renderer must be proven before the content store or blog UI                                                                                   |
 | Blog and admin               | Feature folders are placeholders; no routes, authentication, or mutation UI exist                                                                                 | No admin mutation work starts before M6 exits                                                                                                     |
 | Appearance                   | Runtime uses a client `localStorage` theme; fonts are now `woff2`-only with correct numeric weights, and blog typography is still specification-only              | Implement after the locale-aware server layout exists; M5 adds subsetting and `unicode-range` to the reduced font set                             |
@@ -152,20 +153,24 @@ Deliverables:
 
 Slice status:
 
-| Slice                                    | Status        | Notes                                                                                                                                                                                                                                        |
-| ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contracts — common and appearance        | **Delivered** | `packages/contracts`: branded IDs, locale allowlist, ADR-010 slug normalization, scalar value objects, cursor pagination, the error contract, the appearance registry, and the `portfolio_prefs` cookie with allowlist resolution. 175 tests |
-| Contracts — auth, content, blog commands | Not started   | Follows the database slice, so the command schemas can mirror the persisted shapes                                                                                                                                                           |
-| Markdown pipeline                        | Not started   | Proven before the content store accepts content                                                                                                                                                                                              |
-| Database                                 | Not started   | Prisma models, migration-from-zero, deterministic seed, test database                                                                                                                                                                        |
-| Media foundation                         | Not started   | MinIO adapter, media identity and ingestion contract                                                                                                                                                                                         |
+| Slice                                    | Status                   | Notes                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts — common and appearance        | **Delivered**            | `packages/contracts`: branded IDs, locale allowlist, ADR-010 slug normalization, scalar value objects, cursor pagination, the error contract, the appearance registry, and the `portfolio_prefs` cookie with allowlist resolution. 175 tests                                                                    |
+| Database — schema and constraints        | **Delivered, unapplied** | `packages/database`: 35 models, 16 enums, 64 relation fields, 54 `CHECK` constraints and 6 partial indexes, pooled client, optimistic-concurrency and advisory-lock helpers, deterministic seed. Verified against an in-process PostgreSQL; **migrations have not been generated or run against a real server** |
+| Contracts — auth, content, blog commands | Not started              | Now unblocked by the schema                                                                                                                                                                                                                                                                                     |
+| Markdown pipeline                        | Not started              | Proven before the content store accepts content                                                                                                                                                                                                                                                                 |
+| Media foundation                         | Not started              | MinIO adapter, media identity and ingestion contract                                                                                                                                                                                                                                                            |
 
 Exit gate:
 
-- a clean database migrates from zero and seeds deterministically;
-- frontmatter round-trips without semantic drift;
-- the renderer and all security corpora pass;
-- public/browser packages cannot import the database client or server secrets — the contracts half of this is enforced by `packages/contracts/test/boundaries.spec.ts`; the database and API halves land with their own slices.
+| Condition                                                                   | Status            | Evidence                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A clean database migrates from zero and seeds deterministically             | **Outstanding**   | The schema, constraint SQL, and seed exist and are internally consistent, but no migration has been generated or applied. Run the steps in `packages/database/prisma/migrations/README.md` to close this |
+| Frontmatter round-trips without semantic drift                              | Not started       | Markdown slice                                                                                                                                                                                           |
+| The renderer and all security corpora pass                                  | Not started       | Markdown slice                                                                                                                                                                                           |
+| Public/browser packages cannot import the database client or server secrets | **Partially met** | Enforced for contracts by `packages/contracts/test/boundaries.spec.ts`. The web-app half lands with the M4 cutover                                                                                       |
+
+The constraint suite (`packages/database/test/constraints.spec.ts`) proves each `CHECK` and partial index rejects what it claims to, using PostgreSQL compiled to WebAssembly rather than a database server, so it runs in CI today. Two constraints failed their own tests when first written: SQL's three-valued logic means a `CHECK` evaluating to NULL passes, which silently permitted a half-populated image dimension pair and an empty appearance allowlist.
 
 ### M2 — Deterministic legacy migration
 
@@ -388,8 +393,8 @@ Items 1–3 are complete. The next reviewable changes should be:
 3. ~~**M0 CI PR:** add starter CI and real health/smoke tests so zero-test runs cannot be mistaken for coverage.~~ Done, plus full-history secret scanning.
 4. **Owner action, not a PR:** rotate and revoke the EmailJS keys at the provider. This is the last thing holding the M0 gate open, and it does not block starting M1.
 5. ~~**M1 contracts PR:** common IDs/locales/errors/pagination plus appearance preference names (`blogFont`, `blogSize`).~~ Done — also covers ADR-010 slug normalization, the scalar value objects, and the `portfolio_prefs` cookie resolution.
-6. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus.
-7. **M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.
+6. **M1 Markdown PR:** frontmatter, deterministic serializer, restricted directives, sanitizer, and security corpus. Needs roughly ten new dependencies installed first.
+7. ~~**M1 database PR:** Prisma models/constraints, migration-from-zero, deterministic seed, and test database.~~ Schema, constraints, client, and seed done; **migration-from-zero still needs to be run against a real PostgreSQL**.
 8. **M1 media-foundation PR:** chosen MinIO adapter, verified media identity/ingestion contract, and local/test implementation.
 
 The auth and content contract schemas are deliberately sequenced after the database slice rather than with the common ones, so they mirror the persisted shapes instead of anticipating them.

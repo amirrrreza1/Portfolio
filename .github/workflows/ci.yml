@@ -37,6 +37,17 @@ jobs:
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
 
+      # The generated Prisma client is git-ignored, so it does not exist in a
+      # clean checkout and every typecheck and build that imports it would fail.
+      # This needs no database — `generate` only reads schema.prisma.
+      - name: Generate the Prisma client
+        run: pnpm db:generate
+
+      # Catches a schema.prisma that parses but is not a valid data model, which
+      # `generate` alone will not always reject.
+      - name: Validate the Prisma schema
+        run: pnpm db:validate
+
       - name: Check formatting
         run: pnpm format:check
 

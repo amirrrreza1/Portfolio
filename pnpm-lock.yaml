@@ -249,6 +249,10 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@25.2.2)(vite@8.2.0(@types/node@25.2.2)(esbuild@0.28.1)(jiti@2.6.1)(terser@5.49.1)(tsx@4.23.7))
+
   packages/database:
     dependencies:
       '@prisma/adapter-pg':
@@ -7224,7 +7228,8 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@types/validator@13.15.10': {}
+  '@types/validator@13.15.10':
+    optional: true
 
   '@types/webxr@0.5.24': {}
 
@@ -7949,13 +7954,15 @@ snapshots:
 
   chrome-trace-event@1.0.4: {}
 
-  class-transformer@0.5.1: {}
+  class-transformer@0.5.1:
+    optional: true
 
   class-validator@0.15.1:
     dependencies:
       '@types/validator': 13.15.10
       libphonenumber-js: 1.13.10
       validator: 13.15.35
+    optional: true
 
   classnames@2.5.1: {}
 
@@ -9282,7 +9289,8 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libphonenumber-js@1.13.10: {}
+  libphonenumber-js@1.13.10:
+    optional: true
 
   lie@3.3.0:
     dependencies:
@@ -11041,7 +11049,8 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  validator@13.15.35: {}
+  validator@13.15.35:
+    optional: true
 
   vfile-message@4.0.3:
     dependencies:

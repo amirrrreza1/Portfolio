@@ -1,6 +1,6 @@
 {
   "name": "@portfolio/database",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -13,10 +13,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
-    "db:format": "prisma format"
+    "db:format": "prisma format",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset --force",
+    "db:constraints": "node scripts/stage-constraints.mjs",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.9.1",
@@ -24,9 +32,11 @@
     "pg": "8.22.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.4",
     "@types/pg": "8.20.4",
     "prisma": "7.9.1",
     "tsx": "4.23.7",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
   }
 }

@@ -31,7 +31,10 @@ Small corrections that are cheap now and expensive later. Status as of 2026-08-1
    - **Deferred to after step 3:** portfolio resources, frontmatter, auth flows, and admin mutations. Writing them before the Prisma models means guessing the persisted shapes and rewriting them afterwards.
 2. Build `packages/markdown`: frontmatter schema, deterministic serializer, directive allowlist with attribute schemas, and the full render pipeline from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8. Test it against the XSS, unsafe-link, and malformed-YAML corpora before anything depends on it.
 3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, and `ContentSyncLog`.
+   - **Done:** 35 models, 16 enums, 64 relation fields, plus 54 `CHECK` constraints and 6 partial indexes in `prisma/sql/integrity_constraints.sql` for what Prisma's schema language cannot express.
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
+   - **Done:** pooled client through the `pg` driver adapter, optimistic-concurrency helper that puts the version predicate in the `WHERE` clause so a stale write is impossible rather than merely detected, advisory-lock helpers for ADR-013, and a constraint suite that runs against PostgreSQL-in-WebAssembly with no server.
+   - **Outstanding:** the migrations themselves. They are generated on a machine with a database; see `packages/database/prisma/migrations/README.md`.
 5. Validate all environment configuration at process startup, including the content-store credentials.
 6. Add unit tests for normalization, per-translation publishing state, per-locale slugs, safe URLs, optimistic concurrency, and frontmatter round-trip determinism.
 7. Implement the chosen MinIO adapter and verified media identity/ingestion foundation needed by legacy migration. Admin upload/quarantine UX remains in its later vertical slice.

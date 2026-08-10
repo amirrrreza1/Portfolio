@@ -1,0 +1,980 @@
+// PostgreSQL schema for the portfolio platform.
+//
+// The approved model is docs/DATA_MODEL.md; this file is its executable form.
+// Where the two disagree, the specification wins and this file is the defect.
+//
+// Two rules shape everything below and are worth stating once:
+//
+//   1. PostgreSQL is authoritative for everything EXCEPT article body text,
+//      which lives in Git (ADR-003). For articles this schema holds a derived
+//      index: identity, taxonomy, realized publication state, the Git blob SHA,
+//      and a render cache. `renderedHtml` is never written from a request
+//      payload and is discarded rather than trusted when its source changes.
+//
+//   2. Translatable fields are stored per locale, never concatenated. Portfolio
+//      content requires English and falls back to it; article translations do
+//      not fall back at all (ADR-005). That asymmetry is deliberate — a page
+//      with one untranslated label is broken in a way a missing article is not.
+//
+// Prisma cannot express CHECK constraints, partial unique indexes, or
+// expression indexes. Those live in the initial migration's raw SQL and are
+// listed in `migrations/README.md`. They are not optional decoration: several
+// of them are the only thing preventing a PUBLISHED row with no publishedAt.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Closed allowlist, mirroring LOCALES in @portfolio/contracts. Adding a value
+/// here without adding it there produces rows the application cannot render.
+enum Locale {
+  en
+  fa
+}
+
+enum UserRole {
+  OWNER
+  EDITOR
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum ProjectStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum NavTargetKind {
+  SECTION_ANCHOR
+  INTERNAL_ROUTE
+}
+
+enum SocialLinkKind {
+  SOCIAL
+  EMAIL
+  DONATE
+}
+
+enum MediaKind {
+  IMAGE
+  DOCUMENT
+}
+
+/// Uploads are not usable until verification succeeds. QUARANTINED is a
+/// terminal state that retains the object for inspection rather than deleting
+/// evidence of an attempted abuse.
+enum MediaProcessingState {
+  PENDING
+  VERIFIED
+  QUARANTINED
+  FAILED
+}
+
+enum MediaVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+/// Per translation, never per post. A post may be published in English and
+/// still drafting in Persian.
+enum TranslationStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Anything other than SYNCED is surfaced on the admin dashboard and excludes
+/// the translation from newly generated feeds and sitemaps.
+enum SyncState {
+  SYNCED
+  PENDING
+  SYNC_FAILED
+  MISSING_IN_GIT
+  FRONTMATTER_DRIFT
+}
+
+enum SyncTrigger {
+  ADMIN_SAVE
+  WEBHOOK
+  RECONCILE
+  SCHEDULER_BOT
+  IMPORT
+}
+
+enum SyncOutcome {
+  SUCCESS
+  PARTIAL
+  FAILURE
+}
+
+enum RevisionAction {
+  CREATE
+  UPDATE
+  ARCHIVE
+  RESTORE
+  DELETE
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+}
+
+enum ContactDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SUPPRESSED
+}
+
+// ---------------------------------------------------------------------------
+// Identity and security
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String     @id @default(cuid(2))
+  /// Normalized before storage: the domain is lowercased, the local part is
+  /// not, because RFC 5321 makes it case-sensitive.
+  email             String     @unique
+  displayName       String
+  role              UserRole   @default(EDITOR)
+  /// Argon2id encoded hash. Parameters and salt live inside the string, so a
+  /// cost change does not require a schema migration. No plaintext or
+  /// reversible value exists anywhere in this schema.
+  passwordHash      String
+  status            UserStatus @default(ACTIVE)
+  passwordChangedAt DateTime   @db.Timestamptz(6)
+  lastLoginAt       DateTime?  @db.Timestamptz(6)
+  createdAt         DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime   @updatedAt @db.Timestamptz(6)
+  version           Int        @default(0)
+
+  webAuthnCredentials WebAuthnCredential[]
+  sessions            Session[]
+  recoveryCodes       RecoveryCode[]
+  posts               Post[]
+  postDrafts          PostDraft[]
+  uploadedMedia       MediaAsset[]
+  resumeUploads       ResumeVersion[]
+  revisions           ContentRevision[]
+  auditEvents         AuditEvent[]
+  slugRedirects       SlugRedirect[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model WebAuthnCredential {
+  id           String    @id @default(cuid(2))
+  userId       String
+  /// Base64url credential ID from the authenticator.
+  credentialId String    @unique
+  publicKey    Bytes
+  /// Monotonic signature counter, updated transactionally after a verified
+  /// assertion. A counter that fails to advance is a cloned-authenticator
+  /// signal, which is why it is stored rather than ignored.
+  counter      BigInt    @default(0)
+  transports   String[]
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  label        String?
+  lastUsedAt   DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("webauthn_credentials")
+}
+
+model Session {
+  id     String @id @default(cuid(2))
+  userId String
+  /// SHA-256/HMAC of the session token. The random token itself exists only in
+  /// the cookie, so a database disclosure does not yield usable sessions.
+  tokenHash String @unique
+  /// Binds the CSRF token to this session, so a token minted for one session
+  /// cannot be replayed against another.
+  csrfBindingHash String
+  /// Coarse network and client fingerprints for anomaly review. Hashed and
+  /// truncated: enough to notice a session moving continents, not enough to be
+  /// a location history.
+  ipPrefixHash     String?
+  userAgentSummary String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  lastSeenAt       DateTime  @default(now()) @db.Timestamptz(6)
+  /// Absolute expiry. Inactivity expiry is derived from lastSeenAt at read
+  /// time, so both limits apply.
+  expiresAt        DateTime  @db.Timestamptz(6)
+  revokedAt        DateTime? @db.Timestamptz(6)
+  revokedReason    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid(2))
+  userId    String
+  codeHash  String    @unique
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  /// Single use. Set transactionally at consumption so a concurrent replay of
+  /// the same code cannot succeed twice.
+  usedAt    DateTime? @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("recovery_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Site and appearance settings (singletons)
+// ---------------------------------------------------------------------------
+
+/// Singleton, pinned to id = 1 by a CHECK constraint in the initial migration.
+/// A settings table that can hold two rows eventually holds two rows, and then
+/// every read has to decide which one is real.
+model SiteSettings {
+  id                    Int      @id @default(1)
+  canonicalSiteUrl      String
+  defaultLocale         Locale   @default(en)
+  enabledLocales        Locale[] @default([en, fa])
+  timezone              String   @default("UTC")
+  defaultSocialImageId  String?
+  authorName            String
+  creatorName           String
+  publisherName         String
+  searchConsoleTokens   Json?
+  /// Server-only. MUST NOT appear in any public DTO — it is the address that
+  /// receives contact mail, and publishing it is how the form becomes a spam
+  /// relay target.
+  contactRecipientEmail String
+  contactEnabled        Boolean  @default(true)
+  contactRetentionDays  Int      @default(90)
+  githubUsername        String?
+  githubRepoAllowlist   String[] @default([])
+  githubCacheTtlSeconds Int      @default(3600)
+  robotsAllowIndexing   Boolean  @default(true)
+  /// Owner date of birth. Moved here from the BIRTH_DATE environment variable
+  /// so it can change without a deployment; the age is always derived
+  /// server-side and the date is never in a public DTO.
+  birthDate             DateTime? @db.Date
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
+  version               Int      @default(0)
+
+  defaultSocialImage MediaAsset?               @relation(fields: [defaultSocialImageId], references: [id], onDelete: Restrict)
+  translations       SiteSettingsTranslation[]
+
+  @@map("site_settings")
+}
+
+model SiteSettingsTranslation {
+  id              String   @id @default(cuid(2))
+  siteSettingsId  Int
+  locale          Locale
+  siteName        String
+  titleTemplate   String
+  metaDescription String
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  siteSettings SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([siteSettingsId, locale])
+  @@map("site_settings_translations")
+}
+
+/// Singleton, pinned to id = 1. Every value here is a KEY that selects a static
+/// authored token set or @font-face block. No value is ever interpolated into
+/// CSS, which is what keeps a visitor-facing appearance feature from becoming a
+/// CSS injection surface (THEMING.md §8).
+model AppearanceSettings {
+  id                      Int      @id @default(1)
+  enabledThemes           String[]
+  defaultTheme            String
+  enabledBlogFonts        String[]
+  /// Locale-keyed map of blog font keys, validated by the Zod schema in
+  /// @portfolio/contracts. At least one enabled font must be able to render
+  /// each enabled locale's script, or Persian articles render as boxes.
+  defaultBlogFontByLocale Json
+  allowedBlogSizeSteps    String[]
+  defaultBlogSizeStep     String
+  offerMotionToggle       Boolean  @default(true)
+  createdAt               DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime @updatedAt @db.Timestamptz(6)
+  version                 Int      @default(0)
+
+  @@map("appearance_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Page structure
+// ---------------------------------------------------------------------------
+
+model PageSection {
+  id            String    @id @default(cuid(2))
+  /// Allowlisted in code (`hero`, `about`, `skills`, ...). The API rejects
+  /// content that does not match this key's contract, so the key determines
+  /// which schema validates `content`.
+  key           String    @unique
+  content       Json
+  schemaVersion Int       @default(1)
+  enabled       Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt    DateTime? @db.Timestamptz(6)
+  version       Int       @default(0)
+
+  translations PageSectionTranslation[]
+
+  @@index([enabled, sortOrder])
+  @@map("page_sections")
+}
+
+model PageSectionTranslation {
+  id        String   @id @default(cuid(2))
+  sectionId String
+  locale    Locale
+  title     String?
+  /// Restricted inline-Markdown profile (CONTENT_PIPELINE.md §10), not the
+  /// full article pipeline. Its sanitized render is cached against the record
+  /// version, never against this text alone.
+  content   Json
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  section PageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, locale])
+  @@index([locale])
+  @@map("page_section_translations")
+}
+
+model NavItem {
+  id            String        @id @default(cuid(2))
+  /// Per-locale label map. Two short strings, so the jsonb pattern rather than
+  /// a sidecar table (DATA_MODEL.md §4).
+  labelByLocale Json
+  targetKind    NavTargetKind
+  /// A section key or a site-relative path. Never an external URL — otherwise
+  /// the header becomes an off-site redirect surface.
+  target        String
+  iconKey       String?
+  enabled       Boolean       @default(true)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+  version       Int           @default(0)
+
+  @@index([enabled, sortOrder])
+  @@map("nav_items")
+}
+
+model SocialLink {
+  id            String         @id @default(cuid(2))
+  labelByLocale Json
+  /// `mailto:` is permitted only when kind = EMAIL; every other kind requires
+  /// absolute https. Enforced by the contract and by a CHECK constraint.
+  url           String
+  iconKey       String?
+  rel           String?
+  kind          SocialLinkKind @default(SOCIAL)
+  enabled       Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
+  version       Int            @default(0)
+
+  @@index([enabled, sortOrder])
+  @@map("social_links")
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio content
+// ---------------------------------------------------------------------------
+
+model Project {
+  id            String        @id @default(cuid(2))
+  slug          String        @unique
+  status        ProjectStatus
+  /// Null means the link is not rendered. A placeholder "#" is not a URL and
+  /// is rejected at validation, which is what the legacy Portfolio row needs.
+  demoUrl       String?
+  repositoryUrl String?
+  imageId       String?
+  featured      Boolean       @default(false)
+  sortOrder     Int           @default(0)
+  enabled       Boolean       @default(true)
+  startedAt     DateTime?     @db.Date
+  completedAt   DateTime?     @db.Date
+  /// Numeric ID from the legacy Projects.json, kept so the M2 reconciliation
+  /// can be re-run after the fact. Never exposed publicly.
+  legacyId      Int?          @unique
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+  archivedAt    DateTime?     @db.Timestamptz(6)
+  version       Int           @default(0)
+
+  image        MediaAsset?          @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  translations ProjectTranslation[]
+  skills       ProjectSkill[]
+
+  @@index([enabled, sortOrder])
+  @@index([status])
+  @@index([featured, sortOrder])
+  @@map("projects")
+}
+
+model ProjectTranslation {
+  id              String   @id @default(cuid(2))
+  projectId       String
+  locale          Locale
+  title           String
+  summary         String
+  longDescription String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, locale])
+  @@index([locale])
+  @@map("project_translations")
+}
+
+model SkillCategory {
+  id        String    @id @default(cuid(2))
+  key       String    @unique
+  sortOrder Int       @default(0)
+  enabled   Boolean   @default(true)
+  legacyId  Int?      @unique
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(6)
+  version   Int       @default(0)
+
+  translations SkillCategoryTranslation[]
+  skills       Skill[]
+
+  @@index([enabled, sortOrder])
+  @@map("skill_categories")
+}
+
+model SkillCategoryTranslation {
+  id         String   @id @default(cuid(2))
+  categoryId String
+  locale     Locale
+  name       String
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+
+  category SkillCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+  @@map("skill_category_translations")
+}
+
+model Skill {
+  id         String   @id @default(cuid(2))
+  categoryId String
+  /// Skill names are proper nouns ("TypeScript", "PostgreSQL") and are
+  /// deliberately NOT translated. Normalized for uniqueness.
+  name       String   @unique
+  /// #rrggbb, contrast-checked against every enabled theme before it can be
+  /// saved, because label text colour is derived from it at render time. Two
+  /// legacy values are #000000 and fail; M2 reports them rather than silently
+  /// adjusting them.
+  color      String
+  iconMediaId String?
+  sortOrder  Int      @default(0)
+  enabled    Boolean  @default(true)
+  legacyId   Int?     @unique
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+  version    Int      @default(0)
+
+  category  SkillCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  iconMedia MediaAsset?    @relation(fields: [iconMediaId], references: [id], onDelete: Restrict)
+  projects  ProjectSkill[]
+
+  @@index([categoryId, sortOrder])
+  @@index([enabled])
+  @@map("skills")
+}
+
+/// Many-to-many join. Moving a skill between categories preserves its project
+/// links, which is why the relationship lives here rather than being derived
+/// from the category.
+model ProjectSkill {
+  projectId String
+  skillId   String
+  sortOrder Int    @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, skillId])
+  @@index([skillId])
+  @@map("project_skills")
+}
+
+model Certificate {
+  id             String    @id @default(cuid(2))
+  issuerName     String
+  issuerUrl      String?
+  instructorName String?
+  instructorUrl  String?
+  /// Free text such as "98/100". NOT a number, and MUST NOT be emitted as a
+  /// structured-data ratingValue (SEO.md §4).
+  scoreText      String?
+  issuedAt       DateTime  @db.Date
+  credentialUrl  String?
+  mediaId        String?
+  enabled        Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  legacyId       Int?      @unique
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt     DateTime? @db.Timestamptz(6)
+  version        Int       @default(0)
+
+  media        MediaAsset?              @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  translations CertificateTranslation[]
+
+  @@index([enabled, sortOrder])
+  @@map("certificates")
+}
+
+model CertificateTranslation {
+  id            String   @id @default(cuid(2))
+  certificateId String
+  locale        Locale
+  title         String
+  description   String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@unique([certificateId, locale])
+  @@index([locale])
+  @@map("certificate_translations")
+}
+
+model Quote {
+  id           String   @id @default(cuid(2))
+  textByLocale Json
+  /// "Anonymous" is a legitimate value and MUST NOT be normalized away.
+  author       String?
+  sourceUrl    String?
+  enabled      Boolean  @default(true)
+  /// When set, this quote is always shown. Otherwise selection is a stable
+  /// function of the UTC date, computed server-side so the cached HTML stays
+  /// valid and server and client cannot disagree.
+  pinned       Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  legacyId     Int?     @unique
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+  version      Int      @default(0)
+
+  @@index([enabled, sortOrder])
+  @@index([pinned])
+  @@map("quotes")
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+model MediaAsset {
+  id              String               @id @default(cuid(2))
+  /// Immutable, random, and internal. Public URLs are constructed by an
+  /// adapter or issued as short-lived signed URLs; the key is never a
+  /// guessable function of the file name, so knowing one object does not
+  /// let a visitor enumerate the bucket.
+  storageKey      String               @unique
+  displayName     String
+  kind            MediaKind
+  /// Detected from magic bytes, not from the client-supplied Content-Type.
+  mimeType        String
+  byteSize        BigInt
+  checksumSha256  String
+  width           Int?
+  height          Int?
+  altText         String?
+  processingState MediaProcessingState @default(PENDING)
+  visibility      MediaVisibility      @default(PUBLIC)
+  uploadedById    String?
+  createdAt       DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @db.Timestamptz(6)
+  archivedAt      DateTime?            @db.Timestamptz(6)
+
+  uploadedBy     User?          @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  projects       Project[]
+  certificates   Certificate[]
+  skills         Skill[]
+  posts          Post[]
+  postTranslations PostTranslation[]
+  resumeVersions ResumeVersion[]
+  siteSettings   SiteSettings[]
+
+  @@index([checksumSha256])
+  @@index([processingState])
+  @@index([kind, visibility])
+  @@map("media_assets")
+}
+
+model ResumeVersion {
+  id             String    @id @default(cuid(2))
+  mediaAssetId   String
+  label          String
+  publicFilename String?
+  uploadedById   String?
+  /// At most one active version at a time, enforced by a partial unique index
+  /// on (activatedAt IS NOT NULL AND retiredAt IS NULL). Activation and
+  /// retirement happen in one transaction, so a download is never served from
+  /// a half-swapped state.
+  activatedAt    DateTime? @db.Timestamptz(6)
+  retiredAt      DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  uploadedBy User?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([activatedAt])
+  @@map("resume_versions")
+}
+
+// ---------------------------------------------------------------------------
+// Blog index over the Git content store
+// ---------------------------------------------------------------------------
+
+/// Carries only what is shared across languages: identity, authorship,
+/// taxonomy, and the cover image. It has NO title, slug, body, or publication
+/// date — those are per translation.
+///
+/// The `id` is the immutable directory name in the content repository, so a
+/// slug change never moves a file.
+model Post {
+  id           String    @id @default(cuid(2))
+  authorId     String?
+  categoryId   String?
+  coverMediaId String?
+  featured     Boolean   @default(false)
+  pinnedUntil  DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt   DateTime? @db.Timestamptz(6)
+  version      Int       @default(0)
+
+  author       User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  category     Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  coverMedia   MediaAsset?       @relation(fields: [coverMediaId], references: [id], onDelete: Restrict)
+  translations PostTranslation[]
+  drafts       PostDraft[]
+  tags         PostTag[]
+
+  @@index([categoryId])
+  @@index([featured])
+  @@map("posts")
+}
+
+model PostTranslation {
+  id       String @id @default(cuid(2))
+  postId   String
+  locale   Locale
+  title    String
+  /// Unique per locale, not globally: English and Persian may coincidentally
+  /// share a slug and that is not a conflict.
+  slug     String
+  excerpt  String?
+
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+  socialImageId  String?
+
+  status       TranslationStatus @default(DRAFT)
+  /// A CHECK constraint enforces the status/timestamp invariants, so a
+  /// PUBLISHED row without publishedAt cannot exist even if application code
+  /// has a bug.
+  publishedAt  DateTime?         @db.Timestamptz(6)
+  scheduledFor DateTime?         @db.Timestamptz(6)
+
+  readingMinutes Int?
+  headingTree    Json?
+
+  /// Render cache, valid only while sourceBlobSha AND rendererVersion both
+  /// match. Never written from a request payload, and regenerable from Git, so
+  /// it is excluded from backups by policy rather than by accident.
+  renderedHtml    String?
+  rendererVersion String?
+
+  /// Git blob SHA of the body file. Doubles as the optimistic-concurrency
+  /// token for body writes: a stale value is a 409 with a diff, not a
+  /// last-write-wins overwrite.
+  sourceBlobSha String?
+
+  syncState                SyncState @default(PENDING)
+  syncError                String?
+  lastSyncedAt             DateTime? @db.Timestamptz(6)
+  frontmatterSchemaVersion Int?
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+  version    Int       @default(0)
+
+  post        Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialImage MediaAsset? @relation(fields: [socialImageId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, locale])
+  @@unique([locale, slug])
+  @@index([locale, status, publishedAt(sort: Desc)])
+  @@index([status, scheduledFor])
+  @@index([syncState])
+  @@index([sourceBlobSha])
+  @@map("post_translations")
+}
+
+/// Editor autosave only. These rows are working state, never a publication
+/// source, and are deleted once their content is committed to Git. Draft
+/// bodies are excluded from revision snapshots.
+model PostDraft {
+  id            String   @id @default(cuid(2))
+  postId        String
+  locale        Locale
+  authorId      String
+  bodyMarkdown  String
+  frontmatter   Json?
+  /// What the author started from, so a conflict can be shown as a diff
+  /// rather than as "someone else changed this, good luck".
+  baseBlobSha   String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, locale, authorId])
+  @@index([updatedAt])
+  @@map("post_drafts")
+}
+
+model Category {
+  id        String   @id @default(cuid(2))
+  key       String   @unique
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  version   Int      @default(0)
+
+  translations CategoryTranslation[]
+  posts        Post[]
+
+  @@index([enabled, sortOrder])
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          String   @id @default(cuid(2))
+  categoryId  String
+  locale      Locale
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@unique([locale, slug])
+  @@map("category_translations")
+}
+
+model Tag {
+  id        String   @id @default(cuid(2))
+  key       String   @unique
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  version   Int      @default(0)
+
+  translations TagTranslation[]
+  posts        PostTag[]
+
+  @@index([enabled, sortOrder])
+  @@map("tags")
+}
+
+model TagTranslation {
+  id          String   @id @default(cuid(2))
+  tagId       String
+  locale      Locale
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, locale])
+  @@unique([locale, slug])
+  @@map("tag_translations")
+}
+
+/// Taxonomy is shared across a post's translations. Sync never creates taxonomy
+/// implicitly — an unknown category or tag in frontmatter is a reported sync
+/// error, not a new row, because otherwise a typo silently becomes a category.
+model PostTag {
+  postId String
+  tagId  String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+  @@map("post_tags")
+}
+
+/// Redirect chains and loops are rejected at write time; a change collapses to
+/// the final target. A slug change in one locale creates a redirect only within
+/// that locale.
+model SlugRedirect {
+  id               String   @id @default(cuid(2))
+  locale           Locale
+  fromPath         String
+  toPath           String
+  /// Restricted to 301 or 308 by a CHECK constraint. 308 preserves the request
+  /// method, which matters for anything that was ever POSTed.
+  statusCode       Int      @default(308)
+  sourceEntityType String?
+  sourceEntityId   String?
+  createdById      String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([locale, fromPath])
+  @@index([locale, toPath])
+  @@map("slug_redirects")
+}
+
+/// Append-only operational history of the content store, used for drift
+/// investigation and the dashboard's last-successful-reconciliation indicator.
+/// Contains no body text.
+model ContentSyncLog {
+  id             String      @id @default(cuid(2))
+  commitSha      String?
+  trigger        SyncTrigger
+  affectedPaths  String[]
+  outcome        SyncOutcome
+  errorSummary   String?
+  startedAt      DateTime    @default(now()) @db.Timestamptz(6)
+  finishedAt     DateTime?   @db.Timestamptz(6)
+
+  @@index([startedAt(sort: Desc)])
+  @@index([outcome, startedAt(sort: Desc)])
+  @@map("content_sync_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Governance and operations
+// ---------------------------------------------------------------------------
+
+/// Complete redacted before/after snapshots. Authentication secrets and session
+/// tokens are never snapshotted — a revision history that contains password
+/// hashes is a second copy of the credential store with weaker access control.
+model ContentRevision {
+  id            String         @id @default(cuid(2))
+  entityType    String
+  entityId      String
+  entityVersion Int
+  action        RevisionAction
+  actorId       String?
+  before        Json?
+  after         Json?
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([entityType, entityId, entityVersion])
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@map("content_revisions")
+}
+
+/// Append-only. Application roles cannot update these rows; that is enforced by
+/// a database grant in the deployment role setup, not by application discipline.
+model AuditEvent {
+  id               String       @id @default(cuid(2))
+  actorId          String?
+  eventType        String
+  targetType       String?
+  targetId         String?
+  outcome          AuditOutcome
+  requestId        String?
+  ipPrefixHash     String?
+  userAgentHash    String?
+  metadata         Json?
+  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt(sort: Desc)])
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("audit_events")
+}
+
+/// Contact bodies are sensitive and follow a short configured retention period.
+/// `deletionDueAt` is set at insert from SiteSettings.contactRetentionDays, so
+/// the purge job never has to reconstruct when a message should expire.
+model ContactMessage {
+  id                 String                @id @default(cuid(2))
+  name               String
+  email              String
+  message            String
+  deliveryStatus     ContactDeliveryStatus @default(PENDING)
+  providerMessageRef String?
+  abuseScore         Int?
+  abuseReason        String?
+  createdAt          DateTime              @default(now()) @db.Timestamptz(6)
+  deliveredAt        DateTime?             @db.Timestamptz(6)
+  deletionDueAt      DateTime              @db.Timestamptz(6)
+
+  @@index([deliveryStatus, createdAt])
+  @@index([deletionDueAt])
+  @@map("contact_messages")
+}
