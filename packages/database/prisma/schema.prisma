@@ -136,6 +136,12 @@ enum OutboxState {
   FAILED
 }
 
+enum WebAuthnChallengePurpose {
+  LOGIN
+  ENROLL
+  REAUTH
+}
+
 enum RevisionAction {
   CREATE
   UPDATE
@@ -215,6 +221,20 @@ model WebAuthnCredential {
 
   @@index([userId])
   @@map("webauthn_credentials")
+}
+
+/// Short-lived one-time challenge. `delete` is the consume operation so an
+/// assertion cannot replay across API replicas or process restarts.
+model WebAuthnChallenge {
+  id        String                  @id
+  challenge String
+  purpose   WebAuthnChallengePurpose
+  userId    String?
+  expiresAt DateTime                @db.Timestamptz(6)
+  createdAt DateTime                @default(now()) @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("webauthn_challenges")
 }
 
 model Session {
