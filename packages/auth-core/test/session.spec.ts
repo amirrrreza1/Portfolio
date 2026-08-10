@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   hashPassword,
   issueSession,
+  PasswordLoginService,
   verifyCsrfToken,
   verifyPasswordHash,
   verifySessionToken,
@@ -23,6 +24,38 @@ describe("opaque session primitives", () => {
     await expect(
       verifyPasswordHash("wrong password", "not-a-hash")
     ).resolves.toBe(false);
+  });
+
+  it("performs a dummy verification and never exposes account existence", async () => {
+    const passwordHash = await hashPassword("correct horse battery staple");
+    const dummyHash = await hashPassword("unrelated dummy password");
+    const created: unknown[] = [];
+    const service = new PasswordLoginService(
+      {
+        findByEmail: async (email) =>
+          email === "owner@example.com"
+            ? { userId: "user-1", passwordHash, status: "ACTIVE" }
+            : null,
+        createSession: async (value) => void created.push(value),
+        recordSuccessfulPasswordLogin: async () => undefined,
+      },
+      secrets,
+      dummyHash
+    );
+    await expect(
+      service.authenticate({
+        email: "missing@example.com",
+        password: "wrong password",
+      })
+    ).resolves.toEqual({ outcome: "FAILED" });
+    await expect(
+      service.authenticate({
+        email: "owner@example.com",
+        password: "correct horse battery staple",
+      })
+    ).resolves.toMatchObject({ outcome: "PASSWORD_VERIFIED" });
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ userId: "user-1" });
   });
 
   it("issues random cookie-only tokens while retaining only keyed hashes", () => {

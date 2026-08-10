@@ -41,6 +41,62 @@ export async function verifyPasswordHash(
   }
 }
 
+export interface PasswordLoginAccount {
+  readonly userId: string;
+  readonly passwordHash: string;
+  readonly status: "ACTIVE" | "LOCKED" | "DISABLED";
+}
+
+export interface PasswordLoginStore {
+  findByEmail(email: string): Promise<PasswordLoginAccount | null>;
+  createSession(
+    input: Omit<IssuedSession, "sessionToken" | "csrfToken"> & {
+      readonly userId: string;
+    }
+  ): Promise<void>;
+  recordSuccessfulPasswordLogin(userId: string): Promise<void>;
+}
+
+/**
+ * Password step of a two-factor login. Both absent and invalid accounts verify
+ * an Argon2 hash before returning the same failure result, preventing a cheap
+ * timing oracle for owner-account discovery.
+ */
+export class PasswordLoginService {
+  constructor(
+    private readonly store: PasswordLoginStore,
+    private readonly secrets: SessionSecrets,
+    private readonly dummyPasswordHash: string
+  ) {}
+
+  async authenticate(input: {
+    readonly email: string;
+    readonly password: string;
+    readonly now?: Date;
+  }): Promise<
+    | { readonly outcome: "FAILED" }
+    | { readonly outcome: "PASSWORD_VERIFIED"; readonly session: IssuedSession }
+  > {
+    const account = await this.store.findByEmail(input.email);
+    const verified = await verifyPasswordHash(
+      input.password,
+      account?.passwordHash ?? this.dummyPasswordHash
+    );
+    if (!verified || account?.status !== "ACTIVE") return { outcome: "FAILED" };
+
+    const session = issueSession(this.secrets, input.now);
+    await this.store.createSession({
+      userId: account.userId,
+      tokenHash: session.tokenHash,
+      csrfBindingHash: session.csrfBindingHash,
+      expiresAt: session.expiresAt,
+      idleExpiresAt: session.idleExpiresAt,
+    });
+    await this.store.recordSuccessfulPasswordLogin(account.userId);
+    return { outcome: "PASSWORD_VERIFIED", session };
+  }
+}
+
 export interface IssuedSession {
   /** Cookie-only values. They must never appear in a JSON response or database row. */
   readonly sessionToken: string;
