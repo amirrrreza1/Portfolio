@@ -190,6 +190,18 @@
   }
 }
 
+:root[data-theme="system"][data-system-theme="light"] {
+  color-scheme: light;
+  --color-primary: white;
+  --color-secondary: black;
+}
+
+:root[data-theme="system"][data-system-theme="dark"] {
+  color-scheme: dark;
+  --color-primary: black;
+  --color-secondary: white;
+}
+
 /* Typography preferences are deliberately scoped to article content only. */
 .blog-reading-surface[data-blog-font="jetbrains-mono"] {
   font-family: "JetBrains_Mono", monospace;

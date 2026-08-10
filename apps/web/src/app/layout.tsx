@@ -13,6 +13,7 @@ import {
   resolveAppearance,
 } from "@portfolio/contracts/appearance";
 import { cookies, headers } from "next/headers";
+import Script from "next/script";
 
 // M7 persists this singleton and lets the owner control its allowlist. Until
 // then, keep the same validated shape here rather than trusting a cookie value
@@ -59,7 +60,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const localeHeader = (await headers()).get("x-portfolio-locale");
+  const requestHeaders = await headers();
+  const localeHeader = requestHeaders.get("x-portfolio-locale");
+  const nonce = requestHeaders.get("x-portfolio-csp-nonce") ?? undefined;
   const locale = isLocale(localeHeader) ? localeHeader : "en";
   const definition = getLocaleDefinition(locale);
   const preferenceCookie = (await cookies()).get(PREFERENCES_COOKIE_NAME);
@@ -76,10 +79,16 @@ export default async function RootLayout({
 
   return (
     <html
+      suppressHydrationWarning
       lang={definition.bcp47}
       dir={definition.direction}
       {...appearanceRootAttributes(appearance)}
     >
+      <head>
+        <Script id="system-theme" nonce={nonce} strategy="beforeInteractive">
+          {`(function(){var r=document.documentElement;if(r.dataset.theme!=="system")return;var q=window.matchMedia("(prefers-color-scheme: dark)");var a=function(){r.dataset.systemTheme=q.matches?"dark":"light"};a();q.addEventListener("change",a)})()`}
+        </Script>
+      </head>
       <body>
         <ThemeProvider
           initialAppearance={appearance}
