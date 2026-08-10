@@ -29,7 +29,7 @@ Next.js generates metadata on the server from published database values:
 
 - unique descriptive `<title>` with a consistent site template
 - unique human-written meta description
-- absolute canonical URL, which requires `metadataBase` to be set from the configured site URL. **This is currently missing from the application**, so Open Graph and canonical URLs resolve as relative paths and will be wrong in production — a defect to fix, not an addition.
+- absolute canonical URL, which requires `metadataBase` to be set from the configured site URL. **Done in M0:** it is resolved from `PUBLIC_SITE_URL`, and a production build without that value fails rather than silently resolving canonicals against `localhost`.
 - Open Graph title, description, type, URL, locale, image and image alt text
 - `og:locale` per page and `og:locale:alternate` only for an existing published translation
 - reciprocal `hreflang` between published translations plus `x-default`, per [I18N.md](I18N.md) §6

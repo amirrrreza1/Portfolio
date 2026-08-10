@@ -1,6 +1,6 @@
 # Documentation index
 
-These documents define the approved target before feature implementation begins.
+These documents define the approved target. They are normative: where an implementation has diverged, the divergence is recorded as outstanding work rather than adopted as the new specification.
 
 ## Start here
 
@@ -44,10 +44,12 @@ A bilingual portfolio and blog. Article bodies are Markdown files in the Git rep
 
 ## Status
 
-The repository contains documentation, workspace/package scaffolding, the original frontend, an API health probe, starter CI, the frozen legacy baseline, and the first shared contracts. The Prisma model, the markdown package, and the content store are intentionally deferred to their slices.
+[ROADMAP.md](ROADMAP.md) is the authoritative status document; this is the short version.
 
-`packages/contracts` currently exports the `common` module (IDs, locales, ADR-010 slug normalization, scalar values, pagination, errors) and the `appearance` module (theme and blog typography registry, the `portfolio_prefs` cookie, `AppearanceSettings` validation). The auth, content, and blog command schemas follow the Prisma slice so they mirror the persisted shapes.
+Seven workspace packages are built and tested: `contracts`, `database`, `markdown`, `media`, `migration`, `content-store`, and `auth-core`. The web app has a locale-prefixed shell with server-resolved appearance, a public CSP, and a settings dialog; the API exposes a health route and a server-side contact endpoint. Portfolio content still comes from the preserved legacy JSON, now confined to a single server module.
 
-Defects fixed in M0: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, and two `@font-face` weight collisions that made the ExtraBold faces unusable. A repository-wide formatting failure that would have made the CI format step red on every commit was fixed at the same time.
+The pattern across every open milestone is the same: the code is written and the proof is not. The database schema has never been migrated against a real PostgreSQL, the migration has never been applied, the content store has never talked to a real repository, and the appearance layer has none of the tests [THEMING.md](THEMING.md) §9 requires. Standing up a database and object store closes the most gates for the least work.
 
-Defects documented and still scheduled: publicly exposed EmailJS credentials — the keys ship in the client bundle, so only provider-side revocation removes the exposure — a client-side-only header that leaves no navigation in the server HTML, a theme applied after first paint, a client-side GitHub statistics fetch, and two skill colours that fail contrast. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Defects fixed so far: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, two `@font-face` weight collisions that made the ExtraBold faces unusable, a repository-wide formatting failure that would have made the CI format step red on every commit, the theme applied after first paint, and the browser-side EmailJS integration.
+
+Defects documented and still scheduled: the published EmailJS keys — removed from source, but every bundle already served still carries them, so only provider-side revocation removes the exposure — a client-side-only header that leaves no navigation in the server HTML, a client-side GitHub statistics fetch, and three skill colours that fail contrast. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

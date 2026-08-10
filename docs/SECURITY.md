@@ -65,7 +65,7 @@ Highest-value assets:
 
 ## 7. Input, output, and content safety
 
-- All inputs use strict Zod schemas with size/range limits and rejection of unknown keys. Zod is the single validation stack; the `class-validator`/`class-transformer` packages currently present in the API MUST be removed rather than left as a divergent second path.
+- All inputs use strict Zod schemas with size/range limits and rejection of unknown keys. Zod is the single validation stack; `class-validator` and `class-transformer` were removed from the API in M0 and MUST NOT return as a divergent second path.
 - Prisma parameterization is used; raw SQL is exceptional, reviewed, and parameterized.
 - Markdown raw HTML is disabled. **MDX is never executed or compiled, at build time or at runtime**, per [ADR-004](DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution). An uploaded `.mdx` file is parsed as data and normalized to `.md`; imports, exports, JSX expressions, and unmapped components are rejected with a report.
 - Rendering uses a schema-based HTML sanitizer as the **final** transform in the pipeline, so no later step can reintroduce unsafe output. Links reject `javascript:`, `data:` (except an explicit safe image policy), and unsafe protocols.
@@ -78,7 +78,7 @@ Highest-value assets:
 - Locale is a closed allowlist. An unrecognized locale segment is a `404`, never a coercion, and never a path or query component.
 - UI message-catalog values are escaped on output and never treated as HTML.
 - User-entered outbound URLs are normalized and validated. Server-side URL fetches use fixed allowlisted hosts, DNS/IP checks, timeouts, response-size limits, and no arbitrary redirects to prevent SSRF.
-- Current GitHub statistics fetching moves to a server adapter with repository allowlisting, authentication where configured, caching, and bounded failure behavior.
+- GitHub statistics fetching MUST move to a server adapter with repository allowlisting, authentication where configured, caching, and bounded failure behavior. This has not been done: `Utils/getGithubStats.ts` still calls `api.github.com` from the browser, which exposes every visitor's IP to a third party and is rate-limited per visitor.
 
 ## 8. Upload and media controls
 
@@ -94,7 +94,7 @@ Highest-value assets:
 
 ## 9. Contact form and abuse
 
-- Remove public EmailJS credentials and send mail only from the API adapter.
+- Remove public EmailJS credentials and send mail only from the API adapter. The browser integration is gone and `POST /api/v1/contact` is the only submission path; the provider-side key revocation is still outstanding, and until it happens the account remains usable by anyone holding a previously served bundle.
 - Validate lengths, normalize email safely, reject header injection, and escape content in mail templates.
 - Apply layered rate limits, a honeypot, minimum completion time, and optional privacy-respecting challenge after suspicious behavior.
 - Return the same generic success response when appropriate to reduce probing and retry storms.

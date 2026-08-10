@@ -4,6 +4,8 @@
 
 Docker artifacts are delivered after the application/database contracts are implemented. This document fixes the expected topology and hardening so Docker is not added as an unreviewed afterthought.
 
+**Nothing in this document is built yet.** `infrastructure/docker/` contains only a README. The two pieces that already depend on it are in place — `output: "standalone"` in the Next.js config, set in M0 precisely so the image work would not discover a wrong build shape late, and the `MINIO_*` and `DATABASE_URL` contracts in `.env.example`. Everything else lands in M9.
+
 ## 2. Images and services
 
 | Service     | Image/build                                                 | Network exposure           | Persistent data                      |

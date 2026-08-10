@@ -61,7 +61,7 @@ The public resume link MUST always resolve to the single active resume version. 
 
 Contact submission MUST be server-side, validated, rate-limited, protected against automated abuse, and independent of public client-side email credentials. A generic response MUST not reveal mail-provider or account details.
 
-The current browser-side EmailJS integration MUST be removed and its published keys revoked at the provider, since removing a `NEXT_PUBLIC_*` value from source does not invalidate a key that has already shipped.
+The browser-side EmailJS integration MUST be removed and its published keys revoked at the provider, since removing a `NEXT_PUBLIC_*` value from source does not invalidate a key that has already shipped. The removal is done; the revocation is not.
 
 ### PORT-PUB-006 — Appearance settings
 

@@ -31,13 +31,15 @@ Themes are declared in code as complete sets of CSS custom properties on `:root`
 --color-code-bg, --color-code-text
 ```
 
+**Not yet adopted.** `globals.css` declares the legacy vocabulary instead — `--color-primary` and `--color-secondary` as a background/foreground pair, plus `--color-Gold`, `--color-main-red`, `--color-main-green`, and `--color-particle`. Every theme selects between those, so the mechanism is right and the names are not. Renaming is a mechanical change, but it touches every component, so it belongs with the M5 token work rather than being done piecemeal.
+
 Required themes for this release: `dark` (current default), `light`, and `system` as a resolution mode rather than a token set. Additional themes are code additions.
 
 Rules:
 
-- Components consume tokens only. A hard-coded colour in a component is a defect; CI checks for raw hex values outside the token declarations and asset files.
+- Components consume tokens only. A hard-coded colour in a component is a defect; CI checks for raw hex values outside the token declarations and asset files. **The CI check does not exist yet**, so this rule is currently enforced by review alone.
 - Every enabled theme MUST pass WCAG 2.2 AA contrast for body text, muted text, links, focus rings, borders that carry meaning, and both Shiki code themes. An enabled theme failing contrast is a release blocker, not a design preference.
-- The existing `ThemeContext` has two defects to correct: its `applyTheme` function contains an unreachable system-preference branch that the `"light" | "dark"` type makes impossible to hit, and it applies the theme inside `useEffect`, which guarantees a flash on first paint. Both are resolved by §5.
+- ~~The existing `ThemeContext` has two defects to correct: its `applyTheme` function contains an unreachable system-preference branch that the `"light" | "dark"` type makes impossible to hit, and it applies the theme inside `useEffect`, which guarantees a flash on first paint.~~ **Fixed in M5.** The provider now hydrates from the server-emitted attributes, and `system` is a real preference resolved by the pre-paint script in §5 rather than an unreachable branch.
 - Shiki renders both a light and a dark highlighted variant at build/render time; theme switching selects between them with CSS. The client highlighter is never shipped.
 
 ## 4. Blog typography model
@@ -56,7 +58,7 @@ Initial registry:
 
 Rules:
 
-- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. Reducing to only the weights and styles the design actually uses is still open, and belongs with the subsetting work below.
+- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. All 17 faces are still declared unconditionally; reducing to the weights and styles the design actually uses is open, and belongs with the subsetting work below.
 - Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs.
 - `font-display: swap` with a metric-compatible fallback, so a font swap does not reflow the article.
 - Preload only the critical variant for the active family and locale. Non-default families load on selection.
@@ -73,7 +75,7 @@ The mechanism that makes this work without a flash:
 3. There is therefore no client-side correction on first paint and no flash. The provider hydrates from the same attributes rather than re-deriving them, so server and client markup agree.
 4. `theme: system` is the one case needing client resolution. It is handled with a tiny inline script, allowed by a CSP nonce, that reads `prefers-color-scheme` and sets the attribute before first paint — plus a `@media (prefers-color-scheme)` fallback so the page is still correct with JavaScript disabled. This script is the only inline script permitted on public pages, it is reviewed, and it contains no interpolated values.
 5. Changing a setting updates its scoped attribute immediately, then writes the cookie. Theme updates `<html>`; blog typography updates `.blog-reading-surface` when present. Nothing re-fetches and nothing re-renders the page.
-6. `localStorage` is not used for appearance, because the server cannot read it. The existing `localStorage.getItem("theme")` behaviour is migrated once: an existing value is adopted into the cookie on first visit, then the key is removed.
+6. `localStorage` is not used for appearance, because the server cannot read it. The existing `localStorage.getItem("theme")` behaviour is migrated once: an existing value is adopted into the cookie on first visit, then the key is removed. **Outstanding.** The M5 rewrite removed the `localStorage` read without adding the adoption step, so a returning visitor's stored theme is silently dropped and they see the site default once before re-choosing.
 
 **Caching:** appearance MUST NOT enter a shared data-cache key. Per [ADR-009](DECISIONS.md#adr-009--dynamic-html-shell-with-shared-cached-public-data-for-visitor-appearance), public HTML shells are dynamic and are not stored in a shared full-page cache. Public DTOs, rendered article bodies, and media metadata remain shared and tagged; two visitors with different preferences reuse those same cache entries. `Vary: Cookie` on public pages is prohibited. The shell may vary only the allowlisted appearance attributes, never content or authorization state.
 

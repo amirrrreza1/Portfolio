@@ -4,6 +4,8 @@ How article text gets in, where it lives, how it is rendered, and how the file s
 
 Normative decisions: [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies) and [ADR-004](DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution).
 
+**Implementation status.** The render pipeline in §8 and the directive allowlist in §9 are built and tested in `packages/markdown`. The store mechanics — App-token exchange, `content/`-confined commits, webhook verification and deduplication, tree reconciliation through the production renderer — are built in `packages/content-store`, with the apply-ledger and outbox adapters in `packages/database`. None of it has run against a real repository: there is no API worker, no protected `content` branch, and no `content/` directory yet. Treat the described behaviour as specified-and-coded but unproven until M3's gate closes.
+
 ## 1. Roles of the two stores
 
 | Concern                                            | Authority            |

@@ -1,5 +1,7 @@
 # API specification
 
+**Implementation status.** Two endpoints exist: `GET /api/v1/health` and `POST /api/v1/contact`. Everything else in this document — public reads, admin mutations, media, blog, and the content-store surface — is specified and unbuilt, and the `apps/api/src/modules` directory carries `.gitkeep` placeholders for each. The response and error shapes below are already honoured by the contact endpoint, which returns `202` with `{ data, meta.requestId }` and maps validation failures through the shared error contract.
+
 ## 1. Protocol
 
 - Base path: `/api/v1`

@@ -67,7 +67,7 @@ Every translatable field records whether a locale value is present, so the admin
 
 ### `SiteSettings`
 
-Singleton record containing public site name, canonical site URL (the `metadataBase` value, currently missing from the application), default locale, enabled locales, timezone, default title template, default meta description, default social image ID, author/creator/publisher name, optional search-console verification tokens, contact recipient address, contact availability flag, contact retention days, GitHub username, GitHub repository allowlist, GitHub cache TTL, robots policy flags, and version.
+Singleton record containing public site name, canonical site URL (the `metadataBase` value, resolved from `PUBLIC_SITE_URL` until M7 moves it here), default locale, enabled locales, timezone, default title template, default meta description, default social image ID, author/creator/publisher name, optional search-console verification tokens, contact recipient address, contact availability flag, contact retention days, GitHub username, GitHub repository allowlist, GitHub cache TTL, robots policy flags, and version.
 
 Translatable fields (site name, title template, meta description) use the sidecar pattern. The contact recipient address is server-only and MUST NOT appear in any public DTO.
 

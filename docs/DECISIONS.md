@@ -365,12 +365,14 @@ M4 implements one typed client policy and tests cold outage, warm outage, expiry
 
 These decisions are intentionally not made before implementation evidence exists, but they have named owners and hard milestone deadlines.
 
-| Decision                                     | Owner                 | Deadline         | Required output                                                                                                         |
-| -------------------------------------------- | --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Production host and TLS reverse proxy        | Owner/developer       | Before M4 starts | Deployment ADR preserving same-origin `/api/v1`, dynamic appearance shell, private database/MinIO, and worker processes |
-| v1 editor permissions                        | Owner                 | Before M6 starts | Authorization matrix ADR; until accepted, provisioning remains owner-only and `EDITOR` is not assignable                |
-| Contact and audit retention defaults         | Owner/security review | Before M7 starts | Retention ADR and configured deletion windows before those admin records are exposed                                    |
-| Error monitoring and alert routing           | Owner/operations      | Before M9 starts | Vendor/adaptor ADR, redaction verification, and incident destination                                                    |
-| Privacy-preserving analytics or no analytics | Owner                 | Before M9 starts | Privacy decision, consent impact, retention, and product-spec update if analytics is enabled                            |
+| Decision                                     | Owner                 | Deadline                       | Required output                                                                                                         |
+| -------------------------------------------- | --------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Production host and TLS reverse proxy        | Owner/developer       | Before M4 starts — **overdue** | Deployment ADR preserving same-origin `/api/v1`, dynamic appearance shell, private database/MinIO, and worker processes |
+| v1 editor permissions                        | Owner                 | Before M6 starts — **overdue** | Authorization matrix ADR; until accepted, provisioning remains owner-only and `EDITOR` is not assignable                |
+| Contact and audit retention defaults         | Owner/security review | Before M7 starts               | Retention ADR and configured deletion windows before those admin records are exposed                                    |
+| Error monitoring and alert routing           | Owner/operations      | Before M9 starts               | Vendor/adaptor ADR, redaction verification, and incident destination                                                    |
+| Privacy-preserving analytics or no analytics | Owner                 | Before M9 starts               | Privacy decision, consent impact, retention, and product-spec update if analytics is enabled                            |
 
 Missing a deadline blocks its dependent milestone; it is not permission to choose an adapter implicitly.
+
+**Two deadlines have been missed.** M4 and M6 both opened without their gating decision. Neither is fatal at the moment — the M4 work so far is routing and the M6 work is library primitives, and neither commits to a host or an authorization matrix — but the exemption ends the moment M4 needs a deployment target or M6 assigns a role. Record both ADRs before either milestone touches deployment or permissions, or amend this table with a deliberate new deadline rather than letting it drift silently.

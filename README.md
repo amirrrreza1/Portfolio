@@ -9,20 +9,24 @@ What that means concretely:
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
 - **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
-The current change establishes the architecture, documentation, workspace layout, package boundaries, starter CI, and the frozen legacy baseline in [docs/BASELINE_M0.md](docs/BASELINE_M0.md). It intentionally does **not** migrate the existing JSON content or implement the admin and blog features yet; those steps are sequenced in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+Where the work stands: the shared packages are built — contracts, Prisma schema, Markdown pipeline, media adapters, legacy migration, Git content store, and authentication primitives — and the public site now has a locale-prefixed shell with server-resolved appearance and a server-side contact path. What has not happened is proof: no migration has been run against a real PostgreSQL, no content has been pushed through a real Git branch, and the admin panel and blog do not exist. Portfolio content still comes from the preserved legacy JSON. [docs/ROADMAP.md](docs/ROADMAP.md) tracks which gates are open and why; [docs/BASELINE_M0.md](docs/BASELINE_M0.md) holds the frozen pre-migration record of the legacy site.
 
 ## Workspace
 
-| Path                    | Responsibility                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `apps/web`              | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
-| `apps/api`              | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here      |
-| `packages/contracts`    | Shared Zod request/response schemas and TypeScript types                                         |
-| `packages/database`     | Prisma schema, migrations, and PostgreSQL client                                                 |
-| `packages/markdown`     | Frontmatter schema, directive allowlist, and the server-side render pipeline                     |
-| `content/`              | Article bodies as Markdown files — the source of truth for article text                          |
-| `infrastructure/docker` | Production and local Docker assets in the implementation phase                                   |
-| `docs`                  | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
+| Path                     | Responsibility                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `apps/web`               | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
+| `apps/api`               | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here      |
+| `packages/contracts`     | Shared Zod request/response schemas and TypeScript types                                         |
+| `packages/database`      | Prisma schema, migrations, and PostgreSQL client                                                 |
+| `packages/markdown`      | Frontmatter schema, directive allowlist, and the server-side render pipeline                     |
+| `packages/media`         | Private object-store adapters, magic-byte MIME verification, and content-hash media identity     |
+| `packages/migration`     | Legacy JSON preflight, normalization, reconciliation reporting, and the transactional writer     |
+| `packages/content-store` | GitHub App authentication, prefix-confined commits, webhook verification, and reconciliation     |
+| `packages/auth-core`     | Argon2id hashing, opaque session and CSRF tokens, recovery codes, and WebAuthn challenges        |
+| `content/`               | Article bodies as Markdown files — the source of truth for article text. Created in M3           |
+| `infrastructure/docker`  | Production and local Docker assets in the implementation phase                                   |
+| `docs`                   | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
 
 ## Chosen stack
 
@@ -57,7 +61,16 @@ pnpm test
 pnpm format:check
 ```
 
-`pnpm dev` starts the preserved frontend at `http://localhost:3000`. Use `pnpm dev:api` for the API scaffold at `http://localhost:4000`; its only current route is `GET /api/v1/health`.
+`pnpm dev` starts the frontend at `http://localhost:3000`, which redirects to `/en`. Use `pnpm dev:api` for the API at `http://localhost:4000`; it currently serves `GET /api/v1/health` and `POST /api/v1/contact`.
+
+Two commands are explicit-apply and touch real infrastructure, so they are not part of `pnpm dev`:
+
+```bash
+pnpm --filter @portfolio/database provision:owner
+pnpm --filter @portfolio/database migrate:legacy -- --local-media-root <directory>
+```
+
+Both need a reachable PostgreSQL. `migrate:legacy` also needs an object store, records the source checksum so a repeated run is a no-op, and removes any object it created if the transaction fails.
 
 CI runs all of the above on every pull request, plus a full-history secret scan. Every package either has a real test suite or no `test` script — `--passWithNoTests` is deliberately absent, so a green run means assertions ran.
 

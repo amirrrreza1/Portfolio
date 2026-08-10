@@ -59,13 +59,19 @@ portfolio-platform/
 ├─ packages/
 │  ├─ contracts/                  # Zod schemas and inferred transport types
 │  ├─ database/                   # Prisma schema/client/migrations only
-│  └─ markdown/                   # frontmatter schema, directives, render pipeline
+│  ├─ markdown/                   # frontmatter schema, directives, render pipeline
+│  ├─ media/                      # object-store adapters, MIME verification, media identity
+│  ├─ migration/                  # legacy JSON preflight, normalization, reconciliation
+│  ├─ content-store/              # Git authentication, confined commits, webhook verification
+│  └─ auth-core/                  # hashing, session/CSRF tokens, WebAuthn challenges
 ├─ content/
 │  └─ blog/<postId>/{en,fa}.md    # article bodies; source of truth (ADR-003)
 ├─ infrastructure/
 │  └─ docker/
 └─ docs/
 ```
+
+This tree is the target layout. `app/admin/`, `messages/`, `appearance/`, and `content/` do not exist yet; they appear here because the boundaries they imply constrain work that is already underway, not because they are present.
 
 Rules:
 
@@ -74,13 +80,13 @@ Rules:
 - `content/` MUST be excluded from the Next.js build trace and from runtime container images. It is data, not source.
 - `packages/database` MUST NOT contain HTTP or UI concerns.
 - `packages/contracts` MUST remain environment-neutral: no Node-only or browser-only side effects.
-- `packages/markdown` owns the frontmatter schema, the directive allowlist, and the render pipeline, and is imported by the API only. Its output is HTML strings; it MUST NOT import React or reach the browser bundle.
+- `packages/markdown` owns the frontmatter schema, the directive allowlist, and the render pipeline. Only server-side consumers may import it — today the API and `packages/content-store`, which reconciles Git trees through the same renderer that produced the stored output. Its output is HTML strings; it MUST NOT import React or reach the browser bundle.
 - Only the `content-store` module may hold the Git credential or call the Git host. No other module, and no part of the web app, touches it.
 - API modules may import database and contracts; the database package never imports an app.
 - Shared contracts validate at every untrusted boundary. TypeScript types alone are not validation.
 - Public response DTOs MUST be allowlists and must never serialize database records wholesale.
 - The site theme token sets and blog font registry are code. Nothing generates CSS from a stored value.
-- The single validation stack is Zod. `class-validator` and `class-transformer` currently appear in the API dependencies; they MUST be removed rather than left as a second, divergent validation path.
+- The single validation stack is Zod. `class-validator` and `class-transformer` were removed from the API in M0 and MUST NOT return as a second, divergent validation path.
 
 ## 4. API module ownership
 
@@ -147,7 +153,7 @@ Public pages MUST fail safely: a dependency outage renders a controlled error/st
 ## 6. Rendering and caching
 
 - Blog posts and portfolio pages use server components and server-rendered metadata. Their HTML shell is dynamic so validated appearance-cookie attributes are correct in the response; expensive public DTOs and rendered content use the shared tagged data cache.
-- Markdown parsing, sanitization, and syntax highlighting happen server-side at write/sync time. **No Markdown parser, sanitizer, or highlighter is shipped to the browser.** The `react-markdown` and `shiki` packages currently in the web app's dependencies MUST NOT be used in client components.
+- Markdown parsing, sanitization, and syntax highlighting happen server-side at write/sync time. **No Markdown parser, sanitizer, or highlighter is shipped to the browser.** `react-markdown`, `shiki`, `rehype-sanitize`, `remark-gfm`, `rehype-slug`, and `rehype-autolink-headings` are all still declared in the web app's dependencies. None is imported by any component today, and none may be used in a client component; they should be dropped from `apps/web` once the blog reading surface renders API-supplied HTML, so the boundary is enforced by absence rather than by discipline.
 - Published content may use ISR with tagged invalidation; drafts and admin pages use `no-store`.
 - **Locale is part of every public cache key and invalidation tag.** Publishing a Persian translation must not purge English pages.
 - **Appearance is not part of any shared data-cache key.** The dynamic shell emits theme on the root and blog font/size only on the blog reading wrapper. Two visitors may receive different shell attributes while using the same cached public DTO/render payload. Full-page public HTML is not stored in a shared cache and `Vary: Cookie` is prohibited — see [ADR-009](DECISIONS.md#adr-009--dynamic-html-shell-with-shared-cached-public-data-for-visitor-appearance).

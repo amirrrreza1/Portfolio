@@ -73,7 +73,7 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 | Skill order, enabled    | integer, boolean         |                                                                                                                       |
 | Skill category          | reference                | Moving a skill between categories preserves project links                                                             |
 
-**Corrections:** category IDs in the JSON are non-contiguous (1, 2, 3, 6, 7, 8), which is harmless but confirms these are hand-maintained; migration assigns fresh CUIDs and keeps a legacy-ID map for reconciliation. Two skills use `#000000` as their colour, which fails contrast on the dark theme — the migration reports them for the owner to re-pick rather than silently adjusting them.
+**Corrections:** category IDs in the JSON are non-contiguous (1, 2, 3, 6, 7, 8), which is harmless but confirms these are hand-maintained; migration assigns fresh CUIDs and keeps a legacy-ID map for reconciliation. **Three** skills use `#000000` as their colour — `Next.js (App Router)` (202), `shad CN` (306), and `Vercel` (801) — which fails contrast on the dark theme. Earlier revisions of this document said two; the migration preflight reports all three for the owner to re-pick rather than silently adjusting them.
 
 ## 5. Projects — `Project` and `ProjectSkill`
 
@@ -187,7 +187,7 @@ Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certific
 
 ## 11. Contact form — `SiteSettings` and the contact module
 
-`GetInTouch.tsx` sends mail from the browser via EmailJS using three `NEXT_PUBLIC_*` values.
+`GetInTouch.tsx` sent mail from the browser via EmailJS using three `NEXT_PUBLIC_*` values. It now posts to `POST /api/v1/contact` and holds no credential.
 
 | Admin field                                                 | Type                     | Notes                                   |
 | ----------------------------------------------------------- | ------------------------ | --------------------------------------- |
@@ -196,7 +196,7 @@ Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certific
 | Enabled                                                     | boolean                  | Lets the owner close the form           |
 | Retention window                                            | integer days             | Applied to stored message bodies        |
 
-**Corrections — the most urgent security item in the current site.** `NEXT_PUBLIC_EMAILJS_SERVICE_ID`, `NEXT_PUBLIC_EMAILJS_TEMPLATE_ID`, and `NEXT_PUBLIC_EMAILJS_PUBLIC_KEY` are compiled into the browser bundle and readable by anyone, so any third party can send mail through the account. Delivery moves to the server-side SMTP adapter, the `@emailjs/browser` dependency is removed, and the keys are rotated and revoked at the provider — removing them from the code does not invalidate keys already published. There is also no rate limiting, honeypot, or minimum completion time today.
+**Corrections — the source half is done, the exposure is not.** `NEXT_PUBLIC_EMAILJS_SERVICE_ID`, `NEXT_PUBLIC_EMAILJS_TEMPLATE_ID`, and `NEXT_PUBLIC_EMAILJS_PUBLIC_KEY` were compiled into the browser bundle and readable by anyone. Delivery has moved to the server-side SMTP adapter, the `@emailjs/browser` dependency and all three variables are gone from the workspace, and the shared submission contract now validates on both sides. **The keys have still not been rotated or revoked at the provider**, and removing them from the code does not invalidate keys already published — every bundle already served still contains them. Server-side throttling derives a client key per request; the honeypot and minimum completion time are not implemented yet.
 
 The `useAutoLang` hook, which sets `lang` on inputs based on whether the value contains Persian characters, is a good instinct and should be kept and generalized once the bilingual UI lands.
 
@@ -218,7 +218,7 @@ The `useAutoLang` hook, which sets `lang` on inputs based on whether the value c
 
 - ~~`metadataBase` is not set, so Open Graph and canonical URLs resolve as relative paths and will be wrong in production.~~ **Fixed in M0:** it is resolved from `PUBLIC_SITE_URL`, and a production build without that value now fails rather than silently resolving canonicals against `localhost`. The value moves into `SiteSettings` in M7; the environment variable stays, because the origin differs per deployment.
 - The `keywords` meta tag has had no effect on major search engines for many years. It is retained only as an optional owner-editable field, and [SEO.md](SEO.md) does not count it as a ranking surface.
-- `lang="en"` is hard-coded on `<html>` and must become dynamic per [I18N.md](I18N.md) §5.
+- ~~`lang="en"` is hard-coded on `<html>` and must become dynamic per [I18N.md](I18N.md) §5.~~ **Fixed in M4:** both `lang` and `dir` are resolved from the request locale.
 - There is no `robots.txt`, `sitemap.xml`, RSS feed, `og:image`, or JSON-LD today. All are additions, not migrations.
 
 ## 13. GitHub statistics — server adapter

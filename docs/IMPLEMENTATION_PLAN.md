@@ -22,17 +22,18 @@ Small corrections that are cheap now and expensive later. Status as of 2026-08-1
 - **Done.** The two case-mismatched certificate paths in `Certificate.json` are corrected, with a case-sensitive resolution test so a case-insensitive development filesystem cannot mask a regression.
 - **Done.** The `.eot`, `.ttf`, and `.woff` duplicates are deleted (6.2 MB → 712 KB) and the `@font-face` declarations rewritten to `woff2` with numeric weights. This also fixed two latent defects: `ExtraBold`/`ExtraBoldItalic` were declared at `font-weight: bold` (700), colliding with `Bold` and making 800 unreachable, and the `VazirCode` face pointed its `iefix` source at a JetBrains Mono file.
 - **Done, beyond the original list.** `prettier --check` failed on 48 files at the start of this phase, so the CI format step could never have passed. The repository is now formatted, and `.gitattributes` pins LF endings so a Windows checkout cannot reintroduce the failure or bury real changes under whole-file diffs.
-- **Open — owner action, deliberately deferred.** Revoke and rotate the published EmailJS keys at the provider, and replace the browser integration. The key values were never committed, so secret scanning does not flag them; they are exposed because `NEXT_PUBLIC_` compiles them into the bundle every visitor downloads. Anyone can therefore send mail through the account until the keys are rotated. The integration was kept at the owner's request; submission now fails with a generic message instead of leaking provider errors, and Phase 3 replaces the path entirely. **This keeps the M0 exit gate open.**
+- **Open — owner action, deliberately deferred.** Revoke and rotate the published EmailJS keys at the provider. The browser integration itself is gone: Phase 3 replaced it with server-side SMTP submission, and no `NEXT_PUBLIC_EMAILJS_*` reference remains in the workspace. That closes the source half and none of the exposure. The key values were never committed, so secret scanning never flagged them; they are exposed because `NEXT_PUBLIC_` compiled them into every bundle already downloaded. Anyone holding one of those bundles can still send mail through the account until the keys are rotated at the provider. **This keeps the M0 exit gate open.**
 
-## Phase 1 — Contracts, database, and markdown package (current)
+## Phase 1 — Contracts, database, and markdown package (in progress — one environment gate remains)
 
 1. Encode shared Zod schemas for IDs, locales, pagination, errors, portfolio resources, frontmatter, auth flows, appearance preferences, and admin mutations.
-   - **Done:** IDs, locales, ADR-010 slug normalization, scalar value objects, pagination, the error contract, and the full appearance surface (registry, `portfolio_prefs` cookie resolution, `AppearanceSettings` validation). 175 tests, plus a boundary test that fails if the package ever imports the database client or a Node-only module.
-   - **Done after step 3, as planned:** auth flows (password policy, login, WebAuthn, sessions, CSRF, recovery), article frontmatter, content-store sync state, and the blog lifecycle commands. 266 tests.
+   - **Done:** IDs, locales, ADR-010 slug normalization, scalar value objects, pagination, the error contract, and the full appearance surface (registry, `portfolio_prefs` cookie resolution, `AppearanceSettings` validation), plus a boundary test that fails if the package ever imports the database client or a Node-only module.
+   - **Done after step 3, as planned:** auth flows (password policy, login, WebAuthn, sessions, CSRF, recovery), article frontmatter, content-store sync state, and the blog lifecycle commands. Nine suites in total.
+   - **Done alongside Phase 3:** the contact submission schema, so the browser form and the API validate against one definition rather than two.
    - **Remaining:** the portfolio resource DTOs, which belong with their M7 admin slices rather than ahead of them — writing a projects DTO now would anticipate a UI that does not exist.
 2. Build `packages/markdown`: frontmatter schema, deterministic serializer, directive allowlist with attribute schemas, and the full render pipeline from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8. Test it against the XSS, unsafe-link, and malformed-YAML corpora before anything depends on it.
 3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, and `ContentSyncLog`.
-   - **Done:** 35 models, 16 enums, 64 relation fields, plus 54 `CHECK` constraints and 6 partial indexes in `prisma/sql/integrity_constraints.sql` for what Prisma's schema language cannot express.
+   - **Done:** 41 models, 19 enums, 64 relation fields, plus 52 `CHECK` constraints and 6 partial indexes in `prisma/sql/integrity_constraints.sql` for what Prisma's schema language cannot express.
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
    - **Done:** pooled client through the `pg` driver adapter, optimistic-concurrency helper that puts the version predicate in the `WHERE` clause so a stale write is impossible rather than merely detected, advisory-lock helpers for ADR-013, and a constraint suite that runs against PostgreSQL-in-WebAssembly with no server.
    - **Outstanding:** the migrations themselves. They are generated on a machine with a database; see `packages/database/prisma/migrations/README.md`.
@@ -44,9 +45,9 @@ Exit: a clean database can migrate from zero, seed deterministic fixtures, and p
 
 Building the markdown package before the content store is deliberate: the pipeline is the thing every other phase trusts, so it is proven in isolation first.
 
-## Phase 2 — Deterministic legacy migration
+## Phase 2 — Deterministic legacy migration (in progress)
 
-Create a versioned, repeatable migration command that reads the preserved legacy JSON/assets, validates them, writes in transactions, and emits a reconciliation report.
+Preflight, normalization, reporting, and the transactional writer are built and tested; applying them needs a real database and object store. Create a versioned, repeatable migration command that reads the preserved legacy JSON/assets, validates them, writes in transactions, and emits a reconciliation report.
 
 ### Source mapping
 
@@ -73,7 +74,7 @@ The field-by-field mapping, including every current value and the defects found 
 - Detect and correct text encoding/mojibake before approval; never “fix” text without showing the report. Several quotes and project descriptions contain typographic apostrophes.
 - Reconcile path casing. The JSON was corrected in M0 (`web-2.pdf`/`web-3.pdf` to `Web-2.pdf`/`Web-3.pdf`) and a case-sensitive test now guards it, but migration still resolves every media path case-sensitively rather than trusting that, because a case-insensitive filesystem can reintroduce the mismatch at any time.
 - Validate every link/protocol and distinguish absent URLs from placeholder `#`. The `Portfolio` project's `"link": "#"` becomes null; `Taksize`'s null `repo` stays null.
-- Report skill colours that fail contrast on an enabled theme (two are `#000000`) for the owner to re-pick, rather than adjusting them silently.
+- Report skill colours that fail contrast on an enabled theme (three are `#000000` — `Next.js (App Router)`, `shad CN`, and `Vercel`) for the owner to re-pick, rather than adjusting them silently.
 - Generate stable slugs with an explicit collision report. Projects have no slugs today.
 - Record file SHA-256, verified MIME, byte size, and safe public name.
 - Preserve legacy numeric IDs in `legacyId` columns so reconciliation can be re-run after the fact.
@@ -83,9 +84,11 @@ Exit: the reconciliation report in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) 
 
 Before the first public cutover, wrap the preserved JSON reads in an isolated server-side rollback adapter and feature flag. Active components stop importing `src/DataBase`; the adapter remains dormant and tested until the post-launch rollback window closes.
 
-## Phase 2.5 — Content store
+## Phase 2.5 — Content store (in progress)
 
 Stand up the Git content store before any blog UI, so the blog phase builds on a proven store rather than growing one underneath itself.
+
+`packages/content-store` implements the module boundary — GitHub App token exchange, `content/`-prefix enforcement, webhook verification and deduplication, reconciliation through the production renderer — and the PostgreSQL apply-ledger and outbox adapters exist. Nothing has run against a real repository: there is no API worker wiring it up, no protected `content` branch, and no `content/` directory in the repository yet.
 
 1. Implement the `content-store` module: GitHub App authentication, read-by-SHA, commit with `If-Match`, path-prefix enforcement, and per-post queuing with backoff.
 2. Implement the signed webhook, the sync worker, and the scheduled reconciliation job. Sync validates from scratch and never deletes.
@@ -96,34 +99,50 @@ Stand up the Git content store before any blog UI, so the blog phase builds on a
 
 Exit: a file pushed to the repository appears correctly in the indexed render cache with no deployment; an invalid file changes nothing and is reported; Git being unavailable blocks saves and nothing else. Phase 3 proves the corresponding public route and end-to-end invalidation.
 
-## Phase 3 — Public API and frontend read migration
+## Phase 3 — Public API and frontend read migration (in progress)
+
+Steps 2 and 8 are partly or fully delivered; steps 1, 3, 4, 6, and 7 have not started, and step 5 has not started either.
 
 1. Implement public DTO allowlists and repository predicates that expose only published/enabled data, with locale as an explicit parameter.
 2. Introduce locale-prefixed routing: `app/[locale]/`, middleware resolution, `308` redirects from every current URL, dynamic `lang`/`dir`, and the UI message catalogs.
+   - **Done:** `app/[locale]/` with `generateStaticParams` over the contracts allowlist and a `404` on any other segment; middleware that resolves the locale into an `x-portfolio-locale` header; `lang`/`dir` emitted from the resolved locale on both `<html>` and the locale layout.
+   - **Outstanding:** `/` redirects unconditionally to `/en` instead of negotiating cookie then `Accept-Language` per [I18N.md](I18N.md) §2, no legacy path other than `/` redirects, and the message catalogs do not exist — UI strings are still English literals in components.
 3. Add site/appearance/projects/resume/blog-read endpoints with ETags, exclude non-`SYNCED` translations from public discovery, and test draft/cross-locale leakage plus the deliberate portfolio-fallback/article-no-fallback asymmetry.
 4. Add a typed server-side API client in Next.js with timeouts and controlled errors.
 5. Make the header render server-side so navigation exists in the HTML, then migrate one public section at a time behind a server feature flag, comparing rendered output before removing JSON imports.
+   - **Still open, and now the oldest known defect on the public path.** `Header.tsx` remains `"use client"`, returns `null` until mounted, and portals into `document.body`, so the server HTML contains no navigation at all.
 6. Move GitHub statistics to a cached allowlisted server adapter.
+   - **Still open.** `Utils/getGithubStats.ts` continues to fetch `api.github.com` from the browser on every visit.
 7. Refactor the five files listed in the temporary ESLint legacy baseline and restore React hook/compiler rules to error level everywhere.
 8. Replace the temporarily disabled EmailJS form with server-side SMTP submission, validation, layered anti-abuse controls, and a generic response before public preview.
+   - **Done:** `POST /api/v1/contact` validates against the shared contract, returns `202` with a generic body, derives a client key for throttling, and delivers over SMTP. The EmailJS integration is deleted; the browser holds no provider credential. Provider-side key revocation is still owner action, per Phase 0.
 
 Exit: the active production path has no component import from `src/DataBase`; the dormant server rollback adapter is tested and isolated behind its flag; both locales render; every old URL redirects once; navigation is in the server HTML; the server contact path contains no browser/provider credentials; and public pages remain functional during an API outage according to the chosen stale/error strategy.
 
-## Phase 3.5 — Appearance and settings modal
+## Phase 3.5 — Appearance and settings modal (in progress)
 
 Delivered early because it touches the root layout and every component's use of colour, and doing it after the admin panel would mean revisiting all of it.
 
 1. Extract theme token sets and the blog font registry into code; remove hard-coded colours from components and add the CI check that keeps them out.
+   - **Partly done:** theme values live in `globals.css` custom properties and the inline styles were removed from the application components. The token names are still the legacy `--color-primary`/`--color-secondary`/`--color-Gold` set rather than the vocabulary in [THEMING.md](THEMING.md) §3, and the CI check for raw hex values does not exist, so nothing prevents the next component from hard-coding a colour again.
 2. Reduce the font files to the `woff2` set in use, subset with `unicode-range`, and preload optional blog fonts only on blog routes when active.
+   - **Partly done:** the reduction to `woff2` happened in M0. Subsetting, `unicode-range`, and route-scoped preload are untouched; all 17 faces are still declared unconditionally.
 3. Replace the `localStorage` theme context with cookie-backed, server-rendered appearance: the theme attribute on the root and blog font/size attributes only on `.blog-reading-surface` in the first response, one nonced pre-paint script for `system` mode, and the one-time migration of an existing `localStorage` value.
+   - **Done, minus the migration:** the root layout resolves `portfolio_prefs` through the contracts allowlist and emits `data-theme`/`data-motion` in the first byte; `ThemeContext` hydrates from those attributes and writes the cookie on change; blog font and size are applied only to `.blog-reading-surface`; `system` resolves in a nonced pre-paint script. The one-time adoption of an existing `localStorage` theme was **not** implemented — the key is simply no longer read, so a returning visitor's stored choice is dropped once.
 4. Build the accessible settings modal with theme, blog font, blog text size, motion, and language controls. Label the typography controls as blog-only.
+   - **Done:** `Components/Appearance/AppearanceSettingsDialog.tsx`, reachable from the header control.
 5. Wire reduced motion through the cube, particles, scramble text, typing text, smooth scroll, and cursor.
+   - **Done:** `useReducedMotion` combines the stored preference with `prefers-reduced-motion` and gates the hero effects, particle styling, scramble text, and typing text.
 6. Add the contrast, no-flash, blog-typography scoping, cookie-tampering, no-JavaScript, and cache-key tests from [THEMING.md](THEMING.md) §9.
+   - **Not started.** This is the whole of the phase's exit evidence, and none of it exists.
 7. Add public CSP/security headers and test the nonce path required by the reviewed pre-paint script.
+   - **Headers done, test not.** Middleware sets a nonce-based CSP with no `unsafe-inline` script source, plus `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, and `Permissions-Policy`.
 
 Exit: appearance is correct in the first HTML byte, every enabled theme passes AA, and two visitors with different preferences share one cache entry.
 
-## Phase 4 — Authentication and security baseline
+## Phase 4 — Authentication and security baseline (in progress)
+
+`packages/auth-core` supplies the primitives — opaque keyed session and CSRF tokens, Argon2id hashing with uniform password-step failures, hashed recovery codes, single-use WebAuthn challenges, cookie-mutation guards — and `provision:owner` is explicit-apply behind a bootstrap file and expiry. The API side is empty: `apps/api/src/modules/auth` is still a `.gitkeep`, so there are no login or assertion endpoints, no policy guards, and no admin shell.
 
 1. Implement one-time owner provisioning, Argon2id calibration, login throttling, and WebAuthn enrollment/assertion.
 2. Add opaque hashed sessions, secure cookies, CSRF/origin validation, session management, recent-auth rules, and recovery codes.
