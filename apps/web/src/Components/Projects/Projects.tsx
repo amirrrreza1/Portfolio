@@ -5,11 +5,14 @@ import Devider from "../UI/Devider/Devider";
 import { B } from "../UI/TextArea/TextArea";
 import Link from "next/link";
 import Button from "../UI/Buttons/CustomBTN";
+import type { SkillCategory } from "../Skills/Types";
 
 export default function ProjectsSection({
   projects,
+  skills,
 }: {
   readonly projects: readonly Projects[];
+  readonly skills: readonly SkillCategory[];
 }) {
   return (
     <section
@@ -21,7 +24,7 @@ export default function ProjectsSection({
 
       <div className="my-6 space-y-4 px-1 md:px-4 lg:space-y-8 lg:px-6">
         {projects.slice(0, 3).map((pj) => (
-          <ProjectCard key={pj.id} pj={pj} />
+          <ProjectCard key={pj.id} pj={pj} skills={skills} />
         ))}
         <div className="flex flex-col items-center justify-between gap-6 border p-8 shadow-lg md:flex-row">
           <div className="space-y-2">

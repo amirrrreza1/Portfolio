@@ -17,7 +17,10 @@ const HomePage = () => {
       <AboutMe />
       <Skills skills={portfolio.skills} />
       <GetInTouchForm />
-      <ProjectsSection projects={portfolio.projects} />
+      <ProjectsSection
+        projects={portfolio.projects}
+        skills={portfolio.skills}
+      />
       <Certificate certificates={portfolio.certificates} />
       <DownloadResume />
     </>

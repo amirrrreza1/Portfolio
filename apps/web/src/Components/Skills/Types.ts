@@ -5,6 +5,7 @@ export interface SkillCategory {
 }
 
 interface SkillItem {
+  id: number;
   name: string;
   color: string;
 }

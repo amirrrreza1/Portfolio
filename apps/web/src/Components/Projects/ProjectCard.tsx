@@ -5,18 +5,24 @@ import { useState } from "react";
 import Button from "../UI/Buttons/CustomBTN";
 import { getTextColor } from "@/Utils/getTextColor";
 import { useGitHubStats } from "@/Utils/getGithubStats";
-import Skills from "@/DataBase/Skills.json";
+import type { SkillCategory } from "@/Components/Skills/Types";
 import { Projects } from "./Types";
 
-const findSkillById = (id: number) => {
-  for (const category of Skills) {
+const findSkillById = (skills: readonly SkillCategory[], id: number) => {
+  for (const category of skills) {
     const skill = category.items.find((item) => item.id === id);
     if (skill) return skill;
   }
   return null;
 };
 
-export default function ProjectCard({ pj }: { pj: Projects }) {
+export default function ProjectCard({
+  pj,
+  skills,
+}: {
+  pj: Projects;
+  skills: readonly SkillCategory[];
+}) {
   const stats = useGitHubStats(pj.repo ?? "");
   const [showAll, setShowAll] = useState(false);
 
@@ -54,7 +60,7 @@ export default function ProjectCard({ pj }: { pj: Projects }) {
 
       <div className="mb-4 flex flex-wrap gap-2">
         {visibleTechs.map((techId, idx) => {
-          const skill = findSkillById(techId);
+          const skill = findSkillById(skills, techId);
           if (!skill) return null;
           return (
             <span
