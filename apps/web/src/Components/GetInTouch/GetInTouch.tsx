@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import emailjs from "@emailjs/browser";
+import { useState } from "react";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import Button from "../UI/Buttons/CustomBTN";
@@ -11,31 +11,12 @@ import { ContactUsSchema } from "@/Schemas/ContactUsForm";
 import { useAutoLang } from "@/Hooks/useAutoLang";
 import { FormData } from "./Types";
 
-/**
- * Browser-side EmailJS configuration.
- *
- * These are `NEXT_PUBLIC_`, so they are compiled into the bundle and readable
- * by every visitor — public identifiers, not secrets. The account they address
- * can be used by anyone who reads the bundle, which is why docs/SECURITY.md
- * §6 requires rotating and revoking them, and why M4 replaces this whole path
- * with a server-side SMTP submission that carries no browser credential.
- *
- * Read at module scope so a misconfigured checkout is detectable before the
- * visitor types a message, rather than throwing on a non-null assertion after
- * they press Send.
- */
-const emailJsConfig = {
-  serviceId: process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-  templateId: process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-  publicKey: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
-};
-
-const isEmailJsConfigured = Boolean(
-  emailJsConfig.serviceId && emailJsConfig.templateId && emailJsConfig.publicKey
-);
+/** Public contact requests go through the server-side SMTP delivery path. */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
 export default function GetInTouchForm() {
   const toast = useToast();
+  const [startedAt] = useState(() => Date.now());
 
   const {
     register,
@@ -47,28 +28,17 @@ export default function GetInTouchForm() {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!isEmailJsConfigured) {
-      toast("Messaging is temporarily unavailable. Please use email instead.");
-      return;
-    }
-
     try {
-      await emailjs.send(
-        emailJsConfig.serviceId!,
-        emailJsConfig.templateId!,
-        {
-          name: data.name,
-          email: data.email,
-          message: data.message,
-        },
-        emailJsConfig.publicKey!
-      );
-      toast("Message sent successfully!");
+      const response = await fetch(`${API_BASE_URL}/contact`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...data, company: "", startedAt }),
+      });
+      if (!response.ok) throw new Error("Contact request failed");
+
+      toast("Thanks - your message has been received.");
       reset();
-    } catch (error) {
-      // The provider's error can carry request detail; show the visitor a
-      // generic message and keep the specifics in the console.
-      console.error("[contact] EmailJS submission failed", error);
+    } catch {
       toast("Something went wrong. Please try again in a moment.");
     }
   };

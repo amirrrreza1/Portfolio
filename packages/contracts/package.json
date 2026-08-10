@@ -26,6 +26,10 @@
       "types": "./dist/content/index.d.ts",
       "import": "./dist/content/index.js"
     },
+    "./contact": {
+      "types": "./dist/contact/index.d.ts",
+      "import": "./dist/contact/index.js"
+    },
     "./blog": {
       "types": "./dist/blog/index.d.ts",
       "import": "./dist/blog/index.js"

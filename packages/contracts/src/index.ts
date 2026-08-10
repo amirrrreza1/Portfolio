@@ -21,4 +21,5 @@ export * from "./appearance/index.js";
 export * from "./auth/index.js";
 export * from "./blog/index.js";
 export * from "./common/index.js";
+export * from "./contact/index.js";
 export * from "./content/index.js";
