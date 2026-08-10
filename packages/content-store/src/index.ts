@@ -209,6 +209,47 @@ export interface GitHubInstallationToken {
   readonly expiresAt: Date;
 }
 
+/** Reuses an installation token until its final minute; it never persists it. */
+export class GitHubAppTokenProvider {
+  #cached: GitHubInstallationToken | undefined;
+
+  constructor(
+    private readonly config: GitHubAppConfig,
+    private readonly transport: GitContentTransport
+  ) {}
+
+  async token(now = new Date()): Promise<string> {
+    if (
+      this.#cached !== undefined &&
+      this.#cached.expiresAt.getTime() - now.getTime() > 60_000
+    ) {
+      return this.#cached.token;
+    }
+    this.#cached = await createGitHubInstallationToken(
+      this.config,
+      this.transport,
+      now
+    );
+    return this.#cached.token;
+  }
+}
+
+/** Materializes the Git client from validated runtime configuration on demand. */
+export async function createGitHubContentStoreFromRuntime(
+  config: ContentStoreRuntimeConfig,
+  transport: GitContentTransport,
+  tokenProvider = new GitHubAppTokenProvider(config, transport)
+): Promise<GitHubContentStore> {
+  return new GitHubContentStore(
+    {
+      repository: config.repository,
+      branch: config.branch,
+      token: await tokenProvider.token(),
+    },
+    transport
+  );
+}
+
 /** Creates a short-lived, installation-scoped token; no personal token path exists. */
 export async function createGitHubInstallationToken(
   config: GitHubAppConfig,

@@ -6,6 +6,7 @@ import {
   assertContentPath,
   authenticateGitHubWebhook,
   createFetchGitContentTransport,
+  GitHubAppTokenProvider,
   ContentConflictError,
   ContentStoreValidationError,
   createGitHubInstallationToken,
@@ -134,6 +135,35 @@ describe("content-store boundary", () => {
     );
     expect(result.token).toBe("installation-token");
     expect(calls[0]?.headers.Authorization).toMatch(/^Bearer eyJ.+\..+\..+$/);
+  });
+
+  it("keeps installation tokens only in memory until their final minute", async () => {
+    const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    let requests = 0;
+    const provider = new GitHubAppTokenProvider(
+      {
+        appId: "123",
+        installationId: "456",
+        privateKeyPem: privateKey
+          .export({ type: "pkcs8", format: "pem" })
+          .toString(),
+      },
+      {
+        request: async () => {
+          requests += 1;
+          return {
+            status: 201,
+            body: {
+              token: "installation-token",
+              expires_at: "2030-01-01T00:00:00Z",
+            },
+          };
+        },
+      }
+    );
+    await provider.token(new Date("2029-12-31T23:00:00Z"));
+    await provider.token(new Date("2029-12-31T23:30:00Z"));
+    expect(requests).toBe(1);
   });
 
   it("loads only the fixed GitHub/content runtime configuration", async () => {
