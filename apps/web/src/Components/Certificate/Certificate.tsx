@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import certificates from "@/DataBase/Certificate.json";
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import Button from "../UI/Buttons/CustomBTN";
@@ -9,9 +8,11 @@ import AnimatedLink from "../UI/Links/Links";
 import Label from "./Label";
 import { CertificateType } from "./Types";
 
-const Certificates = certificates as CertificateType[];
-
-const CertificatesSection = () => {
+const CertificatesSection = ({
+  certificates,
+}: {
+  readonly certificates: readonly CertificateType[];
+}) => {
   return (
     <section
       className="Container my-10 border p-2 backdrop-blur-sm"
@@ -21,7 +22,7 @@ const CertificatesSection = () => {
       <Devider />
 
       <div className="my-6 grid grid-cols-1 gap-2 px-1 sm:grid-cols-2 md:gap-4 md:px-4 lg:grid-cols-3 lg:gap-6 lg:px-6">
-        {Certificates.map((cert) => (
+        {certificates.map((cert) => (
           <motion.div
             key={cert.id}
             className="border p-6 shadow-lg"

@@ -1,9 +1,12 @@
 "use client";
 
-import quotes from "@/DataBase/DailyQuote.json";
 import { Quote } from "./Types";
 
-export default function DailyQuote() {
+export default function DailyQuote({
+  quotes,
+}: {
+  readonly quotes: readonly Quote[];
+}) {
   const today = new Date();
   const start = new Date(today.getFullYear(), 0, 0);
   const diff = today.getTime() - start.getTime();

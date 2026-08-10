@@ -2,13 +2,10 @@
 
 import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
-import Skill from "@/DataBase/Skills.json";
 import { getTextColor } from "@/Utils/getTextColor";
 import { SkillCategory } from "./Types";
 
-const Skills = () => {
-  const skills = Skill as SkillCategory[];
-
+const Skills = ({ skills }: { readonly skills: readonly SkillCategory[] }) => {
   return (
     <section
       className="Container my-10 border p-2 backdrop-blur-sm"

@@ -6,17 +6,19 @@ import GetInTouchForm from "@/Components/GetInTouch/GetInTouch";
 import Hero from "@/Components/Hero/Hero";
 import ProjectsSection from "@/Components/Projects/Projects";
 import Skills from "@/Components/Skills/Skills";
+import { getLegacyPortfolioData } from "@/server/legacy-portfolio";
 
 const HomePage = () => {
+  const portfolio = getLegacyPortfolioData();
   return (
     <>
       <Hero />
-      <DailyQuote />
+      <DailyQuote quotes={portfolio.quotes} />
       <AboutMe />
-      <Skills />
+      <Skills skills={portfolio.skills} />
       <GetInTouchForm />
-      <ProjectsSection />
-      <Certificate />
+      <ProjectsSection projects={portfolio.projects} />
+      <Certificate certificates={portfolio.certificates} />
       <DownloadResume />
     </>
   );
