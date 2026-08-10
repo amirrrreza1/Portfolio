@@ -164,7 +164,12 @@ export function buildErrorBody(
  */
 export const MAX_REPORTED_FIELDS = 50;
 
-export function toFieldErrors(error: z.ZodError): FieldErrors {
+export function toFieldErrors(error: {
+  readonly issues: readonly {
+    readonly path: readonly (string | number)[];
+    readonly message: string;
+  }[];
+}): FieldErrors {
   const fields: Record<string, string[]> = {};
 
   for (const issue of error.issues) {

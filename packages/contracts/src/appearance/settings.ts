@@ -3,6 +3,7 @@ import { z } from "zod";
 import { LOCALES } from "../common/locale.js";
 import { recordVersionSchema } from "../common/ids.js";
 import {
+  type BlogFontKey,
   blogFontKeySchema,
   blogSizeStepSchema,
   fontSupportsLocale,
@@ -94,8 +95,8 @@ export const appearanceSettingsInputSchema = z
         });
       }
 
-      const hasCompatibleFont = settings.enabledBlogFonts.some((key) =>
-        fontSupportsLocale(key, locale)
+      const hasCompatibleFont = settings.enabledBlogFonts.some(
+        (key: BlogFontKey) => fontSupportsLocale(key, locale)
       );
 
       if (!hasCompatibleFont) {
