@@ -201,6 +201,8 @@ export interface ContentIndexStore {
     readonly commitSha: string;
     readonly path: string;
     readonly blobSha: string;
+    readonly postId: string;
+    readonly locale: "en" | "fa";
     readonly title: string;
     readonly slug: string;
     readonly status: "draft" | "scheduled" | "published" | "archived";
@@ -238,6 +240,8 @@ export async function synchronizeGitFile(input: {
       commitSha: input.commitSha,
       path: input.path,
       blobSha: file.sha,
+      postId: parsed.frontmatter.postId,
+      locale: parsed.frontmatter.locale,
       title: parsed.frontmatter.title,
       slug: parsed.frontmatter.slug,
       status: parsed.frontmatter.status,

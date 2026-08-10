@@ -28,6 +28,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@portfolio/content-store": "workspace:*",
     "@portfolio/media": "workspace:*",
     "@portfolio/migration": "workspace:*",
     "@prisma/adapter-pg": "7.9.1",

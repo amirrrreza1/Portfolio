@@ -277,6 +277,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@portfolio/content-store':
+        specifier: workspace:*
+        version: link:../content-store
       '@portfolio/media':
         specifier: workspace:*
         version: link:../media

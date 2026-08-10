@@ -123,6 +123,19 @@ enum SyncOutcome {
   FAILURE
 }
 
+enum ContentWriteOperationState {
+  PENDING
+  GIT_COMMITTED
+  APPLIED
+  FAILED
+}
+
+enum OutboxState {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
 enum RevisionAction {
   CREATE
   UPDATE
@@ -907,6 +920,65 @@ model ContentSyncLog {
   @@index([startedAt(sort: Desc)])
   @@index([outcome, startedAt(sort: Desc)])
   @@map("content_sync_logs")
+}
+
+/// Durable intent for a Git write. The idempotency key is user/request scoped;
+/// retries discover the commit rather than issuing another write.
+model ContentWriteOperation {
+  id             String                     @id @default(cuid(2))
+  idempotencyKey String                     @unique
+  postId         String
+  locale         Locale
+  path           String
+  expectedBlobSha String?
+  payloadSha256  String
+  commitSha      String?
+  state          ContentWriteOperationState @default(PENDING)
+  failureReason  String?
+  createdAt      DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime                   @updatedAt @db.Timestamptz(6)
+
+  @@index([postId, locale])
+  @@index([state, updatedAt])
+  @@map("content_write_operations")
+}
+
+/// A unique commit/path means webhook, retry, and reconciliation cannot create
+/// two revisions or outbox messages for the same Git blob application.
+model ContentApplyLedger {
+  id        String   @id @default(cuid(2))
+  commitSha String
+  path      String
+  blobSha   String
+  appliedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([commitSha, path])
+  @@index([blobSha])
+  @@map("content_apply_ledger")
+}
+
+model WebhookDelivery {
+  deliveryId String   @id
+  expiresAt  DateTime @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("webhook_deliveries")
+}
+
+model ContentInvalidationOutbox {
+  id          String      @id @default(cuid(2))
+  operationId String?
+  cacheTag    String
+  payload     Json
+  state       OutboxState @default(PENDING)
+  attempts    Int         @default(0)
+  nextAttemptAt DateTime  @default(now()) @db.Timestamptz(6)
+  deliveredAt DateTime?
+  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([state, nextAttemptAt])
+  @@map("content_invalidation_outbox")
 }
 
 // ---------------------------------------------------------------------------
