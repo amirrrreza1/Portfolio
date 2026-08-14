@@ -49,15 +49,19 @@ if (target === undefined) {
 
 const migrationFile = path.join(migrationsDir, target, "migration.sql");
 const existing = await readFile(migrationFile, "utf8").catch(() => "");
+const isPrismaEmptyMigration = /^\s*-- This is an empty migration\.\s*$/u.test(
+  existing
+);
 
 if (existing.includes("integrity_constraints")) {
   console.log(`${target}/migration.sql already staged; nothing to do.`);
   process.exit(0);
 }
 
-if (existing.trim().length > 0) {
-  // Prisma generates an empty file for --create-only. Anything else means this
-  // migration already has content, and overwriting it would destroy work.
+if (existing.trim().length > 0 && !isPrismaEmptyMigration) {
+  // Prisma currently emits either an empty file or its standard empty-migration
+  // comment for --create-only. Anything else is real content, and overwriting
+  // it would destroy work.
   console.error(
     `${target}/migration.sql is not empty. Refusing to overwrite it.\n` +
       "Create a fresh --create-only migration, or apply the SQL by hand."
