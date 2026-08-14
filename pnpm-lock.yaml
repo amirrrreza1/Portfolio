@@ -66,6 +66,9 @@ importers:
       '@portfolio/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@portfolio/markdown':
+        specifier: workspace:*
+        version: link:../../packages/markdown
       '@simplewebauthn/server':
         specifier: 13.3.2
         version: 13.3.2

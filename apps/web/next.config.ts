@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { fileURLToPath } from "node:url";
 
 const nextConfig: NextConfig = {
   /**
@@ -17,7 +18,7 @@ const nextConfig: NextConfig = {
    * this from the nearest lockfile and warns when the inference is ambiguous in
    * a pnpm workspace, so state it.
    */
-  outputFileTracingRoot: new URL("../..", import.meta.url).pathname,
+  outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
 
   /**
    * `poweredByHeader` leaks the framework for no benefit. The full security
@@ -25,6 +26,39 @@ const nextConfig: NextConfig = {
    * costs nothing now.
    */
   poweredByHeader: false,
+
+  /**
+   * Keep browser-facing API and document-download URLs same-origin. The API
+   * origin is server-only, so MinIO/API topology never enters client bundles.
+   */
+  async rewrites() {
+    const rawOrigin = process.env.API_INTERNAL_ORIGIN?.trim();
+    if (!rawOrigin) return [];
+
+    let origin: URL;
+    try {
+      origin = new URL(rawOrigin);
+    } catch {
+      throw new Error("API_INTERNAL_ORIGIN must be an absolute URL.");
+    }
+    if (
+      !["http:", "https:"].includes(origin.protocol) ||
+      origin.username ||
+      origin.password ||
+      origin.pathname !== "/" ||
+      origin.search ||
+      origin.hash
+    ) {
+      throw new Error("API_INTERNAL_ORIGIN must be a credential-free origin.");
+    }
+
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${origin.origin}/api/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

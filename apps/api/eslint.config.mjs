@@ -16,5 +16,9 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ["test/**/*.ts", "eslint.config.mjs"],
   }
 );
