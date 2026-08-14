@@ -1,0 +1,14 @@
+{
+  "migrationVersion": "2026-08-14.page-sections.1",
+  "sourceChecksum": "a09a6655d4cfeed409cfa06f6c67a405880c14ea0d13a110e11b4489aa8ecfe3",
+  "birthDateConfigured": false,
+  "sectionKeys": [
+    "hero",
+    "about",
+    "skills",
+    "contact",
+    "projects",
+    "certificates"
+  ],
+  "errors": []
+}

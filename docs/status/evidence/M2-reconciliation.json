@@ -1,0 +1,123 @@
+{
+  "migrationVersion": "2026-08-10.1",
+  "sourceChecksum": "1b32cbfbe4063afee36619404a380a526cb4568ef7ddaef5fb9ff6d7d39af539",
+  "counts": {
+    "projects": 14,
+    "skillCategories": 6,
+    "skills": 26,
+    "certificates": 5,
+    "quotes": 35
+  },
+  "generatedProjectSlugs": [
+    {
+      "legacyId": 1,
+      "slug": "portfolio"
+    },
+    {
+      "legacyId": 2,
+      "slug": "fast-food"
+    },
+    {
+      "legacyId": 3,
+      "slug": "dastresi"
+    },
+    {
+      "legacyId": 4,
+      "slug": "taksize"
+    },
+    {
+      "legacyId": 5,
+      "slug": "digikala-typescript"
+    },
+    {
+      "legacyId": 14,
+      "slug": "os-scheduler"
+    },
+    {
+      "legacyId": 6,
+      "slug": "finsweet"
+    },
+    {
+      "legacyId": 7,
+      "slug": "digikala-html-css"
+    },
+    {
+      "legacyId": 8,
+      "slug": "morse-code"
+    },
+    {
+      "legacyId": 9,
+      "slug": "hangman"
+    },
+    {
+      "legacyId": 10,
+      "slug": "ssr-feed"
+    },
+    {
+      "legacyId": 11,
+      "slug": "infinite-xo"
+    },
+    {
+      "legacyId": 12,
+      "slug": "golestan"
+    },
+    {
+      "legacyId": 13,
+      "slug": "amazon-react"
+    }
+  ],
+  "certificateSources": [
+    {
+      "legacyId": 1,
+      "issuedAt": "2024-05-26",
+      "sourcePath": "/Certificates/Web-1.pdf"
+    },
+    {
+      "legacyId": 2,
+      "issuedAt": "2024-08-04",
+      "sourcePath": "/Certificates/Web-2.pdf"
+    },
+    {
+      "legacyId": 3,
+      "issuedAt": "2024-11-10",
+      "sourcePath": "/Certificates/Web-3.pdf"
+    },
+    {
+      "legacyId": 4,
+      "issuedAt": "2025-01-31",
+      "sourcePath": "/Certificates/React.pdf"
+    },
+    {
+      "legacyId": 5,
+      "issuedAt": "2025-06-13",
+      "sourcePath": "/Certificates/Next.pdf"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "severity": "warning",
+      "code": "LOW_CONTRAST_SKILL_COLOR",
+      "location": "skills[2].items[202].color",
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+    },
+    {
+      "severity": "warning",
+      "code": "LOW_CONTRAST_SKILL_COLOR",
+      "location": "skills[3].items[306].color",
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+    },
+    {
+      "severity": "warning",
+      "code": "LOW_CONTRAST_SKILL_COLOR",
+      "location": "skills[8].items[801].color",
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+    },
+    {
+      "severity": "warning",
+      "code": "PLACEHOLDER_URL_REMOVED",
+      "location": "projects[1].link",
+      "message": "The legacy # placeholder becomes null."
+    }
+  ]
+}

@@ -6,25 +6,25 @@ Counts and file states below were read from the working tree on 2026-08-08.
 
 ## 1. Coverage summary
 
-| Area              | Items today                                   | Source today                                             | Target owner                           |
-| ----------------- | --------------------------------------------- | -------------------------------------------------------- | -------------------------------------- |
-| Hero              | 3 strings                                     | hard-coded in `Hero.tsx`                                 | `PageSection` key `hero`               |
-| About Me          | 2 paragraphs + computed age                   | hard-coded in `AboutMe.tsx`                              | `PageSection` key `about`              |
-| Skills            | 6 categories, 26 skills                       | `src/DataBase/Skills.json`                               | `SkillCategory` + `Skill`              |
-| Projects          | 14 projects                                   | `src/DataBase/Projects.json`                             | `Project` + `ProjectSkill`             |
-| Certificates      | 5 certificates, 5 PDFs                        | `src/DataBase/Certificate.json` + `public/Certificates/` | `Certificate` + `MediaAsset`           |
-| Daily quotes      | 35 quotes                                     | `src/DataBase/DailyQuote.json`                           | `Quote`                                |
-| Resume            | 1 PDF                                         | `public/resume.pdf`                                      | `ResumeVersion` + `MediaAsset`         |
-| Header navigation | 6 anchors + theme control                     | hard-coded in `Header.tsx`                               | `NavItem` + settings modal             |
-| Footer            | copyright, 3 social links, donate link        | hard-coded in `Footer.tsx`                               | `SiteSettings` + `SocialLink`          |
-| Contact form      | labels, recipient, delivery                   | `GetInTouch.tsx` + client EmailJS keys                   | `SiteSettings` + API contact module    |
-| Site metadata     | title, description, 8 keywords, author, icons | hard-coded in `app/layout.tsx`                           | `SiteSettings` + SEO defaults          |
-| GitHub statistics | live client fetch                             | `Utils/getGithubStats.ts`                                | server adapter + `SiteSettings`        |
-| Blog              | none yet                                      | —                                                        | Git files + `Post`/`PageSection` index |
+| Area              | Items today                                   | Source today                                                     | Target owner                           |
+| ----------------- | --------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------- |
+| Hero              | 3 strings                                     | frozen in `PageSections.json`; selected `PageSection` at runtime | `PageSection` key `hero`               |
+| About Me          | 2 paragraphs + computed age                   | frozen in `PageSections.json`; selected `PageSection` at runtime | `PageSection` key `about`              |
+| Skills            | 6 categories, 26 skills                       | `src/DataBase/Skills.json`                                       | `SkillCategory` + `Skill`              |
+| Projects          | 14 projects                                   | `src/DataBase/Projects.json`                                     | `Project` + `ProjectSkill`             |
+| Certificates      | 5 certificates, 5 PDFs                        | `src/DataBase/Certificate.json` + `public/Certificates/`         | `Certificate` + `MediaAsset`           |
+| Daily quotes      | 35 quotes                                     | `src/DataBase/DailyQuote.json`                                   | `Quote`                                |
+| Resume            | 1 PDF                                         | `public/resume.pdf`                                              | `ResumeVersion` + `MediaAsset`         |
+| Header navigation | 6 anchors + theme control                     | hard-coded in `Header.tsx`                                       | `NavItem` + settings modal             |
+| Footer            | copyright, 3 social links, donate link        | hard-coded in `Footer.tsx`                                       | `SiteSettings` + `SocialLink`          |
+| Contact form      | labels, recipient, delivery                   | `GetInTouch.tsx` + client EmailJS keys                           | `SiteSettings` + API contact module    |
+| Site metadata     | title, description, 8 keywords, author, icons | hard-coded in `app/layout.tsx`                                   | `SiteSettings` + SEO defaults          |
+| GitHub statistics | former live client fetch                      | deleted `Utils/getGithubStats.ts`                                | server adapter + `SiteSettings`        |
+| Blog              | none yet                                      | —                                                                | Git files + `Post`/`PageSection` index |
 
 ## 2. Hero — `PageSection` key `hero`
 
-Currently `Hero.tsx` hard-codes the typed strings `"Hello There!"` and `"I'm Amirreza Azarioun"`, and the subtitle `"A Developer / Student / Learner"`.
+The frozen legacy Hero used the typed strings `"Hello There!"` and `"I'm Amirreza Azarioun"`, and the subtitle `"A Developer / Student / Learner"`. They are now migrated from `PageSections.json`; `Hero.tsx` consumes the selected strict section DTO.
 
 | Admin field                         | Type                                     | Notes                                                                        |
 | ----------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
@@ -36,7 +36,7 @@ Currently `Hero.tsx` hard-codes the typed strings `"Hello There!"` and `"I'm Ami
 
 ## 3. About Me — `PageSection` key `about`
 
-Currently two paragraphs of prose in `AboutMe.tsx`, with emphasis applied through `<B>` and `<I>` components and the age injected from `getAge()`.
+The frozen legacy About section contained two paragraphs, with emphasis applied through `<B>` and `<I>` and age injected from `getAge()`. The exact prose is now migrated as restricted inline Markdown, and `AboutMe.tsx` consumes the selected strict section DTO.
 
 | Admin field | Type                                     | Notes                                                                                |
 | ----------- | ---------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -46,7 +46,7 @@ Currently two paragraphs of prose in `AboutMe.tsx`, with emphasis applied throug
 | Location    | short text, translatable                 | Currently `"Tehran, Iran"`                                                           |
 | Role        | short text, translatable                 | Currently `"frontend developer"`                                                     |
 
-**Corrections — the environment half is done; the database half is not.** `Utils/Age.ts` read the birth date from `process.env.NEXT_PUBLIC_BIRTHDAY`, which had three problems:
+**Corrections — complete for the public read path.** `Utils/Age.ts` read the birth date from `process.env.NEXT_PUBLIC_BIRTHDAY`, which had three problems:
 
 - A `NEXT_PUBLIC_*` variable is compiled into the browser bundle, so the exact birth date was published to every visitor whether or not the page displayed it.
 - `NEXT_PUBLIC_BIRTHDAY` was not declared in `.env.example`, so a fresh checkout rendered `null` where the age should be — the About Me paragraph read "Hello, I'm Amirreza Azarioun, , years old". A required value absent from the example environment is a setup trap.
@@ -54,7 +54,7 @@ Currently two paragraphs of prose in `AboutMe.tsx`, with emphasis applied throug
 
 **Fixed in M0.** The value is now the server-only `BIRTH_DATE`, declared in `.env.example`, validated, and computed in UTC by a server component; `AboutMe` drops the clause entirely rather than rendering an empty gap when it is absent. All three problems are closed.
 
-**Still owed by M2.** The date moves from the environment into `SiteSettings`, so the owner can change it without a deployment and startup validation is replaced by a database constraint.
+**Done in M2/M4.** Migration version `2026-08-14.page-sections.1` moves the date into `SiteSettings`. The API derives age in UTC and substitutes `{{age}}` before returning the strict DTO; neither the date nor the raw token reaches the web response. The legacy rollback adapter alone retains server-only `BIRTH_DATE` support until the rollback window closes.
 
 `NEXT_PUBLIC_BIRTHDAY` is gone. The three EmailJS keys are the only remaining `NEXT_PUBLIC_*` values besides the API base URL; they are removed when M4 replaces the contact path, and they must be revoked at the provider regardless.
 
@@ -79,19 +79,19 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 
 14 projects in `Projects.json`. Every one currently has `status: "Completed"`.
 
-| Admin field                   | Type                             | Notes                                                                               |
-| ----------------------------- | -------------------------------- | ----------------------------------------------------------------------------------- |
-| Title                         | short text, translatable         |                                                                                     |
-| Slug                          | slug                             | Generated from the title; currently absent — projects have no individual URLs today |
-| Summary                       | inline Markdown, translatable    | Maps from `description`                                                             |
-| Long description              | Markdown, translatable, optional | New capability for a project detail page                                            |
-| Status                        | enum                             | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`                                   |
-| Demo URL                      | URL, optional                    |                                                                                     |
-| Repository URL                | URL, optional                    |                                                                                     |
-| Cover image                   | media reference, optional        | No project images exist today                                                       |
-| Technologies                  | ordered skill references         | Maps from the numeric `technologies` array                                          |
-| Featured, sort order, enabled | boolean, integer, boolean        | Currently implicit in array order                                                   |
-| Started at, completed at      | dates, optional                  | Not present today                                                                   |
+| Admin field                   | Type                             | Notes                                                                                 |
+| ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------- |
+| Title                         | short text, translatable         |                                                                                       |
+| Slug                          | slug                             | Deterministically generated from the title; now used by localized project-detail URLs |
+| Summary                       | inline Markdown, translatable    | Maps from `description`                                                               |
+| Long description              | Markdown, translatable, optional | New capability for a project detail page                                              |
+| Status                        | enum                             | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`                                     |
+| Demo URL                      | URL, optional                    |                                                                                       |
+| Repository URL                | URL, optional                    |                                                                                       |
+| Cover image                   | media reference, optional        | No project images exist today                                                         |
+| Technologies                  | ordered skill references         | Maps from the numeric `technologies` array                                            |
+| Featured, sort order, enabled | boolean, integer, boolean        | Currently implicit in array order                                                     |
+| Started at, completed at      | dates, optional                  | Not present today                                                                     |
 
 **Corrections:**
 
@@ -161,7 +161,7 @@ Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certific
 
 ## 9. Header navigation — `NavItem`
 
-`Header.tsx` hard-codes six anchor buttons (Home, About Me, Skills, Get In Touch, Projects, Certificates), each with a Lucide icon, plus the theme toggle.
+The frozen header had six anchor buttons (Home, About Me, Skills, Get In Touch, Projects, Certificates), each with a Lucide icon, plus the theme toggle. `Header.tsx` now consumes the selected server DTO and maps only allowlisted targets to authored icons.
 
 | Admin field    | Type                     | Notes                                                                                                                            |
 | -------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -170,7 +170,7 @@ Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certific
 | Icon           | key from a code registry | Icon names are keys, never arbitrary strings                                                                                     |
 | Order, enabled | integer, boolean         |                                                                                                                                  |
 
-**Corrections:** the nav order in the markup (Home, About, Skills, Get In Touch, Projects, Certificates) does not match the visual order of the sections on the page — worth the owner's attention when ordering becomes editable. The header currently renders `null` until mounted and then portals into `document.body`, so there is no navigation in the server-rendered HTML at all. That is a crawlability problem: [SEO.md](SEO.md) §7 requires a human HTML navigation path to every indexable page, so the header must render on the server. A blog link must be added once the blog ships, and the theme control becomes the settings-modal trigger from [THEMING.md](THEMING.md) §6.
+**Corrections:** navigation and the six homepage sections now render from ordered enabled database records (or the isolated legacy adapter), and navigation exists in server-rendered HTML. A temporary live disable proved the page omits a disabled section. The migrated section order preserves the legacy visual order; navigation ordering remains independently editable. A blog link must be added once the blog ships, and the theme control now opens the settings dialog from [THEMING.md](THEMING.md) §6.
 
 ## 10. Footer — `SiteSettings` and `SocialLink`
 
@@ -223,15 +223,24 @@ The `useAutoLang` hook, which sets `lang` on inputs based on whether the value c
 
 ## 13. GitHub statistics — server adapter
 
-`Utils/getGithubStats.ts` fetches from the browser.
+The browser hook is deleted. `server/github-stats-source.ts` now accepts only
+the validated `SiteSettings` username and exact repository allowlist, then
+constructs fixed GitHub API requests with time, response-size, redirect,
+fresh/stale, and negative-cache bounds. Project cards receive the result in
+initial server HTML. The separately versioned migration and production run are
+recorded in
+[`M4-github-stats.md`](status/evidence/M4-github-stats.md).
 
-| Admin field          | Type             | Notes                          |
-| -------------------- | ---------------- | ------------------------------ |
-| GitHub username      | short text       |                                |
-| Repository allowlist | list             | Explicit; no wildcard fetching |
-| Enabled, cache TTL   | boolean, integer |                                |
+| Admin field          | Type       | Notes                                            |
+| -------------------- | ---------- | ------------------------------------------------ |
+| GitHub username      | short text |                                                  |
+| Repository allowlist | list       | Explicit; no wildcard fetching; empty disables   |
+| Cache TTL            | integer    | 60–86400 seconds; current migrated value is 3600 |
 
-**Correction:** an unauthenticated client-side call is rate-limited per visitor IP, leaks the visitor to a third party, and cannot be cached. It moves to a cached server adapter with an allowlist, a timeout, a response-size limit, and a bounded failure state that renders the section as unavailable rather than breaking the page.
+**Correction delivered:** an unauthenticated client-side call was rate-limited
+per visitor IP, leaked the visitor to a third party, and could not be cached.
+The server adapter now implements the required allowlist, optional server
+authentication, timeout, response-size limit, and bounded unavailable state.
 
 ## 14. Not content, but must not be lost
 

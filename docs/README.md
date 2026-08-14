@@ -9,6 +9,7 @@ These documents define the approved target. They are normative: where an impleme
 | [DECISIONS.md](DECISIONS.md)                     | Architecture decision record: what was chosen, why, what was rejected, and what risks were accepted |
 | [PRODUCT_SPEC.md](PRODUCT_SPEC.md)               | Scope, users, requirements, acceptance criteria, and non-goals                                      |
 | [ROADMAP.md](ROADMAP.md)                         | Current status, milestone dependencies, delivery gates, risks, and immediate execution queue        |
+| [STATUS.md](STATUS.md)                           | Evidence-backed summary and individual status files for every milestone that has started            |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Ordered delivery phases, legacy migration, testing, and definition of done                          |
 | [BASELINE_M0.md](BASELINE_M0.md)                 | Frozen pre-stabilization record of the legacy site: routes, content counts, and file hashes         |
 
@@ -44,7 +45,7 @@ A bilingual portfolio and blog. Article bodies are Markdown files in the Git rep
 
 ## Status
 
-[ROADMAP.md](ROADMAP.md) is the authoritative status document; this is the short version.
+[ROADMAP.md](ROADMAP.md) is the authoritative status document. [STATUS.md](STATUS.md) and the files in [`status/`](status/) provide the per-milestone evidence, completed work, open gates, and next actions.
 
 Seven workspace packages are built and tested: `contracts`, `database`, `markdown`, `media`, `migration`, `content-store`, and `auth-core`. The web app has a locale-prefixed shell with server-resolved appearance, a public CSP, and a settings dialog; the API exposes a health route and a server-side contact endpoint. Portfolio content still comes from the preserved legacy JSON, now confined to a single server module.
 
@@ -52,4 +53,4 @@ The pattern across every open milestone is the same: the code is written and the
 
 Defects fixed so far: the undeclared birthday value (now the server-only `BIRTH_DATE`, so a date of birth no longer ships in the client bundle), two case-mismatched certificate paths, the missing `metadataBase`, 17 font faces shipped in four formats where only `woff2` was reachable, two `@font-face` weight collisions that made the ExtraBold faces unusable, a repository-wide formatting failure that would have made the CI format step red on every commit, the theme applied after first paint, and the browser-side EmailJS integration.
 
-Defects documented and still scheduled: the published EmailJS keys — removed from source, but every bundle already served still carries them, so only provider-side revocation removes the exposure — a client-side-only header that leaves no navigation in the server HTML, a client-side GitHub statistics fetch, and three skill colours that fail contrast. Each is tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Defects documented and still scheduled: the published EmailJS keys — removed from source, but every bundle already served still carries them, so only provider-side revocation removes the exposure — and three skill colours that fail contrast. The server-rendered header and server-side GitHub statistics adapter are now delivered. Remaining defects are tracked in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) and scheduled in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).

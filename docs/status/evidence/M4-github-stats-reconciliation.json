@@ -1,0 +1,22 @@
+{
+  "migrationVersion": "2026-08-14.github-stats.1",
+  "sourceChecksum": "a4b44796e88c1ddefaacfa2f113e8d4dcdb442b6887ff7e495e66229af3c58d7",
+  "username": "amirrrreza1",
+  "repositoryAllowlist": [
+    "Portfolio",
+    "FastFood-BurgerMaker",
+    "Dastersi",
+    "DigiKala-API-Code",
+    "OS-Scheduler",
+    "Finsweet",
+    "Digikala-HTML-CSS",
+    "Morse-Code",
+    "Hangman",
+    "RSS-Feed",
+    "Tic-Tac-Toe",
+    "Golestan-React",
+    "Amazon-React"
+  ],
+  "cacheTtlSeconds": 3600,
+  "errors": []
+}

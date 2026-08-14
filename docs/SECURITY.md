@@ -78,7 +78,7 @@ Highest-value assets:
 - Locale is a closed allowlist. An unrecognized locale segment is a `404`, never a coercion, and never a path or query component.
 - UI message-catalog values are escaped on output and never treated as HTML.
 - User-entered outbound URLs are normalized and validated. Server-side URL fetches use fixed allowlisted hosts, DNS/IP checks, timeouts, response-size limits, and no arbitrary redirects to prevent SSRF.
-- GitHub statistics fetching MUST move to a server adapter with repository allowlisting, authentication where configured, caching, and bounded failure behavior. This has not been done: `Utils/getGithubStats.ts` still calls `api.github.com` from the browser, which exposes every visitor's IP to a third party and is rate-limited per visitor.
+- GitHub statistics use a request-time server adapter with a `SiteSettings` owner/repository allowlist, a fixed GitHub API origin, optional server-only authentication, timeout and response-size bounds, redirect refusal, validated fresh/stale caching, and bounded negative caching. The former browser hook is deleted, so visitor IPs no longer make third-party statistics requests. See [`M4-github-stats.md`](status/evidence/M4-github-stats.md).
 
 ## 8. Upload and media controls
 

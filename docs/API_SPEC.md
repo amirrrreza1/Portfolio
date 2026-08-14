@@ -70,10 +70,11 @@ All public read paths are locale-scoped. `:locale` is validated against the allo
 
 | Method | Path                                    | Purpose                                                                                    | Cache                                 |
 | ------ | --------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `GET`  | `/public/:locale/site`                  | Enabled settings, navigation, sections, social links                                       | short ISR/public cache                |
+| `GET`  | `/public/:locale/site`                  | Enabled settings, navigation, sections, social links, public GitHub statistics allowlist   | short ISR/public cache                |
 | `GET`  | `/public/:locale/appearance`            | Enabled site themes, blog typography options, and defaults for the settings modal          | long public cache                     |
 | `GET`  | `/public/:locale/projects`              | Enabled projects and associated skills                                                     | public cache                          |
 | `GET`  | `/public/:locale/projects/:slug`        | One public project                                                                         | public cache                          |
+| `GET`  | `/public/projects/:slug/image`          | Verified public image attached to one enabled project; `404` when absent                   | long public cache                     |
 | `GET`  | `/public/:locale/blog/posts`            | Published translation summaries, cursor pagination                                         | public cache                          |
 | `GET`  | `/public/:locale/blog/posts/:slug`      | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache                          |
 | `GET`  | `/public/:locale/blog/categories/:slug` | Published posts in category                                                                | public cache                          |
@@ -92,6 +93,7 @@ Rules:
 - Locale is part of the cache key and the invalidation tag for every entry above.
 - RSS, sitemap, robots, and HTML routes are emitted by Next.js from these public read models; they are not alternate write paths.
 - The Next.js server client follows [ADR-014](DECISIONS.md#adr-014--bounded-last-known-good-public-reads-during-api-outages): it may reuse only a previously validated published DTO within the endpoint's maximum-stale window. Site/projects default to 60 minutes, article/taxonomy reads to 15 minutes, and resume metadata to 5 minutes. A cold or expired outage renders a localized controlled `503` state.
+- For the current home/project/site/appearance/article surfaces, the request proxy evaluates the exact route dependencies before streaming and emits that `503` with `Retry-After`, no-store/noindex controls, the locale catalog message, and no internal cause. Project/article `404` and explicit legacy rollback remain distinct from an outage; article reads use their shorter 15-minute maximum-stale ceiling.
 - Contact, preview, authentication, admin, and mutation requests never synthesize success from stale data. Unpublish/archive/resume-revoke changes enqueue high-priority invalidation and expose delivery failures to operations.
 
 ## 5. Authentication endpoints
