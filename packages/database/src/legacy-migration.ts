@@ -1,4 +1,9 @@
 import type {
+  LegacyGitHubStatsMigrationStore,
+  LegacyGitHubStatsMigrationTransaction,
+  LegacyPageSectionInput,
+  LegacyPageSectionMigrationStore,
+  LegacyPageSectionMigrationTransaction,
   LegacyMigrationStore,
   LegacyMigrationTransaction,
   VerifiedLegacyMedia,
@@ -23,6 +28,156 @@ export function createLegacyMigrationStore(
         operation(new PrismaMigrationTransaction(prisma))
       ),
   };
+}
+
+/**
+ * Applies the separately versioned hard-coded page-section migration after the
+ * media/content migration. Its report records only whether a birth date was
+ * configured; the private date itself never enters the migration ledger.
+ */
+export function createLegacyPageSectionMigrationStore(
+  database: Database
+): LegacyPageSectionMigrationStore {
+  return {
+    transaction: (operation) =>
+      database.$transaction(async (prisma) =>
+        operation(new PrismaPageSectionMigrationTransaction(prisma))
+      ),
+  };
+}
+
+/** Applies the separately ledgered, explicit legacy GitHub repository list. */
+export function createLegacyGitHubStatsMigrationStore(
+  database: Database
+): LegacyGitHubStatsMigrationStore {
+  return {
+    transaction: (operation) =>
+      database.$transaction(async (prisma) =>
+        operation(new PrismaGitHubStatsMigrationTransaction(prisma))
+      ),
+  };
+}
+
+class PrismaGitHubStatsMigrationTransaction implements LegacyGitHubStatsMigrationTransaction {
+  constructor(private readonly prisma: any) {}
+
+  async appliedChecksum(version: string): Promise<string | null> {
+    return (
+      (await this.prisma.dataMigration.findUnique({ where: { version } }))
+        ?.checksum ?? null
+    );
+  }
+
+  async setGitHubStatsSettings(input: {
+    readonly username: string;
+    readonly repositoryAllowlist: readonly string[];
+    readonly cacheTtlSeconds: number;
+  }): Promise<void> {
+    await this.prisma.siteSettings.update({
+      where: { id: 1 },
+      data: {
+        githubUsername: input.username,
+        githubRepoAllowlist: [...input.repositoryAllowlist],
+        githubCacheTtlSeconds: input.cacheTtlSeconds,
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async recordAppliedMigration(input: {
+    readonly version: string;
+    readonly checksum: string;
+    readonly report: unknown;
+  }): Promise<void> {
+    await this.prisma.dataMigration.create({
+      data: {
+        version: input.version,
+        checksum: input.checksum,
+        report: input.report,
+      },
+    });
+  }
+}
+
+class PrismaPageSectionMigrationTransaction implements LegacyPageSectionMigrationTransaction {
+  constructor(private readonly prisma: any) {}
+
+  async appliedChecksum(version: string): Promise<string | null> {
+    return (
+      (await this.prisma.dataMigration.findUnique({ where: { version } }))
+        ?.checksum ?? null
+    );
+  }
+
+  async setSiteBirthDate(value: string | null): Promise<void> {
+    await this.prisma.siteSettings.update({
+      where: { id: 1 },
+      data: {
+        birthDate: value === null ? null : new Date(`${value}T00:00:00.000Z`),
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async applySection(input: LegacyPageSectionInput): Promise<void> {
+    const section = await this.prisma.pageSection.update({
+      where: { key: input.key },
+      data: {
+        ...(input.content === undefined ? {} : { content: input.content }),
+        sortOrder: input.sortOrder,
+        enabled: true,
+        archivedAt: null,
+        version: { increment: 1 },
+      },
+    });
+
+    if (input.english === undefined) return;
+    await this.prisma.pageSectionTranslation.upsert({
+      where: {
+        sectionId_locale: { sectionId: section.id, locale: "en" },
+      },
+      update: {
+        title: input.english.title,
+        content: input.english.content,
+      },
+      create: {
+        sectionId: section.id,
+        locale: "en",
+        title: input.english.title,
+        content: input.english.content,
+      },
+    });
+    // The M1 Persian values for these two sections were explicit structural
+    // placeholders, not translated legacy content. Emptying them activates the
+    // documented per-field English portfolio fallback without pretending a
+    // translation was authored.
+    await this.prisma.pageSectionTranslation.upsert({
+      where: {
+        sectionId_locale: { sectionId: section.id, locale: "fa" },
+      },
+      update: { title: null, content: {} },
+      create: {
+        sectionId: section.id,
+        locale: "fa",
+        title: null,
+        content: {},
+      },
+    });
+  }
+
+  async recordAppliedMigration(input: {
+    readonly version: string;
+    readonly checksum: string;
+    readonly report: unknown;
+  }): Promise<void> {
+    await this.prisma.dataMigration.create({
+      data: {
+        version: input.version,
+        checksum: input.checksum,
+        report: input.report,
+      },
+    });
+  }
 }
 
 class PrismaMigrationTransaction implements LegacyMigrationTransaction {

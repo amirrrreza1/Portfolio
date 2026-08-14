@@ -28,7 +28,11 @@ export {
   type VersionedDelegate,
 } from "./concurrency.js";
 
-export { createLegacyMigrationStore } from "./legacy-migration.js";
+export {
+  createLegacyGitHubStatsMigrationStore,
+  createLegacyMigrationStore,
+  createLegacyPageSectionMigrationStore,
+} from "./legacy-migration.js";
 export { createContentIndexStore } from "./content-sync.js";
 export { createPasswordLoginStore } from "./auth.js";
 export { createWebAuthnChallengeStore } from "./webauthn.js";

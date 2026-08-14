@@ -5,9 +5,12 @@ import { fileURLToPath } from "node:url";
 import { config as loadEnvironment } from "dotenv";
 
 import {
+  applyLegacyPageSectionMigration,
   executeLegacyMediaMigration,
   planLegacyMigration,
+  planLegacyPageSectionMigration,
   serializeReconciliationReport,
+  type LegacyPageSectionSnapshot,
   type LegacySnapshot,
 } from "@portfolio/migration";
 import {
@@ -19,6 +22,7 @@ import {
 import {
   createDatabaseClient,
   createLegacyMigrationStore,
+  createLegacyPageSectionMigrationStore,
 } from "../src/index.js";
 
 const root = path.resolve(
@@ -33,13 +37,45 @@ if (!args.has("--apply")) {
 }
 const sourceDirectory = path.join(root, "apps", "web", "src", "DataBase");
 const publicDirectory = path.join(root, "apps", "web", "public");
-const reportPath = path.join(root, "migration-reconciliation.json");
+const reportPath = path.join(
+  root,
+  "docs",
+  "status",
+  "evidence",
+  "M2-reconciliation.json"
+);
+const pageSectionReportPath = path.join(
+  root,
+  "docs",
+  "status",
+  "evidence",
+  "M2-page-sections-reconciliation.json"
+);
 const localRoot = readOption("--local-media-root");
 const snapshot = await readSnapshot();
 const plan = planLegacyMigration(snapshot);
 await writeFile(reportPath, serializeReconciliationReport(plan), "utf8");
-
-if (plan.issues.some((issue) => issue.severity === "error")) {
+const pageSectionSnapshot = await readPageSectionSnapshot();
+const pageSectionPlan = planLegacyPageSectionMigration(pageSectionSnapshot);
+await writeFile(
+  pageSectionReportPath,
+  JSON.stringify(
+    {
+      migrationVersion: pageSectionPlan.version,
+      sourceChecksum: pageSectionPlan.sourceChecksum,
+      birthDateConfigured: pageSectionPlan.birthDateConfigured,
+      sectionKeys: pageSectionPlan.sectionKeys,
+      errors: pageSectionPlan.issues,
+    },
+    null,
+    2
+  ) + "\n",
+  "utf8"
+);
+if (
+  plan.issues.some((issue) => issue.severity === "error") ||
+  pageSectionPlan.issues.length > 0
+) {
   throw new Error("Preflight failed; see " + reportPath + ".");
 }
 const databaseUrl = requiredEnvironment("DATABASE_URL");
@@ -63,7 +99,17 @@ try {
           result.uploadedCount +
           " media object(s)."
   );
+  const sectionResult = await applyLegacyPageSectionMigration(
+    createLegacyPageSectionMigrationStore(database),
+    pageSectionSnapshot
+  );
+  console.log(
+    sectionResult.applied
+      ? "Legacy Hero/About and section ordering migrated."
+      : "Legacy Hero/About and section ordering already applied."
+  );
   console.log("Reconciliation report: " + reportPath);
+  console.log("Page-section report: " + pageSectionReportPath);
 } finally {
   await database.$disconnect();
 }
@@ -86,6 +132,21 @@ async function readSnapshot(): Promise<LegacySnapshot> {
       await readJson("DailyQuote.json"),
       "DailyQuote.json"
     ) as LegacySnapshot["quotes"],
+  };
+}
+
+async function readPageSectionSnapshot(): Promise<LegacyPageSectionSnapshot> {
+  const value = await readJson("PageSections.json");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("PageSections.json must contain an object.");
+  }
+  const sections = (value as { readonly sections?: unknown }).sections;
+  if (!Array.isArray(sections)) {
+    throw new Error("PageSections.json.sections must contain an array.");
+  }
+  return {
+    birthDate: process.env.BIRTH_DATE?.trim() || null,
+    sections: sections as unknown as LegacyPageSectionSnapshot["sections"],
   };
 }
 

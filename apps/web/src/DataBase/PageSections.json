@@ -1,0 +1,54 @@
+{
+  "sections": [
+    {
+      "key": "hero",
+      "sortOrder": 0,
+      "content": {
+        "variant": "primary",
+        "typingSpeed": 50,
+        "deletingSpeed": 30,
+        "pauseBetween": 3000,
+        "showRubikCube": true
+      },
+      "english": {
+        "title": "Amirreza Azarioun",
+        "content": {
+          "lines": ["Hello There!", "I'm Amirreza Azarioun"],
+          "subtitle": "A Developer / Student / Learner"
+        }
+      }
+    },
+    {
+      "key": "about",
+      "sortOrder": 1,
+      "content": {},
+      "english": {
+        "title": "About Me",
+        "content": {
+          "location": "Tehran, Iran",
+          "role": "frontend developer",
+          "body": [
+            "Hello, I’m **Amirreza Azarioun**, {{age}} years old, based in Tehran, Iran. I currently work as a **frontend developer**, but I have a strong passion for continuous learning and expanding my knowledge into other areas of software development.",
+            "I focus on writing **scalable, clean, and maintainable code** —with thoughtful component architecture, clear naming, and strong attention to UX details. My day‑to‑day toolkit includes **TypeScript, React, Next.js (App Router),** and **Tailwind CSS**. I also leverage *artificial intelligence tools* to accelerate development, improve code quality, and streamline workflows."
+          ]
+        }
+      }
+    },
+    {
+      "key": "skills",
+      "sortOrder": 2
+    },
+    {
+      "key": "contact",
+      "sortOrder": 3
+    },
+    {
+      "key": "projects",
+      "sortOrder": 4
+    },
+    {
+      "key": "certificates",
+      "sortOrder": 5
+    }
+  ]
+}

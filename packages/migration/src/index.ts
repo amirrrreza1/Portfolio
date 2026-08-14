@@ -24,6 +24,33 @@ export {
   type LegacyMediaExecutorInput,
   type LegacyMediaExecutorResult,
 } from "./media-execution.js";
+export {
+  LEGACY_PAGE_SECTION_MIGRATION_VERSION,
+  applyLegacyPageSectionMigration,
+  assertLegacyPageSectionMigrationReady,
+  planLegacyPageSectionMigration,
+  type AppliedLegacyPageSectionMigration,
+  type LegacyPageSectionInput,
+  type LegacyPageSectionKey,
+  type LegacyPageSectionMigrationIssue,
+  type LegacyPageSectionMigrationPlan,
+  type LegacyPageSectionMigrationStore,
+  type LegacyPageSectionMigrationTransaction,
+  type LegacyPageSectionSnapshot,
+  type LegacyPageSectionTranslation,
+} from "./page-sections.js";
+export {
+  LEGACY_GITHUB_STATS_MIGRATION_VERSION,
+  applyLegacyGitHubStatsMigration,
+  assertLegacyGitHubStatsMigrationReady,
+  planLegacyGitHubStatsMigration,
+  type AppliedLegacyGitHubStatsMigration,
+  type LegacyGitHubStatsMigrationIssue,
+  type LegacyGitHubStatsMigrationPlan,
+  type LegacyGitHubStatsMigrationStore,
+  type LegacyGitHubStatsMigrationTransaction,
+  type LegacyGitHubStatsSnapshot,
+} from "./github-stats.js";
 
 export const LEGACY_MIGRATION_VERSION = "2026-08-10.1";
 
