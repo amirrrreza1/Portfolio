@@ -1,0 +1,194 @@
+import { formatNumber, formatPublicTimestamp } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
+import { articlePath, localePath } from "@/i18n/routing";
+import { getPortfolioArticleDetail } from "@/server/portfolio-article-detail";
+import { PublicDataUnavailableError } from "@/server/public-api-client";
+import {
+  buildPublicArticleJsonLd,
+  buildPublicArticleMetadata,
+} from "@/server/public-article-seo";
+import {
+  getLocaleDefinition,
+  isLocale,
+  slugSchemaFor,
+} from "@portfolio/contracts/common";
+import type { Metadata } from "next";
+import { headers } from "next/headers";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+type RouteParams = Promise<{ locale: string; slug: string }>;
+
+export async function generateMetadata({
+  params,
+}: Readonly<{ params: RouteParams }>): Promise<Metadata> {
+  const { locale, slug: slugInput } = await params;
+  if (!isLocale(locale)) return {};
+  const slug = slugSchemaFor(locale).safeParse(slugInput);
+  if (!slug.success) return {};
+
+  try {
+    const result = await getPortfolioArticleDetail(locale, slug.data);
+    if (result.article === null) return { robots: { index: false } };
+    return buildPublicArticleMetadata(locale, result.article);
+  } catch (error) {
+    if (error instanceof PublicDataUnavailableError) {
+      return { robots: { index: false, follow: false } };
+    }
+    throw error;
+  }
+}
+
+export default async function LocaleArticlePage({
+  params,
+}: Readonly<{ params: RouteParams }>) {
+  const { locale, slug: slugInput } = await params;
+  if (!isLocale(locale)) notFound();
+  const slug = slugSchemaFor(locale).safeParse(slugInput);
+  if (!slug.success) notFound();
+
+  let result;
+  try {
+    result = await getPortfolioArticleDetail(locale, slug.data);
+  } catch (error) {
+    if (!(error instanceof PublicDataUnavailableError)) throw error;
+    return <UnavailableArticle locale={locale} />;
+  }
+  if (result.article === null) notFound();
+
+  const article = result.article;
+  const messages = getMessages(locale).blog;
+  const otherTranslations = article.alternates.filter(
+    ({ locale: alternateLocale }) => alternateLocale !== locale
+  );
+  const nonce = (await headers()).get("x-portfolio-csp-nonce") ?? undefined;
+
+  return (
+    <article className="Container my-16 space-y-8 border p-5 md:p-8">
+      <Link href={localePath(locale, "blog")} className="underline">
+        {messages.backToBlog}
+      </Link>
+
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-4xl font-bold">{article.title}</h1>
+          {article.featured ? (
+            <span className="border-secondary/40 bg-secondary/10 border px-3 py-1 text-sm">
+              {messages.featured}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-secondary/75 text-lg">{article.excerpt}</p>
+        <dl className="text-secondary/70 flex flex-wrap gap-6 text-sm">
+          <ArticleDate
+            label={messages.published}
+            value={article.publishedAt}
+            locale={locale}
+          />
+          {article.updatedAt === article.publishedAt ? null : (
+            <ArticleDate
+              label={messages.updated}
+              value={article.updatedAt}
+              locale={locale}
+            />
+          )}
+          <div>
+            <dt className="sr-only">{messages.minuteRead}</dt>
+            <dd>
+              {formatNumber(article.readingMinutes, locale)}{" "}
+              {messages.minuteRead}
+            </dd>
+          </div>
+        </dl>
+      </header>
+
+      {otherTranslations.length === 0 ? null : (
+        <nav aria-label={messages.availableIn} className="flex flex-wrap gap-3">
+          <span>{messages.availableIn}:</span>
+          {otherTranslations.map((alternate) => (
+            <Link
+              key={alternate.locale}
+              href={articlePath(alternate.locale, alternate.slug)}
+              hrefLang={alternate.locale}
+              lang={alternate.locale}
+              className="underline"
+            >
+              {getLocaleDefinition(alternate.locale).nativeName}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {article.headings.length === 0 ? null : (
+        <nav
+          aria-label={messages.contents}
+          className="border-secondary/40 border p-4"
+        >
+          <h2 className="mb-3 font-semibold">{messages.contents}</h2>
+          <ol className="space-y-1">
+            {article.headings.map((heading) => (
+              <li key={heading.id} className={headingIndent(heading.depth)}>
+                <a href={`#${heading.id}`} className="underline">
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+
+      <div
+        className="blog-reading-surface prose prose-invert max-w-none"
+        // `renderedHtml` is generated by the sanitize-last server pipeline,
+        // validated by the strict public DTO, and never accepts request HTML.
+        dangerouslySetInnerHTML={{ __html: article.renderedHtml }}
+      />
+
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{
+          __html: buildPublicArticleJsonLd(locale, article),
+        }}
+      />
+    </article>
+  );
+}
+
+function ArticleDate({
+  label,
+  value,
+  locale,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly locale: "en" | "fa";
+}) {
+  return (
+    <div>
+      <dt className="sr-only">{label}</dt>
+      <dd>
+        {label}:{" "}
+        <time dateTime={value}>{formatPublicTimestamp(value, locale)}</time>
+      </dd>
+    </div>
+  );
+}
+
+function headingIndent(depth: number): string {
+  if (depth === 3) return "ms-4";
+  if (depth === 4) return "ms-8";
+  if (depth === 5) return "ms-12";
+  if (depth === 6) return "ms-16";
+  return "";
+}
+
+function UnavailableArticle({ locale }: { readonly locale: "en" | "fa" }) {
+  return (
+    <main className="Container my-20 border p-8 text-center" role="alert">
+      <h1 className="text-2xl font-semibold">
+        {getMessages(locale).blog.detailUnavailable}
+      </h1>
+    </main>
+  );
+}
