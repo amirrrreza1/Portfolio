@@ -166,14 +166,14 @@ export const MAX_REPORTED_FIELDS = 50;
 
 export function toFieldErrors(error: {
   readonly issues: readonly {
-    readonly path: readonly (string | number)[];
+    readonly path: readonly PropertyKey[];
     readonly message: string;
   }[];
 }): FieldErrors {
   const fields: Record<string, string[]> = {};
 
   for (const issue of error.issues) {
-    const path = issue.path.length > 0 ? issue.path.join(".") : "_";
+    const path = issue.path.length > 0 ? issue.path.map(String).join(".") : "_";
     const existing = fields[path];
 
     if (existing) {
