@@ -33,6 +33,10 @@
     "./blog": {
       "types": "./dist/blog/index.d.ts",
       "import": "./dist/blog/index.js"
+    },
+    "./portfolio": {
+      "types": "./dist/portfolio/index.d.ts",
+      "import": "./dist/portfolio/index.js"
     }
   },
   "sideEffects": false,

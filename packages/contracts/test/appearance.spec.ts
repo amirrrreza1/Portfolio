@@ -7,10 +7,15 @@ import {
   parseAppearanceCookie,
   PREFERENCES_VERSION,
   resolveAppearance,
+  resolvePublicAppearance,
   resolveSystemTheme,
   serializeAppearanceCookie,
 } from "../src/appearance/preferences.js";
-import { appearanceSettingsInputSchema } from "../src/appearance/settings.js";
+import {
+  appearanceSettingsInputSchema,
+  publicAppearanceEnvelopeSchema,
+  publicAppearanceSchema,
+} from "../src/appearance/settings.js";
 import {
   fontsSupportingLocale,
   fontSupportsLocale,
@@ -316,5 +321,88 @@ describe("appearanceSettingsInputSchema", () => {
         enabledThemes: ["dark", "midnight"],
       }).success
     ).toBe(false);
+  });
+});
+
+describe("public appearance DTO", () => {
+  const publicSettings = publicAppearanceSchema.parse({
+    locale: "fa",
+    themes: ["dark", "light"],
+    defaultTheme: "dark",
+    blogFonts: [
+      { key: "vazir-code", displayName: "Vazir Code" },
+      { key: "system-sans", displayName: "System sans" },
+    ],
+    defaultBlogFont: "vazir-code",
+    blogSizes: ["sm", "md", "lg", "xl"],
+    defaultBlogSize: "md",
+    offerMotionToggle: true,
+  });
+
+  it("accepts a strict locale-scoped registry projection and envelope", () => {
+    expect(publicAppearanceSchema.parse(publicSettings)).toEqual(
+      publicSettings
+    );
+    expect(
+      publicAppearanceEnvelopeSchema.safeParse({
+        data: publicSettings,
+        meta: { requestId: "appearance-fa" },
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects cross-script fonts, registry-label spoofing, and internal fields", () => {
+    expect(
+      publicAppearanceSchema.safeParse({
+        ...publicSettings,
+        blogFonts: [{ key: "jetbrains-mono", displayName: "JetBrains Mono" }],
+        defaultBlogFont: "jetbrains-mono",
+      }).success
+    ).toBe(false);
+    expect(
+      publicAppearanceSchema.safeParse({
+        ...publicSettings,
+        blogFonts: [{ key: "vazir-code", displayName: "Injected label" }],
+      }).success
+    ).toBe(false);
+    expect(
+      publicAppearanceSchema.safeParse({ ...publicSettings, version: 4 })
+        .success
+    ).toBe(false);
+  });
+
+  it("requires every default to remain in its public allowlist", () => {
+    expect(
+      publicAppearanceSchema.safeParse({
+        ...publicSettings,
+        themes: ["dark"],
+        defaultTheme: "light",
+      }).success
+    ).toBe(false);
+    expect(
+      publicAppearanceSchema.safeParse({
+        ...publicSettings,
+        blogSizes: ["sm", "md"],
+        defaultBlogSize: "xl",
+      }).success
+    ).toBe(false);
+  });
+
+  it("resolves visitor choices against the locale-scoped public allowlist", () => {
+    const cookie = parseAppearanceCookie(
+      serializeAppearanceCookie({
+        theme: "light",
+        blogFont: "jetbrains-mono",
+        blogSize: "xl",
+      })
+    );
+    const resolved = resolvePublicAppearance(cookie, publicSettings);
+
+    expect(resolved).toMatchObject({
+      theme: "light",
+      blogFont: "vazir-code",
+      blogSize: "xl",
+      corrected: true,
+    });
   });
 });

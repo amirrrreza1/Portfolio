@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-import { LOCALES } from "../common/locale.js";
+import { localeSchema, LOCALES } from "../common/locale.js";
 import { recordVersionSchema } from "../common/ids.js";
+import { successEnvelopeSchema } from "../common/errors.js";
 import {
+  BLOG_FONTS,
   type BlogFontKey,
   blogFontKeySchema,
   blogSizeStepSchema,
@@ -136,16 +138,93 @@ export type AppearanceSettingsUpdate = z.infer<
  * `version`, no timestamps, and no per-locale map for other locales — a public
  * cache entry should not carry configuration the page cannot use.
  */
-export const publicAppearanceSchema = z.object({
-  themes: z.array(themeKeySchema).min(1),
-  defaultTheme: themePreferenceSchema,
-  blogFonts: z
-    .array(z.object({ key: blogFontKeySchema, displayName: z.string().min(1) }))
-    .min(1),
-  defaultBlogFont: blogFontKeySchema,
-  blogSizes: z.array(blogSizeStepSchema).min(1),
-  defaultBlogSize: blogSizeStepSchema,
-  offerMotionToggle: z.boolean(),
-});
+export const publicAppearanceSchema = z
+  .object({
+    locale: localeSchema,
+    themes: z
+      .array(themeKeySchema)
+      .min(1)
+      .refine((keys) => new Set(keys).size === keys.length, {
+        message: "Enabled public themes must be unique.",
+      }),
+    defaultTheme: themePreferenceSchema,
+    blogFonts: z
+      .array(
+        z
+          .object({
+            key: blogFontKeySchema,
+            displayName: z.string().trim().min(1).max(120),
+          })
+          .strict()
+      )
+      .min(1)
+      .refine(
+        (fonts) => new Set(fonts.map((font) => font.key)).size === fonts.length,
+        { message: "Enabled public blog fonts must be unique." }
+      ),
+    defaultBlogFont: blogFontKeySchema,
+    blogSizes: z
+      .array(blogSizeStepSchema)
+      .min(1)
+      .refine((steps) => new Set(steps).size === steps.length, {
+        message: "Allowed public blog sizes must be unique.",
+      }),
+    defaultBlogSize: blogSizeStepSchema,
+    offerMotionToggle: z.boolean(),
+  })
+  .strict()
+  .superRefine((settings, context) => {
+    if (
+      settings.defaultTheme !== "system" &&
+      !settings.themes.includes(settings.defaultTheme)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultTheme"],
+        message: "The default public theme must be enabled.",
+      });
+    }
+
+    if (!settings.blogSizes.includes(settings.defaultBlogSize)) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultBlogSize"],
+        message: "The default public blog size must be allowed.",
+      });
+    }
+
+    const enabledFontKeys = settings.blogFonts.map((font) => font.key);
+    if (!enabledFontKeys.includes(settings.defaultBlogFont)) {
+      context.addIssue({
+        code: "custom",
+        path: ["defaultBlogFont"],
+        message: "The default public blog font must be enabled.",
+      });
+    }
+
+    for (const [index, font] of settings.blogFonts.entries()) {
+      if (!fontSupportsLocale(font.key, settings.locale)) {
+        context.addIssue({
+          code: "custom",
+          path: ["blogFonts", index, "key"],
+          message: `The font cannot render the ${settings.locale} script.`,
+        });
+      }
+      if (BLOG_FONTS[font.key].displayName !== font.displayName) {
+        context.addIssue({
+          code: "custom",
+          path: ["blogFonts", index, "displayName"],
+          message: "The display name must come from the code registry.",
+        });
+      }
+    }
+  });
+
+export const publicAppearanceEnvelopeSchema = successEnvelopeSchema(
+  publicAppearanceSchema
+).strict();
 
 export type PublicAppearance = z.infer<typeof publicAppearanceSchema>;
+export type PublicAppearanceEnvelope = z.infer<
+  typeof publicAppearanceEnvelopeSchema
+>;

@@ -14,6 +14,7 @@ import {
   type ThemePreference,
   themePreferenceSchema,
 } from "./registry.js";
+import type { PublicAppearance } from "./settings.js";
 
 /**
  * The `portfolio_prefs` cookie and its resolution against the owner's
@@ -197,6 +198,33 @@ export function resolveAppearance(
     : APPEARANCE_DEFAULTS.motion;
 
   return { theme, blogFont, blogSize, motion, corrected };
+}
+
+/** Resolve a cookie against the locale-scoped public appearance DTO. */
+export function resolvePublicAppearance(
+  cookie: AppearanceCookie | null,
+  settings: PublicAppearance
+): ResolvedAppearance {
+  return resolveAppearance(
+    cookie,
+    {
+      enabledThemes: settings.themes,
+      defaultTheme: settings.defaultTheme,
+      enabledBlogFonts: settings.blogFonts.map((font) => font.key),
+      // `resolveAppearance` reads only the requested locale. The public DTO
+      // intentionally carries no other locale's default, so repeat the current
+      // validated value to satisfy the full admin-settings interface without
+      // broadening the cached response.
+      defaultBlogFontByLocale: {
+        en: settings.defaultBlogFont,
+        fa: settings.defaultBlogFont,
+      },
+      allowedBlogSizeSteps: settings.blogSizes,
+      defaultBlogSizeStep: settings.defaultBlogSize,
+      offerMotionToggle: settings.offerMotionToggle,
+    },
+    settings.locale
+  );
 }
 
 /**

@@ -23,3 +23,4 @@ export * from "./blog/index.js";
 export * from "./common/index.js";
 export * from "./contact/index.js";
 export * from "./content/index.js";
+export * from "./portfolio/index.js";
