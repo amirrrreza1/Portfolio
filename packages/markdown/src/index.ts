@@ -69,6 +69,13 @@ export interface RenderedArticle extends ParsedArticle {
   readonly rendererVersion: typeof RENDERER_VERSION;
 }
 
+export interface RenderedMarkdownBody {
+  readonly html: string;
+  readonly headings: readonly Heading[];
+  readonly readingTimeMinutes: number;
+  readonly rendererVersion: typeof RENDERER_VERSION;
+}
+
 type Node = Record<string, any> & { type: string };
 
 /**
@@ -176,22 +183,59 @@ export async function renderArticle(
   expectedPath?: string
 ): Promise<RenderedArticle> {
   const article = parseArticle(source, expectedPath);
+  const rendered = await renderMarkdownBodyInternal(article.body, true);
+
+  return {
+    ...article,
+    ...rendered,
+  };
+}
+
+/**
+ * Validate and render a standalone GFM body through the bounded,
+ * sanitize-last pipeline. Portfolio project descriptions use this form
+ * because they are stored in a database field rather than inside an article
+ * frontmatter envelope. Article-only custom directives are deliberately not
+ * accepted because the public project renderer implements plain GFM.
+ */
+export async function renderMarkdownBody(
+  source: string
+): Promise<RenderedMarkdownBody> {
+  return renderMarkdownBodyInternal(source, false);
+}
+
+async function renderMarkdownBodyInternal(
+  source: string,
+  allowDirectives: boolean
+): Promise<RenderedMarkdownBody> {
+  assertSize(source, MAX_DOCUMENT_BYTES, "Markdown body");
+  const body = source.replace(/\r\n?/g, "\n").trim();
+  if (body.length === 0) {
+    throw new MarkdownValidationError(
+      "Markdown body must contain readable text."
+    );
+  }
   const headings: Heading[] = [];
 
+  const parser: any = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkDirective);
+  if (allowDirectives) {
+    parser.use(validateDirectives);
+  } else {
+    parser.use(rejectDirectives);
+  }
   const html = String(
-    await unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .use(remarkDirective)
+    await parser
       .use(rejectUnsafeMarkdown)
-      .use(validateDirectives)
       .use(extractAndIdentifyHeadings, headings)
       .use(remarkRehype)
       .use(highlightCodeBlocks)
       .use(addHeadingAnchorsAndExternalLinkPolicy)
       .use(rehypeSanitize, sanitizeSchema)
       .use(rehypeStringify)
-      .process(article.body)
+      .process(body)
   );
 
   if (html.trim().length === 0) {
@@ -201,10 +245,9 @@ export async function renderArticle(
   }
 
   return {
-    ...article,
     html,
     headings,
-    readingTimeMinutes: readingTime(article.body),
+    readingTimeMinutes: readingTime(body),
     rendererVersion: RENDERER_VERSION,
   };
 }
@@ -401,6 +444,18 @@ function validateDirectives() {
         }
         default:
           fail("directive is not allowlisted.");
+      }
+    });
+  };
+}
+
+function rejectDirectives() {
+  return (tree: Node) => {
+    visit(tree as any, (node: Node) => {
+      if (String(node.type).endsWith("Directive")) {
+        throw new MarkdownValidationError(
+          "Directives are not permitted in standalone Markdown."
+        );
       }
     });
   };

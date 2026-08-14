@@ -5,6 +5,7 @@ import {
   parseArticle,
   renderArticle,
   renderInlineMarkdown,
+  renderMarkdownBody,
   serializeArticle,
 } from "../src/index.js";
 
@@ -110,6 +111,34 @@ describe("full article renderer", () => {
 
     expect(result.html).toContain("language-known");
     expect(result.html).toContain("language-unknown");
+  });
+});
+
+describe("standalone Markdown body renderer", () => {
+  it("uses the same safe body pipeline without requiring frontmatter", async () => {
+    const result = await renderMarkdownBody(
+      "## Details\n\nA **safe** [link](https://example.com)."
+    );
+
+    expect(result.html).toContain('id="details"');
+    expect(result.html).toContain("<strong>safe</strong>");
+    expect(result.headings).toEqual([
+      { depth: 2, id: "details", text: "Details" },
+    ]);
+  });
+
+  it("rejects empty, raw HTML, unsafe URLs, and level-one headings", async () => {
+    await expect(renderMarkdownBody("   ")).rejects.toThrow(/readable text/);
+    await expect(renderMarkdownBody("<img src=x>")).rejects.toThrow(/Raw HTML/);
+    await expect(
+      renderMarkdownBody("[bad](javascript:alert(1))")
+    ).rejects.toThrow(/Unsafe link URL/);
+    await expect(renderMarkdownBody("# Duplicate page title")).rejects.toThrow(
+      /H1/
+    );
+    await expect(
+      renderMarkdownBody(':::callout{type="tip"}\n\nNot supported here.\n\n:::')
+    ).rejects.toThrow(/Directive/);
   });
 });
 
