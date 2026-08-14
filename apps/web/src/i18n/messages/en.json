@@ -1,0 +1,109 @@
+{
+  "common": {
+    "siteUnavailable": "The site is temporarily unavailable. Please try again shortly.",
+    "theme": "Theme",
+    "back": "Back",
+    "backHome": "Back to home"
+  },
+  "appearance": {
+    "open": "Appearance settings",
+    "title": "Appearance settings",
+    "description": "Changes apply immediately. Press Escape to close.",
+    "close": "Close",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "useSystem": "Use system",
+    "blogFont": "Blog font",
+    "blogFontHelp": "Applies only to article reading pages.",
+    "blogTextSize": "Blog text size",
+    "motion": "Motion",
+    "fullMotion": "Full motion",
+    "reduceMotion": "Reduce motion",
+    "switchLanguage": "Switch to Persian",
+    "reset": "Reset to site defaults"
+  },
+  "navigation": {
+    "portfolioSections": "Portfolio sections"
+  },
+  "home": {
+    "unavailable": "Homepage content is temporarily unavailable. Please try again shortly."
+  },
+  "blog": {
+    "title": "Blog",
+    "description": "Published articles about software, the web, and what I learn while building.",
+    "empty": "No published articles are available yet.",
+    "unavailable": "Articles are temporarily unavailable. Please try again shortly.",
+    "detailUnavailable": "This article is temporarily unavailable. Please try again shortly.",
+    "readArticle": "Read article",
+    "minuteRead": "minute read",
+    "published": "Published",
+    "updated": "Updated",
+    "contents": "On this page",
+    "availableIn": "Available in",
+    "translationMissing": "This article is not published in English.",
+    "backToBlog": "Back to blog",
+    "featured": "Featured article"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "lead": "It looks like you wandered into uncharted territory.",
+    "description": "The page you requested does not exist or has moved.",
+    "returnHome": "Return home"
+  },
+  "projects": {
+    "completed": "Completed",
+    "inProgress": "In progress",
+    "planned": "Planned",
+    "showLess": "Show less",
+    "more": "more",
+    "stars": "Stars",
+    "commits": "Commits",
+    "statsUnavailable": "GitHub statistics are temporarily unavailable.",
+    "details": "Project details",
+    "view": "View project",
+    "repository": "GitHub repository",
+    "lookingFor": "Looking for",
+    "moreEmphasis": "more",
+    "highlights": "These are selected projects. Explore the full archive and past work in the main gallery.",
+    "viewAll": "View all projects",
+    "searchPlaceholder": "Search projects…",
+    "all": "All projects",
+    "none": "No projects found matching your search.",
+    "unavailable": "Projects are temporarily unavailable. Please try again shortly.",
+    "detailUnavailable": "This project is temporarily unavailable. Please try again shortly.",
+    "featured": "Featured project",
+    "technologies": "Technologies",
+    "started": "Started",
+    "completedOn": "Completed"
+  },
+  "certificates": {
+    "instructor": "Instructor",
+    "issuer": "Issuer",
+    "score": "Score",
+    "date": "Date",
+    "download": "Download certificate"
+  },
+  "resume": {
+    "download": "Download"
+  },
+  "contact": {
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "message": "Message",
+    "messagePlaceholder": "Write your message…",
+    "sending": "Sending…",
+    "send": "Send message",
+    "success": "Thanks — your message has been received.",
+    "failure": "Something went wrong. Please try again in a moment.",
+    "invalidName": "Enter a valid name.",
+    "invalidEmail": "Enter a valid email address.",
+    "invalidMessage": "Enter a message between 10 and 5,000 characters."
+  },
+  "footer": {
+    "rights": "All rights reserved",
+    "copyright": "©"
+  }
+}

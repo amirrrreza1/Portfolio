@@ -12,5 +12,5 @@ export default async function LocaleHomePage({
 }: Readonly<{ params: Promise<{ locale: string }> }>) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <HomePage />;
+  return <HomePage locale={locale} />;
 }

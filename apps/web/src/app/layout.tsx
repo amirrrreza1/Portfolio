@@ -4,29 +4,18 @@ import { ThemeProvider } from "@/Contexts/ThemeContext";
 import MainLayout from "@/Components/Layout/MainLayout";
 import { ToastProvider } from "@/Components/Toast/Toast";
 import { getSiteUrl } from "@/Utils/siteUrl";
+import { getPortfolioAppearance } from "@/server/portfolio-appearance";
+import { PublicDataUnavailableError } from "@/server/public-api-client";
 import { getLocaleDefinition, isLocale } from "@portfolio/contracts/common";
+import { getMessages } from "@/i18n/messages";
 import {
-  type AppearanceSettings,
   appearanceRootAttributes,
   parseAppearanceCookie,
   PREFERENCES_COOKIE_NAME,
-  resolveAppearance,
+  resolvePublicAppearance,
 } from "@portfolio/contracts/appearance";
 import { cookies, headers } from "next/headers";
 import Script from "next/script";
-
-// M7 persists this singleton and lets the owner control its allowlist. Until
-// then, keep the same validated shape here rather than trusting a cookie value
-// directly in the document shell.
-const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
-  enabledThemes: ["dark", "light"],
-  defaultTheme: "dark",
-  enabledBlogFonts: ["jetbrains-mono", "vazir-code", "system-sans"],
-  defaultBlogFontByLocale: { en: "jetbrains-mono", fa: "vazir-code" },
-  allowedBlogSizeSteps: ["sm", "md", "lg", "xl"],
-  defaultBlogSizeStep: "md",
-  offerMotionToggle: true,
-};
 
 export const metadata: Metadata = {
   // Without an absolute base, Next.js resolves every relative metadata URL
@@ -65,17 +54,40 @@ export default async function RootLayout({
   const nonce = requestHeaders.get("x-portfolio-csp-nonce") ?? undefined;
   const locale = isLocale(localeHeader) ? localeHeader : "en";
   const definition = getLocaleDefinition(locale);
+  const messages = getMessages(locale);
+  let appearanceSettings;
+  try {
+    appearanceSettings = await getPortfolioAppearance(locale);
+  } catch (error) {
+    if (!(error instanceof PublicDataUnavailableError)) throw error;
+  }
+
+  if (appearanceSettings === undefined) {
+    return (
+      <html
+        suppressHydrationWarning
+        lang={definition.bcp47}
+        dir={definition.direction}
+        data-theme="dark"
+        data-motion="system"
+      >
+        <body>
+          <main className="Container my-20 border p-8 text-center" role="alert">
+            <h1 className="text-2xl font-semibold">
+              {messages.common.siteUnavailable}
+            </h1>
+          </main>
+        </body>
+      </html>
+    );
+  }
+
   const preferenceCookie = (await cookies()).get(PREFERENCES_COOKIE_NAME);
-  const appearance = resolveAppearance(
+  const appearance = resolvePublicAppearance(
     parseAppearanceCookie(preferenceCookie?.value),
-    DEFAULT_APPEARANCE_SETTINGS,
-    locale
+    appearanceSettings
   );
-  const defaultAppearance = resolveAppearance(
-    null,
-    DEFAULT_APPEARANCE_SETTINGS,
-    locale
-  );
+  const defaultAppearance = resolvePublicAppearance(null, appearanceSettings);
 
   return (
     <html
@@ -93,6 +105,7 @@ export default async function RootLayout({
         <ThemeProvider
           initialAppearance={appearance}
           defaultAppearance={defaultAppearance}
+          appearanceOptions={appearanceSettings}
         >
           <ToastProvider>
             <MainLayout>{children}</MainLayout>
