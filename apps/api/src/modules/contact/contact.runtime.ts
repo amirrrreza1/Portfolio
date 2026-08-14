@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 
-import type { ContactSubmission } from "@portfolio/contracts/contact";
 import { getDatabaseClient, type Database } from "@portfolio/database";
 import nodemailer from "nodemailer";
 

@@ -5,9 +5,11 @@ import {
 } from "@nestjs/platform-fastify";
 
 import { AppModule } from "./app.module.js";
+import { parseApiEnvironment } from "./config/environment.js";
 import { configureApplication } from "./configure-app.js";
 
 async function bootstrap(): Promise<void> {
+  const environment = parseApiEnvironment(process.env);
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: false })
@@ -15,9 +17,7 @@ async function bootstrap(): Promise<void> {
 
   configureApplication(app);
 
-  const port = Number.parseInt(process.env.API_PORT ?? "4000", 10);
-  const host = process.env.API_HOST ?? "0.0.0.0";
-  await app.listen(port, host);
+  await app.listen(environment.port, environment.host);
 }
 
 void bootstrap();
