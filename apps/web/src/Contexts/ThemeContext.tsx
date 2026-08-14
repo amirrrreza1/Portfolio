@@ -7,6 +7,7 @@ import {
   type MotionPreference,
   parseAppearanceCookie,
   PREFERENCES_COOKIE_NAME,
+  type PublicAppearance,
   type ResolvedAppearance,
   serializeAppearanceCookie,
   type ThemePreference,
@@ -17,6 +18,7 @@ interface ThemeContextType {
   motion: MotionPreference;
   blogFont: BlogFontKey;
   blogSize: BlogSizeStep;
+  appearanceOptions: PublicAppearance;
   setTheme: (theme: ThemePreference) => void;
   setMotion: (motion: MotionPreference) => void;
   setBlogFont: (font: BlogFontKey) => void;
@@ -76,10 +78,12 @@ export function ThemeProvider({
   children,
   initialAppearance,
   defaultAppearance,
+  appearanceOptions,
 }: {
   children: React.ReactNode;
   initialAppearance: ResolvedAppearance;
   defaultAppearance: ResolvedAppearance;
+  appearanceOptions: PublicAppearance;
 }) {
   const [appearance, setAppearance] =
     useState<Omit<ResolvedAppearance, "corrected">>(initialAppearance);
@@ -102,11 +106,24 @@ export function ThemeProvider({
     applyAppearance(nextAppearance);
   };
 
-  const setTheme = (theme: ThemePreference) => updateAppearance({ theme });
-  const setMotion = (motion: MotionPreference) => updateAppearance({ motion });
-  const setBlogFont = (blogFont: BlogFontKey) => updateAppearance({ blogFont });
-  const setBlogSize = (blogSize: BlogSizeStep) =>
-    updateAppearance({ blogSize });
+  const setTheme = (theme: ThemePreference) => {
+    if (theme === "system" || appearanceOptions.themes.includes(theme)) {
+      updateAppearance({ theme });
+    }
+  };
+  const setMotion = (motion: MotionPreference) => {
+    if (appearanceOptions.offerMotionToggle) updateAppearance({ motion });
+  };
+  const setBlogFont = (blogFont: BlogFontKey) => {
+    if (appearanceOptions.blogFonts.some((font) => font.key === blogFont)) {
+      updateAppearance({ blogFont });
+    }
+  };
+  const setBlogSize = (blogSize: BlogSizeStep) => {
+    if (appearanceOptions.blogSizes.includes(blogSize)) {
+      updateAppearance({ blogSize });
+    }
+  };
   const resetAppearance = () => {
     persistAppearance(defaultAppearance);
     setAppearance(defaultAppearance);
@@ -114,7 +131,10 @@ export function ThemeProvider({
   };
 
   const toggleTheme = () => {
-    setTheme(appearance.theme === "light" ? "dark" : "light");
+    const nextTheme = appearanceOptions.themes.find(
+      (theme) => theme !== appearance.theme
+    );
+    if (nextTheme !== undefined) setTheme(nextTheme);
   };
 
   return (
@@ -124,6 +144,7 @@ export function ThemeProvider({
         motion: appearance.motion,
         blogFont: appearance.blogFont,
         blogSize: appearance.blogSize,
+        appearanceOptions,
         setTheme,
         setMotion,
         setBlogFont,

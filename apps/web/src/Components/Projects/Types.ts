@@ -1,10 +1,13 @@
+import type { PublicProjectImage } from "@portfolio/contracts/portfolio";
+
 export type Projects = {
-  id: number;
+  id: string | number;
+  slug: string;
   title: string;
   description: string;
   link: string | null;
   repo: string | null;
-  image: string;
-  technologies: number[];
+  image: PublicProjectImage | null;
+  technologies: (string | number)[];
   status: "completed" | "in-progress";
 };

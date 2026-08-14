@@ -4,13 +4,19 @@ import ScrambleText from "../UI/ScrumbleText/ScrumbleText";
 import Devider from "../UI/Devider/Devider";
 import { SkillCategory } from "./Types";
 
-const Skills = ({ skills }: { readonly skills: readonly SkillCategory[] }) => {
+const Skills = ({
+  title,
+  skills,
+}: {
+  readonly title: string;
+  readonly skills: readonly SkillCategory[];
+}) => {
   return (
     <section
       className="Container my-10 border p-2 backdrop-blur-sm"
       id="skills"
     >
-      <ScrambleText text="Skills" className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text={title} className="ml-3 text-3xl" speed={30} />
       <Devider />
 
       <p className="px-1 text-justify text-lg leading-7 md:px-4 lg:px-6">

@@ -5,7 +5,7 @@ export interface Option {
 
 export interface CustomSelectProps {
   options: Option[];
-  placeholder?: string;
+  placeholder: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
 }

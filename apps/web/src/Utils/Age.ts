@@ -12,9 +12,9 @@
  *    clock and timezone, so the server HTML and the hydrated output could
  *    disagree by a year on a birthday.
  *
- * Both go away by computing on the server in UTC. In M2 the date moves into
- * `SiteSettings` and this helper reads from the database instead
- * (IMPLEMENTATION_PLAN.md Phase 2 source mapping).
+ * Both go away by computing on the server in UTC. Database mode now derives
+ * age inside the API from `SiteSettings`; this helper remains only for the
+ * isolated legacy rollback adapter and never enters the client graph.
  */
 
 /** `YYYY-MM-DD`, validated rather than trusted, since it comes from the environment. */

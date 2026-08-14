@@ -5,9 +5,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { useTheme } from "@/Contexts/ThemeContext";
+import { getMessages } from "@/i18n/messages";
+import { localePreferenceCookie } from "@/i18n/locale-preference";
+import { switchLocalePath } from "@/i18n/routing";
+import type { Locale } from "@portfolio/contracts/common";
 
-const THEMES = ["dark", "light", "system"] as const;
-const BLOG_SIZES = ["sm", "md", "lg", "xl"] as const;
 const MOTION = ["system", "full", "reduced"] as const;
 
 function OptionButton({
@@ -35,24 +37,33 @@ function OptionButton({
 }
 
 /** Native dialog supplies modal focus containment and Escape-to-close. */
-export default function AppearanceSettingsDialog() {
+export default function AppearanceSettingsDialog({
+  locale,
+}: {
+  readonly locale: Locale;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const locale = pathname.startsWith("/fa") ? "fa" : "en";
+  const messages = getMessages(locale);
+  const targetLocale: Locale = locale === "en" ? "fa" : "en";
+  const targetPath = switchLocalePath(pathname, targetLocale);
+  const isArticleDetail = /^\/(?:en|fa)\/blog\/[^/]+$/.test(pathname);
   const {
     theme,
     motion,
     blogFont,
     blogSize,
+    appearanceOptions,
     setTheme,
     setMotion,
     setBlogFont,
     setBlogSize,
     resetAppearance,
   } = useTheme();
+  const themes = [...appearanceOptions.themes, "system"] as const;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -77,7 +88,7 @@ export default function AppearanceSettingsDialog() {
         className="border-secondary/40 flex h-10 w-10 items-center justify-center rounded border"
       >
         <Settings aria-hidden="true" className="h-5 w-5" />
-        <span className="sr-only">Appearance settings</span>
+        <span className="sr-only">{messages.appearance.open}</span>
       </button>
 
       <dialog
@@ -91,40 +102,48 @@ export default function AppearanceSettingsDialog() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 id={headingId} className="text-xl font-semibold">
-                Appearance settings
+                {messages.appearance.title}
               </h2>
               <p className="text-secondary/70 mt-1 text-sm">
-                Changes apply immediately. Press Escape to close.
+                {messages.appearance.description}
               </p>
             </div>
             <button type="button" onClick={close} className="border px-3 py-1">
-              Close
+              {messages.appearance.close}
             </button>
           </div>
 
           <fieldset>
-            <legend className="mb-2 font-medium">Theme</legend>
+            <legend className="mb-2 font-medium">
+              {messages.appearance.theme}
+            </legend>
             <div
               className="flex flex-wrap gap-2"
               role="radiogroup"
-              aria-label="Theme"
+              aria-label={messages.appearance.theme}
             >
-              {THEMES.map((value) => (
+              {themes.map((value) => (
                 <OptionButton
                   key={value}
                   active={theme === value}
                   onClick={() => setTheme(value)}
                 >
-                  {value === "system" ? "Use system" : value}
+                  {value === "system"
+                    ? messages.appearance.useSystem
+                    : value === "dark"
+                      ? messages.appearance.themeDark
+                      : messages.appearance.themeLight}
                 </OptionButton>
               ))}
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-1 font-medium">Blog font</legend>
+            <legend className="mb-1 font-medium">
+              {messages.appearance.blogFont}
+            </legend>
             <p className="text-secondary/70 mb-2 text-sm">
-              Applies only to article reading pages.
+              {messages.appearance.blogFontHelp}
             </p>
             <select
               value={blogFont}
@@ -133,20 +152,24 @@ export default function AppearanceSettingsDialog() {
               }
               className="bg-primary border-secondary w-full border p-2"
             >
-              <option value="jetbrains-mono">JetBrains Mono</option>
-              <option value="vazir-code">Vazir Code</option>
-              <option value="system-sans">System sans</option>
+              {appearanceOptions.blogFonts.map((font) => (
+                <option key={font.key} value={font.key}>
+                  {font.displayName}
+                </option>
+              ))}
             </select>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 font-medium">Blog text size</legend>
+            <legend className="mb-2 font-medium">
+              {messages.appearance.blogTextSize}
+            </legend>
             <div
               className="flex flex-wrap gap-2"
               role="radiogroup"
-              aria-label="Blog text size"
+              aria-label={messages.appearance.blogTextSize}
             >
-              {BLOG_SIZES.map((value) => (
+              {appearanceOptions.blogSizes.map((value) => (
                 <OptionButton
                   key={value}
                   active={blogSize === value}
@@ -158,39 +181,56 @@ export default function AppearanceSettingsDialog() {
             </div>
           </fieldset>
 
-          <fieldset>
-            <legend className="mb-2 font-medium">Motion</legend>
-            <div
-              className="flex flex-wrap gap-2"
-              role="radiogroup"
-              aria-label="Motion"
-            >
-              {MOTION.map((value) => (
-                <OptionButton
-                  key={value}
-                  active={motion === value}
-                  onClick={() => setMotion(value)}
-                >
-                  {value === "full"
-                    ? "Full motion"
-                    : value === "reduced"
-                      ? "Reduce motion"
-                      : "Use system"}
-                </OptionButton>
-              ))}
-            </div>
-          </fieldset>
+          {appearanceOptions.offerMotionToggle ? (
+            <fieldset>
+              <legend className="mb-2 font-medium">
+                {messages.appearance.motion}
+              </legend>
+              <div
+                className="flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-label={messages.appearance.motion}
+              >
+                {MOTION.map((value) => (
+                  <OptionButton
+                    key={value}
+                    active={motion === value}
+                    onClick={() => setMotion(value)}
+                  >
+                    {value === "full"
+                      ? messages.appearance.fullMotion
+                      : value === "reduced"
+                        ? messages.appearance.reduceMotion
+                        : messages.appearance.useSystem}
+                  </OptionButton>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
 
           <div className="border-secondary/30 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-            <a href={`/${locale === "en" ? "fa" : "en"}`} className="underline">
-              Switch to {locale === "en" ? "Persian" : "English"}
-            </a>
+            {isArticleDetail ? null : (
+              <a
+                href={targetPath}
+                hrefLang={targetLocale}
+                lang={targetLocale}
+                onClick={() => {
+                  document.cookie = localePreferenceCookie(
+                    targetLocale,
+                    window.location.protocol === "https:"
+                  );
+                }}
+                className="underline"
+              >
+                {messages.appearance.switchLanguage}
+              </a>
+            )}
             <button
               type="button"
               onClick={resetAppearance}
               className="border px-3 py-2"
             >
-              Reset to site defaults
+              {messages.appearance.reset}
             </button>
           </div>
         </div>

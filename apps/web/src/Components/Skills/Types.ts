@@ -1,11 +1,11 @@
 export interface SkillCategory {
-  id: number;
+  id: string | number;
   category: string;
   items: SkillItem[];
 }
 
 interface SkillItem {
-  id: number;
+  id: string | number;
   name: string;
   color: string;
 }

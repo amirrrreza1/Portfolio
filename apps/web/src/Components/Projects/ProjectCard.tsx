@@ -3,11 +3,19 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import Button from "../UI/Buttons/CustomBTN";
-import { useGitHubStats } from "@/Utils/getGithubStats";
 import type { SkillCategory } from "@/Components/Skills/Types";
+import { localePath } from "@/i18n/routing";
+import type { Locale } from "@portfolio/contracts/common";
+import Link from "next/link";
 import { Projects } from "./Types";
+import { getMessages } from "@/i18n/messages";
+import { formatNumber } from "@/i18n/format";
+import type { GitHubRepositoryStats } from "@/server/github-stats-source";
 
-const findSkillById = (skills: readonly SkillCategory[], id: number) => {
+const findSkillById = (
+  skills: readonly SkillCategory[],
+  id: string | number
+) => {
   for (const category of skills) {
     const skill = category.items.find((item) => item.id === id);
     if (skill) return skill;
@@ -18,11 +26,15 @@ const findSkillById = (skills: readonly SkillCategory[], id: number) => {
 export default function ProjectCard({
   pj,
   skills,
+  locale,
+  stats,
 }: {
   pj: Projects;
   skills: readonly SkillCategory[];
+  locale: Locale;
+  stats: GitHubRepositoryStats | null;
 }) {
-  const stats = useGitHubStats(pj.repo ?? "");
+  const messages = getMessages(locale);
   const [showAll, setShowAll] = useState(false);
 
   const maxVisible = 4;
@@ -51,7 +63,9 @@ export default function ProjectCard({
             pj.status === "completed" ? "text-main-green" : "text-main-red"
           }`}
         >
-          {pj.status === "completed" ? "Open" : "Closed"}
+          {pj.status === "completed"
+            ? messages.projects.completed
+            : messages.projects.inProgress}
         </p>
       </div>
 
@@ -76,32 +90,43 @@ export default function ProjectCard({
             onClick={() => setShowAll((prev) => !prev)}
             className="!px-3 !py-1"
           >
-            {showAll ? "Show less" : `+${hiddenCount} more`}
+            {showAll
+              ? messages.projects.showLess
+              : `+${formatNumber(hiddenCount, locale)} ${messages.projects.more}`}
           </Button>
         )}
       </div>
 
-      {stats ? (
+      {pj.repo && stats ? (
         <div className="mb-4 flex gap-6 text-sm">
-          <span className="text-Gold">{stats.stars || 0} Stars</span>
-          <span>{stats.commits} Commits</span>
+          <span className="text-Gold">
+            {formatNumber(stats.stars, locale)} {messages.projects.stars}
+          </span>
+          <span>
+            {formatNumber(stats.commits, locale)} {messages.projects.commits}
+          </span>
         </div>
-      ) : (
-        <p className="mb-4 text-sm text-gray-400">Loading stats...</p>
-      )}
+      ) : pj.repo ? (
+        <p className="mb-4 text-sm text-gray-400">
+          {messages.projects.statsUnavailable}
+        </p>
+      ) : null}
 
       <div className="flex gap-6">
+        <Link href={localePath(locale, `projects/${pj.slug}`)}>
+          <Button>{messages.projects.details}</Button>
+        </Link>
         {pj.link && (
           <Button>
             <a href={pj.link} target="_blank" rel="noopener noreferrer">
-              View Project
+              {messages.projects.view}
             </a>
           </Button>
         )}
         {pj.repo && (
           <Button>
             <a href={pj.repo} target="_blank" rel="noopener noreferrer">
-              GitHub Repo
+              {messages.projects.repository}
             </a>
           </Button>
         )}

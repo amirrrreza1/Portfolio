@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomSelectProps, Option } from "./Types";
 
 export default function CustomSelect({
   options,
-  placeholder = "Select...",
+  placeholder,
   defaultValue,
   onChange,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState<Option | null>(null);
-
-  useEffect(() => {
-    if (defaultValue) {
-      const defaultOption =
-        options.find((o) => o.value === defaultValue) || null;
-      setSelected(defaultOption);
-    }
-  }, [defaultValue, options]);
+  const [selection, setSelection] = useState<{
+    value: string | null;
+    defaultValue: string | undefined;
+  }>({ value: defaultValue ?? null, defaultValue });
+  const selectedValue =
+    selection.defaultValue === defaultValue
+      ? selection.value
+      : (defaultValue ?? null);
+  const selected =
+    options.find((option) => option.value === selectedValue) ?? null;
 
   const handleSelect = (option: Option) => {
-    setSelected(option);
+    setSelection({ value: option.value, defaultValue });
     onChange?.(option.value);
     setIsOpen(false);
   };

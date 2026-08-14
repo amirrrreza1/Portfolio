@@ -10,12 +10,21 @@ import { useToast } from "../Toast/Toast";
 import { ContactUsSchema } from "@/Schemas/ContactUsForm";
 import { useAutoLang } from "@/Hooks/useAutoLang";
 import { FormData } from "./Types";
+import type { Locale } from "@portfolio/contracts/common";
+import { getMessages } from "@/i18n/messages";
 
 /** Public contact requests go through the server-side SMTP delivery path. */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
-export default function GetInTouchForm() {
+export default function GetInTouchForm({
+  title,
+  locale,
+}: {
+  readonly title: string;
+  readonly locale: Locale;
+}) {
   const toast = useToast();
+  const messages = getMessages(locale);
   const [startedAt] = useState(() => Date.now());
 
   const {
@@ -36,10 +45,10 @@ export default function GetInTouchForm() {
       });
       if (!response.ok) throw new Error("Contact request failed");
 
-      toast("Thanks - your message has been received.");
+      toast(messages.contact.success);
       reset();
     } catch {
-      toast("Something went wrong. Please try again in a moment.");
+      toast(messages.contact.failure);
     }
   };
 
@@ -52,23 +61,25 @@ export default function GetInTouchForm() {
       className="Container my-10 border p-2 backdrop-blur-sm"
       id="getintouch"
     >
-      <ScrambleText text="Get in Touch" className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text={title} className="ml-3 text-3xl" speed={30} />
       <Devider />
 
       <form onSubmit={handleSubmit(onSubmit)} className="px-1 md:px-4 lg:px-6">
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={`${errors.name?.message ? "text-main-red" : ""}`}>
-              Name
+              {messages.contact.name}
             </label>
             {errors.name?.message && (
-              <p className="text-main-red text-sm">({errors.name?.message})</p>
+              <p className="text-main-red text-sm">
+                ({messages.contact.invalidName})
+              </p>
             )}
           </div>
           <input
             type="text"
             className="FormInput"
-            placeholder="Your name"
+            placeholder={messages.contact.namePlaceholder}
             {...register("name")}
             ref={(el) => {
               register("name").ref(el);
@@ -81,16 +92,18 @@ export default function GetInTouchForm() {
             <label
               className={` ${errors.email?.message ? "text-main-red" : ""}`}
             >
-              Email
+              {messages.contact.email}
             </label>
             {errors.email?.message && (
-              <p className="text-main-red text-sm">({errors.email?.message})</p>
+              <p className="text-main-red text-sm">
+                ({messages.contact.invalidEmail})
+              </p>
             )}
           </div>
           <input
             className="FormInput"
             type="text"
-            placeholder="you@example.com"
+            placeholder={messages.contact.emailPlaceholder}
             autoComplete="off"
             {...register("email")}
             ref={(el) => {
@@ -106,17 +119,17 @@ export default function GetInTouchForm() {
                 errors.message?.message ? "text-main-red" : ""
               }`}
             >
-              Message
+              {messages.contact.message}
             </label>
             {errors.message?.message && (
               <p className="text-main-red text-sm">
-                ({errors.message?.message})
+                ({messages.contact.invalidMessage})
               </p>
             )}
           </div>
           <textarea
             className="FormInput resize-none"
-            placeholder="Write your message..."
+            placeholder={messages.contact.messagePlaceholder}
             rows={4}
             {...register("message")}
             ref={(el) => {
@@ -127,7 +140,7 @@ export default function GetInTouchForm() {
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="mb-5">
-          {isSubmitting ? "Sending..." : "Send Message"}
+          {isSubmitting ? messages.contact.sending : messages.contact.send}
         </Button>
       </form>
     </section>

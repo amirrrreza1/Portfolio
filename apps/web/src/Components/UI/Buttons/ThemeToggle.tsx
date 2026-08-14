@@ -3,13 +3,18 @@
 import { Moon, Sun } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/Contexts/ThemeContext";
+import type { Locale } from "@portfolio/contracts/common";
+import { getMessages } from "@/i18n/messages";
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ locale }: { readonly locale: Locale }) {
   const { theme, toggleTheme } = useTheme();
+  const messages = getMessages(locale);
 
   return (
     <button
       onClick={toggleTheme}
+      type="button"
+      aria-label={messages.common.theme}
       className="relative flex h-7 w-7 items-center justify-center overflow-hidden"
     >
       <AnimatePresence initial={false} mode="wait">

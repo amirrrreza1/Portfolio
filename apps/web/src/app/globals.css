@@ -233,6 +233,12 @@
   font-size: 1.25rem;
 }
 
+.blog-reading-surface :where(pre, code) {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+}
+
 html[data-motion="reduced"] *,
 html[data-motion="reduced"] *::before,
 html[data-motion="reduced"] *::after {

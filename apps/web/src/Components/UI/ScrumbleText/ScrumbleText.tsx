@@ -12,7 +12,7 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
   delayBeforeFix = 1000,
 }) => {
   const reducedMotion = useReducedMotion();
-  const [displayed, setDisplayed] = useState<string>("");
+  const [displayed, setDisplayed] = useState<string>(text);
   const [visible, setVisible] = useState(false);
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -98,7 +98,7 @@ const ScrambleText: React.FC<ScrumbleTextProps> = ({
 
   return (
     <span ref={ref} className={className}>
-      {reducedMotion ? text : visible ? displayed : ""}
+      {reducedMotion || !visible ? text : displayed}
     </span>
   );
 };

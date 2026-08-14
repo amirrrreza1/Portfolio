@@ -1,9 +1,76 @@
 import Button from "@/Components/UI/Buttons/CustomBTN";
 import CodeStyleText from "@/Components/UI/CodeTyleText/CodeTyleText";
-import { Github, Linkedin, Heart, Mail } from "lucide-react";
 import AppearanceSettingsDialog from "@/Components/Appearance/AppearanceSettingsDialog";
+import type { Locale } from "@portfolio/contracts/common";
+import type {
+  PublicSiteSettings,
+  PublicSocialLink,
+} from "@portfolio/contracts/portfolio";
+import {
+  BookOpen,
+  ExternalLink,
+  Github,
+  Heart,
+  Linkedin,
+  Mail,
+  Send,
+} from "lucide-react";
+import { getMessages } from "@/i18n/messages";
+import { localePath } from "@/i18n/routing";
+import Link from "next/link";
 
-const Footer = () => {
+function SocialIcon({ link }: { readonly link: PublicSocialLink }) {
+  if (link.kind === "EMAIL") {
+    return <Mail size={19} className="hover:text-primary" />;
+  }
+  if (link.kind === "DONATE") {
+    return <Heart size={19} className="hover:text-primary" />;
+  }
+  const hostname = new URL(link.url).hostname;
+  if (hostname === "github.com") {
+    return <Github size={19} className="hover:text-primary" />;
+  }
+  if (hostname === "linkedin.com" || hostname.endsWith(".linkedin.com")) {
+    return <Linkedin size={19} className="hover:text-primary" />;
+  }
+  if (hostname === "t.me") {
+    return <Send size={19} className="hover:text-primary" />;
+  }
+  return <ExternalLink size={19} className="hover:text-primary" />;
+}
+
+function PublicLink({ link }: { readonly link: PublicSocialLink }) {
+  const external = link.kind !== "EMAIL";
+  return (
+    <a
+      href={link.url}
+      aria-label={link.label}
+      title={link.label}
+      target={external ? "_blank" : undefined}
+      rel={external ? (link.rel ?? "noopener noreferrer") : undefined}
+      className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
+    >
+      <SocialIcon link={link} />
+    </a>
+  );
+}
+
+export default function Footer({
+  locale,
+  settings,
+  socialLinks,
+}: {
+  readonly locale: Locale;
+  readonly settings: PublicSiteSettings;
+  readonly socialLinks: readonly PublicSocialLink[];
+}) {
+  const standardLinks = socialLinks.filter((link) => link.kind !== "DONATE");
+  const donateLinks = socialLinks.filter((link) => link.kind === "DONATE");
+  const messages = getMessages(locale);
+  const year = new Intl.NumberFormat(locale === "fa" ? "fa-IR" : "en-US", {
+    useGrouping: false,
+  }).format(new Date().getFullYear());
+
   return (
     <footer className="border-secondary/20 w-full border-t backdrop-blur-sm">
       <div className="Container text-secondary flex flex-col gap-2 py-3 text-[13px]">
@@ -11,8 +78,8 @@ const Footer = () => {
           <p className="FooterSmallText">
             <CodeStyleText
               strings={[
-                `© ${new Date().getFullYear()} Amirreza Azarioun`,
-                "All rights reserved",
+                `${messages.footer.copyright} ${year} ${settings.siteName}`,
+                messages.footer.rights,
               ]}
               typingSpeed={50}
               deletingSpeed={30}
@@ -20,47 +87,37 @@ const Footer = () => {
           </p>
 
           <div className="flex items-center gap-4">
-            <AppearanceSettingsDialog />
+            <Link
+              href={localePath(locale, "blog")}
+              className="hover:text-primary flex items-center gap-1 underline-offset-4 hover:underline"
+            >
+              <BookOpen aria-hidden="true" size={18} />
+              {messages.blog.title}
+            </Link>
+            <AppearanceSettingsDialog locale={locale} />
             <div className="flex gap-3">
-              <a
-                href="https://github.com/amirrrreza1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
-              >
-                <Github size={19} className="hover:text-primary" />
-              </a>
-              <a
-                href="https://www.linkedin.com/in/amirrrreza1/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
-              >
-                <Linkedin size={19} className="hover:text-primary" />
-              </a>
-              <a
-                href="mailto:arazarioun83@gmail.com"
-                className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
-              >
-                <Mail size={19} className="hover:text-primary" />
-              </a>
+              {standardLinks.map((link) => (
+                <PublicLink key={link.id} link={link} />
+              ))}
             </div>
-            <Button className="!px-3 !py-1">
-              <a
-                href="https://www.coffeebede.com/amirrrreza1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                <Heart size={19} className="hover:text-primary" />
-                Donate
-              </a>
-            </Button>
+            {donateLinks.map((link) => {
+              return (
+                <Button key={link.id} className="!px-3 !py-1">
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel={link.rel ?? "noopener noreferrer"}
+                    className="flex items-center gap-2"
+                  >
+                    <SocialIcon link={link} />
+                    {link.label}
+                  </a>
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

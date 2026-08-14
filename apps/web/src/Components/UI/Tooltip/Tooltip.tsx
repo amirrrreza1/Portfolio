@@ -1,24 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TooltipProps } from "./Types";
 
+const hoverMediaQuery = "(hover: hover) and (pointer: fine)";
+
+function subscribeToHoverCapability(onStoreChange: () => void) {
+  const mediaQuery = window.matchMedia(hoverMediaQuery);
+  mediaQuery.addEventListener("change", onStoreChange);
+  return () => mediaQuery.removeEventListener("change", onStoreChange);
+}
+
+function getHoverCapability() {
+  return window.matchMedia(hoverMediaQuery).matches;
+}
+
+function getServerHoverCapability() {
+  return false;
+}
+
 const Tooltip = ({ title, children }: TooltipProps) => {
   const [show, setShow] = useState(false);
-  const [canHover, setCanHover] = useState(true);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    setCanHover(mq.matches);
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      setCanHover(e.matches);
-    };
-
-    mq.addEventListener("change", handleChange);
-    return () => mq.removeEventListener("change", handleChange);
-  }, []);
+  const canHover = useSyncExternalStore(
+    subscribeToHoverCapability,
+    getHoverCapability,
+    getServerHoverCapability
+  );
 
   if (!canHover) return <>{children}</>;
 

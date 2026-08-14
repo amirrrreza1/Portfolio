@@ -1,25 +1,18 @@
-"use client";
-
-import { Quote } from "./Types";
+import type { PublicQuote } from "@portfolio/contracts/portfolio";
 
 export default function DailyQuote({
-  quotes,
+  quote,
 }: {
-  readonly quotes: readonly Quote[];
+  readonly quote: PublicQuote | null;
 }) {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), 0, 0);
-  const diff = today.getTime() - start.getTime();
-  const oneDay = 1000 * 60 * 60 * 24;
-  const dayOfYear = Math.floor(diff / oneDay);
-
-  const index = dayOfYear % quotes.length;
-  const quote: Quote = quotes[index];
+  if (quote === null) return null;
 
   return (
     <div className="Container my-10 border p-6 backdrop-blur-sm">
       <q className="italic">{quote.text}</q>
-      <p className="mt-4 text-right text-sm">— {quote.author}</p>
+      {quote.author === null ? null : (
+        <p className="mt-4 text-right text-sm">— {quote.author}</p>
+      )}
     </div>
   );
 }
