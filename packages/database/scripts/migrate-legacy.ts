@@ -6,11 +6,15 @@ import { config as loadEnvironment } from "dotenv";
 
 import {
   applyLegacyPageSectionMigration,
+  applyLegacySkillColorMigration,
   executeLegacyMediaMigration,
   planLegacyMigration,
   planLegacyPageSectionMigration,
+  planLegacySkillColorMigration,
   serializeReconciliationReport,
+  serializeSkillColorPlan,
   type LegacyPageSectionSnapshot,
+  type LegacySkillColorSnapshot,
   type LegacySnapshot,
 } from "@portfolio/migration";
 import {
@@ -23,6 +27,7 @@ import {
   createDatabaseClient,
   createLegacyMigrationStore,
   createLegacyPageSectionMigrationStore,
+  createLegacySkillColorMigrationStore,
 } from "../src/index.js";
 
 const root = path.resolve(
@@ -51,6 +56,13 @@ const pageSectionReportPath = path.join(
   "evidence",
   "M2-page-sections-reconciliation.json"
 );
+const skillColorReportPath = path.join(
+  root,
+  "docs",
+  "status",
+  "evidence",
+  "M2-skill-colors-reconciliation.json"
+);
 const localRoot = readOption("--local-media-root");
 const snapshot = await readSnapshot();
 const plan = planLegacyMigration(snapshot);
@@ -72,9 +84,25 @@ await writeFile(
   ) + "\n",
   "utf8"
 );
+const skillColorSnapshot: LegacySkillColorSnapshot = {
+  categories: snapshot.skills.map((category) => ({
+    id: category.id,
+    items: category.items.map((skill) => ({
+      id: skill.id,
+      color: skill.color,
+    })),
+  })),
+};
+const skillColorPlan = planLegacySkillColorMigration(skillColorSnapshot);
+await writeFile(
+  skillColorReportPath,
+  JSON.stringify(serializeSkillColorPlan(skillColorPlan), null, 2) + "\n",
+  "utf8"
+);
 if (
   plan.issues.some((issue) => issue.severity === "error") ||
-  pageSectionPlan.issues.length > 0
+  pageSectionPlan.issues.length > 0 ||
+  skillColorPlan.issues.length > 0
 ) {
   throw new Error("Preflight failed; see " + reportPath + ".");
 }
@@ -108,8 +136,20 @@ try {
       ? "Legacy Hero/About and section ordering migrated."
       : "Legacy Hero/About and section ordering already applied."
   );
+  const skillColorResult = await applyLegacySkillColorMigration(
+    createLegacySkillColorMigrationStore(database),
+    skillColorSnapshot
+  );
+  console.log(
+    skillColorResult.applied
+      ? "Reviewed skill colours applied to " +
+          skillColorResult.plan.replacements.length +
+          " skill(s); the frozen source is unchanged."
+      : "Reviewed skill colours already applied."
+  );
   console.log("Reconciliation report: " + reportPath);
   console.log("Page-section report: " + pageSectionReportPath);
+  console.log("Skill-colour report: " + skillColorReportPath);
 } finally {
   await database.$disconnect();
 }

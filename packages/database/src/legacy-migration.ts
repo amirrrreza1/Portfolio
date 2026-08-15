@@ -6,6 +6,8 @@ import type {
   LegacyPageSectionMigrationTransaction,
   LegacyMigrationStore,
   LegacyMigrationTransaction,
+  LegacySkillColorMigrationStore,
+  LegacySkillColorMigrationTransaction,
   VerifiedLegacyMedia,
 } from "@portfolio/migration";
 
@@ -44,6 +46,62 @@ export function createLegacyPageSectionMigrationStore(
         operation(new PrismaPageSectionMigrationTransaction(prisma))
       ),
   };
+}
+
+/**
+ * Applies the reviewed skill-colour replacements under their own ledger entry.
+ *
+ * Separate from the media/content store because it must be able to run against
+ * a database the base migration already wrote, without re-opening that
+ * migration's checksum.
+ */
+export function createLegacySkillColorMigrationStore(
+  database: Database
+): LegacySkillColorMigrationStore {
+  return {
+    transaction: (operation) =>
+      database.$transaction(async (prisma) =>
+        operation(new PrismaSkillColorMigrationTransaction(prisma))
+      ),
+  };
+}
+
+class PrismaSkillColorMigrationTransaction implements LegacySkillColorMigrationTransaction {
+  constructor(private readonly prisma: any) {}
+
+  async appliedChecksum(version: string): Promise<string | null> {
+    return (
+      (await this.prisma.dataMigration.findUnique({ where: { version } }))
+        ?.checksum ?? null
+    );
+  }
+
+  async setSkillColor(input: {
+    readonly legacyId: number;
+    readonly color: string;
+  }): Promise<void> {
+    // `update`, never `upsert`: the skill must already exist from the base
+    // migration. A missing row means this is running against a database the
+    // base migration never touched, and inventing the row would hide that.
+    await this.prisma.skill.update({
+      where: { legacyId: input.legacyId },
+      data: { color: input.color, version: { increment: 1 } },
+    });
+  }
+
+  async recordAppliedMigration(input: {
+    readonly version: string;
+    readonly checksum: string;
+    readonly report: unknown;
+  }): Promise<void> {
+    await this.prisma.dataMigration.create({
+      data: {
+        version: input.version,
+        checksum: input.checksum,
+        report: input.report,
+      },
+    });
+  }
 }
 
 /** Applies the separately ledgered, explicit legacy GitHub repository list. */

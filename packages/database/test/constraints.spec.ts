@@ -276,8 +276,9 @@ describe("colour format", () => {
   });
 
   it("accepts the legacy #000000 so migration can report it rather than fail", async () => {
-    // Two legacy skill colours are pure black and fail contrast. They are valid
-    // hex; flagging them is the contrast checker's job, not this constraint's.
+    // Three legacy skill colours are pure black and fail contrast. They are
+    // valid hex; flagging them is the contrast checker's job, not this
+    // constraint's.
     expect(await accepts(skill("s4", "Z", "#000000"))).toBe(true);
   });
 });

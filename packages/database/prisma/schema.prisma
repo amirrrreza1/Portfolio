@@ -538,9 +538,10 @@ model Skill {
   /// deliberately NOT translated. Normalized for uniqueness.
   name       String   @unique
   /// #rrggbb, contrast-checked against every enabled theme before it can be
-  /// saved, because label text colour is derived from it at render time. Two
-  /// legacy values are #000000 and fail; M2 reports them rather than silently
-  /// adjusting them.
+  /// saved, because label text colour is derived from it at render time. The
+  /// checker is `checkBadgeColorContrast` in @portfolio/contracts. Three legacy
+  /// values are #000000 and fail; M2 reports them and replaces them under its
+  /// own migration version rather than editing the frozen source.
   color      String
   iconMediaId String?
   sortOrder  Int      @default(0)
