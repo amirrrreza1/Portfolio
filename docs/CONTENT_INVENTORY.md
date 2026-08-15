@@ -73,7 +73,7 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 | Skill order, enabled    | integer, boolean         |                                                                                                                       |
 | Skill category          | reference                | Moving a skill between categories preserves project links                                                             |
 
-**Corrections:** category IDs in the JSON are non-contiguous (1, 2, 3, 6, 7, 8), which is harmless but confirms these are hand-maintained; migration assigns fresh CUIDs and keeps a legacy-ID map for reconciliation. **Three** skills use `#000000` as their colour — `Next.js (App Router)` (202), `shad CN` (306), and `Vercel` (801) — which fails contrast on the dark theme. Earlier revisions of this document said two; the migration preflight reports all three for the owner to re-pick rather than silently adjusting them.
+**Corrections:** category IDs in the JSON are non-contiguous (1, 2, 3, 6, 7, 8), which is harmless but confirms these are hand-maintained; migration assigns fresh CUIDs and keeps a legacy-ID map for reconciliation. **Three** skills use `#000000` as their colour — `Next.js (App Router)` (202), `shad CN` (306), and `Vercel` (801) — which fails contrast on the dark theme. Earlier revisions of this document said two; the migration preflight reports all three for the owner to re-pick rather than silently adjusting them. Those replacements were selected on 2026-08-15 — `#0070f3`, `#767676`, and `#8b5cd6` — and are applied by the separately versioned `2026-08-15.skill-colors.1` migration. The source JSON still reads `#000000` and is not edited.
 
 ## 5. Projects — `Project` and `ProjectSkill`
 

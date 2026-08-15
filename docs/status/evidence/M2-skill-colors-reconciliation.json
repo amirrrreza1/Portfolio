@@ -1,0 +1,81 @@
+{
+  "migrationVersion": "2026-08-15.skill-colors.1",
+  "sourceChecksum": "b1c1901900d2fa0505c569ed53e394ed5155758041c017a32e5a201f8054c470",
+  "contrastMinimum": 4.5,
+  "replacements": [
+    {
+      "legacyId": 202,
+      "name": "Next.js (App Router)",
+      "from": "#000000",
+      "to": "#0070f3",
+      "rationale": "The accent blue Next.js uses throughout its own documentation; the brand mark itself is monochrome.",
+      "contrast": {
+        "minimum": 4.5,
+        "labelColor": "#ffffff",
+        "labelContrast": 4.55,
+        "byTheme": [
+          {
+            "theme": "dark",
+            "background": "#000000",
+            "fillContrast": 4.61
+          },
+          {
+            "theme": "light",
+            "background": "#ffffff",
+            "fillContrast": 4.55
+          }
+        ]
+      }
+    },
+    {
+      "legacyId": 306,
+      "name": "shad CN",
+      "from": "#000000",
+      "to": "#767676",
+      "rationale": "A neutral from the zinc scale shadcn/ui ships as its own default palette.",
+      "contrast": {
+        "minimum": 4.5,
+        "labelColor": "#ffffff",
+        "labelContrast": 4.54,
+        "byTheme": [
+          {
+            "theme": "dark",
+            "background": "#000000",
+            "fillContrast": 4.62
+          },
+          {
+            "theme": "light",
+            "background": "#ffffff",
+            "fillContrast": 4.54
+          }
+        ]
+      }
+    },
+    {
+      "legacyId": 801,
+      "name": "Vercel",
+      "from": "#000000",
+      "to": "#8b5cd6",
+      "rationale": "The purple of the Vercel brand gradient, taken because its blue is already carrying Next.js.",
+      "contrast": {
+        "minimum": 4.5,
+        "labelColor": "#ffffff",
+        "labelContrast": 4.57,
+        "byTheme": [
+          {
+            "theme": "dark",
+            "background": "#000000",
+            "fillContrast": 4.6
+          },
+          {
+            "theme": "light",
+            "background": "#ffffff",
+            "fillContrast": 4.57
+          }
+        ]
+      }
+    }
+  ],
+  "unresolvedLegacyIds": [],
+  "errors": []
+}

@@ -189,8 +189,9 @@ normalizes only reviewed values, and emits a deterministic report. PostgreSQL
 counts reconciled, six PDF objects matched source/database byte sizes and
 SHA-256 hashes, and the ledger recorded the exact source checksum. An immediate
 replay skipped before writing any object. The current snapshot has zero errors
-and four explained warnings: the Portfolio placeholder URL becomes null and
-three black skill colours still need owner-selected accessible replacements.
+and four explained warnings: the Portfolio placeholder URL becomes null, and
+the three black skill colours name the reviewed replacement that
+`2026-08-15.skill-colors.1` applies to each of them.
 The applied evidence is recorded in
 [`docs/status/evidence/M2-run.md`](status/evidence/M2-run.md).
 
@@ -206,8 +207,11 @@ preserves the exact Hero/About source as restricted inline Markdown, moves the
 private birth date into `SiteSettings`, and restores the six-section render
 plan. Live database and API-independent rollback renders matched
 text/emphasis/order, and a temporary disable removed one section from both API
-and HTML before it was restored. Only the three reviewed colour choices remain
-before M2 can close. The runs are
+and HTML before it was restored. The three colour choices were made on 2026-08-15 and are
+implemented as a separately ledgered migration that checks each replacement
+against every theme background and against its own derived label before
+writing; the frozen source keeps its `#000000` values. Only the applied run of
+that migration against the real database remains before M2 can close. The runs are
 recorded in [`docs/status/evidence/M4-projects-read.md`](status/evidence/M4-projects-read.md),
 [`docs/status/evidence/M4-site-read.md`](status/evidence/M4-site-read.md), and
 [`docs/status/evidence/M4-home-read.md`](status/evidence/M4-home-read.md), and

@@ -99,19 +99,19 @@
       "severity": "warning",
       "code": "LOW_CONTRAST_SKILL_COLOR",
       "location": "skills[2].items[202].color",
-      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; 2026-08-15.skill-colors.1 replaces it with #0070f3 (The accent blue Next.js uses throughout its own documentation; the brand mark itself is monochrome.) without changing the frozen source."
     },
     {
       "severity": "warning",
       "code": "LOW_CONTRAST_SKILL_COLOR",
       "location": "skills[3].items[306].color",
-      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; 2026-08-15.skill-colors.1 replaces it with #767676 (A neutral from the zinc scale shadcn/ui ships as its own default palette.) without changing the frozen source."
     },
     {
       "severity": "warning",
       "code": "LOW_CONTRAST_SKILL_COLOR",
       "location": "skills[8].items[801].color",
-      "message": "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+      "message": "Black is valid source data but fails contrast on the enabled dark theme; 2026-08-15.skill-colors.1 replaces it with #8b5cd6 (The purple of the Vercel brand gradient, taken because its blue is already carrying Next.js.) without changing the frozen source."
     },
     {
       "severity": "warning",
