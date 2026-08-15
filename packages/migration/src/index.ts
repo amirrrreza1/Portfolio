@@ -6,6 +6,12 @@ import {
   suggestSlug,
 } from "@portfolio/contracts/common";
 
+import {
+  FLAGGED_LEGACY_SKILL_COLOR,
+  LEGACY_SKILL_COLOR_MIGRATION_VERSION,
+  REVIEWED_SKILL_COLOR_REPLACEMENTS,
+} from "./skill-colors.js";
+
 export {
   createReconciliationReport,
   serializeReconciliationReport,
@@ -39,6 +45,23 @@ export {
   type LegacyPageSectionSnapshot,
   type LegacyPageSectionTranslation,
 } from "./page-sections.js";
+export {
+  LEGACY_SKILL_COLOR_MIGRATION_VERSION,
+  FLAGGED_LEGACY_SKILL_COLOR,
+  REVIEWED_SKILL_COLOR_REPLACEMENTS,
+  applyLegacySkillColorMigration,
+  assertLegacySkillColorMigrationReady,
+  planLegacySkillColorMigration,
+  serializeSkillColorPlan,
+  type AppliedLegacySkillColorMigration,
+  type LegacySkillColorMigrationIssue,
+  type LegacySkillColorMigrationPlan,
+  type LegacySkillColorMigrationStore,
+  type LegacySkillColorMigrationTransaction,
+  type LegacySkillColorSnapshot,
+  type PlannedSkillColorReplacement,
+  type ReviewedSkillColorReplacement,
+} from "./skill-colors.js";
 export {
   LEGACY_GITHUB_STATS_MIGRATION_VERSION,
   applyLegacyGitHubStatsMigration,
@@ -187,12 +210,27 @@ export function planLegacyMigration(snapshot: LegacySnapshot): MigrationPlan {
           skillLocation + ".color",
           color.error.message
         );
-      } else if (color.data === "#000000") {
+      } else if (color.data === FLAGGED_LEGACY_SKILL_COLOR) {
+        // The source stays black forever; this warning stays forever with it.
+        // What changes is whether it is *explained*: once a reviewed
+        // replacement exists, the warning names it and the version that
+        // applies it, so the report has no unresolved decision left in it.
+        const reviewed = REVIEWED_SKILL_COLOR_REPLACEMENTS.find(
+          (replacement) => replacement.legacyId === skill.id
+        );
         warning(
           issues,
           "LOW_CONTRAST_SKILL_COLOR",
           skillLocation + ".color",
-          "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+          reviewed === undefined
+            ? "Black is valid source data but fails contrast on the enabled dark theme; select a replacement."
+            : "Black is valid source data but fails contrast on the enabled dark theme; " +
+                LEGACY_SKILL_COLOR_MIGRATION_VERSION +
+                " replaces it with " +
+                reviewed.to +
+                " (" +
+                reviewed.rationale +
+                ") without changing the frozen source."
         );
       }
     }
