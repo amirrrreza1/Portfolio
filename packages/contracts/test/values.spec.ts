@@ -25,10 +25,10 @@ describe("hexColorSchema", () => {
   );
 
   it("accepts the legacy #000000 values so migration can report them", () => {
-    // Two legacy skill colours are pure black. They are valid hex and must
+    // Three legacy skill colours are pure black. They are valid hex and must
     // parse; the contrast check that flags them belongs to the appearance
-    // layer, and conflating the two would make the migration fail on data it
-    // is supposed to report.
+    // layer (`checkBadgeColorContrast`), and conflating the two would make the
+    // migration fail on data it is supposed to report.
     expect(hexColorSchema.parse("#000000")).toBe("#000000");
   });
 });
