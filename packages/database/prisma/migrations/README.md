@@ -71,3 +71,29 @@ pnpm --filter @portfolio/database db:seed   # second run must change nothing
 
 The seed asserts its own row counts and fails if they differ, so a second run
 that produced duplicates would error rather than pass quietly.
+
+## Migrations added without a database
+
+`20260816150000_content_jobs` was hand-written. Every migration before it came
+from `prisma migrate dev` against a live database; this one did not, because the
+change was authored where no PostgreSQL instance was reachable.
+
+Verify it before trusting it:
+
+```bash
+pnpm --filter @portfolio/database exec prisma migrate diff \
+  --from-migrations prisma/migrations \
+  --to-schema-datamodel prisma/schema.prisma \
+  --shadow-database-url "$SHADOW_DATABASE_URL" --script
+```
+
+An empty result means the migration and the schema agree. Any output means the
+hand-written file is wrong and the generated statements are right.
+
+It also differs from the initial pair in carrying its own `CHECK` constraints and
+partial indexes rather than deferring them to a second migration. That split
+existed so hand-written constraints could be staged into a _generated_ file, and
+there is nothing to stage when the whole file is hand-written. The annotated
+copy of those constraints still lives in
+[`../sql/integrity_constraints.sql`](../sql/integrity_constraints.sql), which is
+what a fresh database and `test/constraints.spec.ts` apply.

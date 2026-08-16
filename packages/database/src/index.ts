@@ -35,6 +35,16 @@ export {
   createLegacySkillColorMigrationStore,
 } from "./legacy-migration.js";
 export { createContentIndexStore } from "./content-sync.js";
+export {
+  createContentJobStore,
+  createPrismaSqlExecutor,
+  retryDelaySeconds,
+  type ClaimedContentJob,
+  type ContentJobKind,
+  type ContentJobStore,
+  type ContentQueueMetrics,
+  type SqlExecutor,
+} from "./content-jobs.js";
 export { createPasswordLoginStore } from "./auth.js";
 export { createWebAuthnChallengeStore } from "./webauthn.js";
 export { createWebhookDeliveryStore } from "./webhook-delivery.js";

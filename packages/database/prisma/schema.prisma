@@ -136,6 +136,29 @@ enum OutboxState {
   FAILED
 }
 
+/// What a queued unit of content work is. The payload schema is keyed off this,
+/// so an unknown kind is a rejected job rather than a job that runs the wrong
+/// handler.
+enum ContentJobKind {
+  /// A webhook fired. The payload carries no article data (CONTENT_PIPELINE.md
+  /// §7): the worker re-reads the branch head from Git.
+  WEBHOOK_RECONCILE
+  /// The scheduler's periodic whole-tree pass, so a missed webhook self-heals.
+  SCHEDULED_RECONCILE
+  /// A translation whose scheduledFor has arrived.
+  PUBLISH_DUE
+}
+
+enum ContentJobState {
+  PENDING
+  CLAIMED
+  SUCCEEDED
+  /// Attempts exhausted. Kept, never deleted: a dead job is the only record
+  /// that work was accepted and never done, and deleting it turns a visible
+  /// failure into silent data loss.
+  DEAD
+}
+
 enum WebAuthnChallengePurpose {
   LOGIN
   ENROLL
@@ -985,6 +1008,52 @@ model WebhookDelivery {
 
   @@index([expiresAt])
   @@map("webhook_deliveries")
+}
+
+/// The durable queue from [ADR-013](../../../../docs/DECISIONS.md#adr-013--postgresql-backed-jobs-with-dedicated-sync-and-scheduler-workers).
+///
+/// PostgreSQL is the queue. Workers claim with `FOR UPDATE SKIP LOCKED`, hold a
+/// lease rather than a connection, and a worker killed mid-job is recovered by
+/// the lease expiring — not by a human noticing.
+///
+/// Two indexes in the initial constraints migration carry the semantics Prisma
+/// cannot express, and both are load-bearing:
+///
+///   - unique `lockKey` while CLAIMED, which is what actually serializes work
+///     per post. Ordering matters — an apply for a translation must not overtake
+///     an earlier one — and enforcing it in the database means two workers
+///     racing produces a unique violation the loser retries, rather than two
+///     handlers interleaving.
+///   - unique `dedupeKey` while PENDING, so ten webhooks in a burst collapse
+///     into one queued reconciliation instead of ten identical passes.
+model ContentJob {
+  id             String          @id @default(cuid(2))
+  kind           ContentJobKind
+  /// Serialization key. Jobs sharing it never run at the same time.
+  lockKey        String
+  /// Null means "always queue me". Non-null folds duplicates while pending.
+  dedupeKey      String?
+  payload        Json
+  state          ContentJobState @default(PENDING)
+  attempts       Int             @default(0)
+  maxAttempts    Int             @default(5)
+  /// Claim eligibility. Retries move it forward; this is the backoff.
+  availableAt    DateTime        @default(now()) @db.Timestamptz(6)
+  /// Set on claim. A CLAIMED row past this time is reclaimable.
+  leaseExpiresAt DateTime?       @db.Timestamptz(6)
+  /// Opaque worker identity, for operator triage only.
+  claimedBy      String?
+  /// Truncated before storage. Never a payload echo — a job that failed on bad
+  /// input should not persist that input a second time.
+  lastError      String?
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(6)
+  finishedAt     DateTime?       @db.Timestamptz(6)
+
+  @@index([state, availableAt])
+  @@index([state, leaseExpiresAt])
+  @@index([lockKey])
+  @@map("content_jobs")
 }
 
 model ContentInvalidationOutbox {

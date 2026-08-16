@@ -336,3 +336,62 @@ CREATE INDEX "post_translations_due_for_publication"
 CREATE INDEX "post_translations_degraded"
   ON "post_translations" ("syncState", "updatedAt" DESC)
   WHERE "syncState" <> 'SYNCED';
+
+-- ---------------------------------------------------------------------------
+-- Content job queue
+-- ---------------------------------------------------------------------------
+
+-- What actually serializes work per post. Ordering matters within a lock key:
+-- an apply for a translation must not overtake an earlier one. Enforcing it
+-- here rather than in the claim query means two workers racing produce a
+-- unique violation the loser retries, instead of two handlers interleaving on
+-- a snapshot that looked free to both of them.
+CREATE UNIQUE INDEX "content_jobs_one_claim_per_lock_key"
+  ON "content_jobs" ("lockKey")
+  WHERE "state" = 'CLAIMED';
+
+-- Collapses a burst. Ten pushes in a minute should queue one reconciliation,
+-- not ten identical whole-tree passes. NULL dedupe keys are exempt, because
+-- SQL treats every NULL as distinct and "always queue me" is a real need.
+CREATE UNIQUE INDEX "content_jobs_pending_dedupe"
+  ON "content_jobs" ("dedupeKey")
+  WHERE "dedupeKey" IS NOT NULL AND "state" = 'PENDING';
+
+-- The claim query's index: pending work that has come due, oldest first.
+CREATE INDEX "content_jobs_claimable"
+  ON "content_jobs" ("availableAt")
+  WHERE "state" = 'PENDING';
+
+-- The recovery query's index: claims whose lease has lapsed.
+CREATE INDEX "content_jobs_expired_leases"
+  ON "content_jobs" ("leaseExpiresAt")
+  WHERE "state" = 'CLAIMED';
+
+ALTER TABLE "content_jobs"
+  ADD CONSTRAINT "content_jobs_attempt_bounds"
+  CHECK ("attempts" >= 0 AND "maxAttempts" >= 1 AND "attempts" <= "maxAttempts");
+
+-- A claim without a lease is a job no one can ever reclaim: the worker that
+-- took it can die and the row stays CLAIMED forever. Written as an equivalence
+-- rather than two implications so a NULL cannot slip through three-valued
+-- logic on the unchecked side.
+ALTER TABLE "content_jobs"
+  ADD CONSTRAINT "content_jobs_claim_has_lease"
+  CHECK (
+    ("state" = 'CLAIMED') = ("leaseExpiresAt" IS NOT NULL AND "claimedBy" IS NOT NULL)
+  );
+
+-- A terminal state has a finish time and a live one does not, so queue age is
+-- always computable without asking which columns to trust.
+ALTER TABLE "content_jobs"
+  ADD CONSTRAINT "content_jobs_terminal_has_finished_at"
+  CHECK (
+    ("state" IN ('SUCCEEDED', 'DEAD')) = ("finishedAt" IS NOT NULL)
+  );
+
+-- Dead means attempts were actually exhausted. Without this a bug could
+-- dead-letter a job on its first failure and the retry budget would be a
+-- suggestion rather than a rule.
+ALTER TABLE "content_jobs"
+  ADD CONSTRAINT "content_jobs_dead_only_when_exhausted"
+  CHECK ("state" <> 'DEAD' OR "attempts" >= "maxAttempts");
