@@ -6,13 +6,14 @@ import {
 
 import { AppModule } from "./app.module.js";
 import { parseApiEnvironment } from "./config/environment.js";
-import { configureApplication } from "./configure-app.js";
+import { APPLICATION_OPTIONS, configureApplication } from "./configure-app.js";
 
 async function bootstrap(): Promise<void> {
   const environment = parseApiEnvironment(process.env);
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: false })
+    new FastifyAdapter({ logger: false }),
+    APPLICATION_OPTIONS
   );
 
   configureApplication(app);
