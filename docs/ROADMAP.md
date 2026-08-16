@@ -415,10 +415,18 @@ Reduced motion is wired through the hero, particles, scramble text, and typing
 text, and inline styles were removed from the application components. Live
 database, cookie-correction, rollback, and cold-outage evidence now exists.
 
-Outstanding: the theme token set is still the legacy
-`--color-primary`/`--color-secondary`/`--color-Gold` vocabulary rather than the
-names in [THEMING.md](THEMING.md) §3, so §3's "components consume tokens only"
-rule has no CI check behind it. Fonts remain the full 17-face `woff2` set with
+The theme token set was migrated to the [THEMING.md](THEMING.md) §3 vocabulary
+on 2026-08-16, per theme rather than shared, and §3's "components consume
+tokens only" rule now has a CI check behind it. The migration closed five WCAG
+2.2 AA failures a shared-value palette had hidden, removed three `dark:`
+colour switches that resolved against `prefers-color-scheme` instead of the
+selected `data-theme`, and replaced every opacity-thinned text and border
+variant with a measurable token. Every enabled theme passes a 26-pairing
+contrast matrix.
+
+Outstanding: `--color-code-bg`/`--color-code-text` are declared and measured but
+not wired — no CSS selects between Shiki's light and dark output, so code
+blocks render in one theme regardless of the selected one. Fonts remain the full 17-face `woff2` set with
 no subsetting, no `unicode-range`, and no route-scoped preload. The one-time
 `localStorage` → cookie migration in THEMING §5.6 was not implemented — the old
 key is simply ignored, so an existing visitor silently reverts to the default
@@ -437,7 +445,10 @@ Deliverables:
 
 Exit gate:
 
-- every enabled theme passes WCAG 2.2 AA checks;
+- ~~every enabled theme passes WCAG 2.2 AA checks~~ — met 2026-08-16 for the
+  declared token values; see
+  [`docs/status/evidence/M5-theme-tokens.md`](status/evidence/M5-theme-tokens.md).
+  The Shiki code themes are measured but not yet selected between in CSS;
 - first render and hydration agree for every preference mode;
 - blog typography scoping and non-blog font-download tests pass;
 - public responses do not send `Vary: Cookie`, and the selected appearance-delivery strategy passes its shared-cache test;

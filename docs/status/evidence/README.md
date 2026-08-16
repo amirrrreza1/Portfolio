@@ -15,3 +15,4 @@ This directory stores deterministic, non-secret reports produced while proving m
 - [`M4-github-stats-reconciliation.json`](M4-github-stats-reconciliation.json) is the machine-readable GitHub statistics settings migration plan.
 - [`M4-http-503.md`](M4-http-503.md) records healthy, warm-outage, cold-outage, rollback, locale, disclosure, redirect, and `404` status behavior for the current public routes.
 - [`M4-articles.md`](M4-articles.md) records the automated strict article API/client, bilingual route, no-fallback, render-provenance, SEO, and article-route outage boundary, plus the live proof that remains open.
+- [`M5-theme-tokens.md`](M5-theme-tokens.md) records the THEMING §3 token migration, the five AA failures it uncovered, the 26-pairing contrast matrix, and the CI enforcement scan.
