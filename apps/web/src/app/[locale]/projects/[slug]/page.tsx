@@ -67,7 +67,7 @@ export default async function LocaleProjectDetailPage({
     <article className="Container my-16 space-y-8 border p-5 md:p-8">
       <Link
         href={localePath(locale, "projects")}
-        className="text-secondary underline-offset-4 hover:underline"
+        className="text-text underline-offset-4 hover:underline"
       >
         {text.all}
       </Link>
@@ -76,12 +76,12 @@ export default async function LocaleProjectDetailPage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-4xl font-bold">{project.title}</h1>
           {project.featured ? (
-            <span className="border-secondary/40 bg-secondary/10 border px-3 py-1 text-sm">
+            <span className="border-border bg-surface border px-3 py-1 text-sm">
               {text.featured}
             </span>
           ) : null}
         </div>
-        <p className="text-secondary/75 text-lg">
+        <p className="text-text-muted text-lg">
           <InlineMarkdown source={project.summary} />
         </p>
         <p className="text-sm font-medium">
@@ -135,7 +135,7 @@ export default async function LocaleProjectDetailPage({
           {project.skills.map((skill) => (
             <li
               key={skill.id}
-              className="border-secondary/40 bg-secondary/10 border px-3 py-1 text-sm"
+              className="border-border bg-surface border px-3 py-1 text-sm"
             >
               {skill.name}
             </li>
@@ -164,7 +164,7 @@ function ExternalProjectLink({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="border-secondary bg-secondary text-primary border px-5 py-3 font-semibold"
+      className="border-primary bg-primary text-bg border px-5 py-3 font-semibold"
     >
       {label}
     </a>
@@ -182,7 +182,7 @@ function DateFact({
 }) {
   return (
     <div>
-      <dt className="text-secondary/70 text-sm">{label}</dt>
+      <dt className="text-text-muted text-sm">{label}</dt>
       <dd>
         <time dateTime={value}>{formatPublicDate(value, locale)}</time>
       </dd>

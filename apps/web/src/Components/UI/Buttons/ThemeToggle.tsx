@@ -28,7 +28,7 @@ export default function ThemeToggle({ locale }: { readonly locale: Locale }) {
             transition={{ duration: 0.5, ease: "easeInOut" }}
             className="absolute"
           >
-            <Sun className="text-secondary h-6 w-6" />
+            <Sun className="text-text h-6 w-6" />
           </motion.span>
         ) : (
           <motion.span
@@ -40,7 +40,7 @@ export default function ThemeToggle({ locale }: { readonly locale: Locale }) {
             transition={{ duration: 0.5, ease: "easeInOut" }}
             className="absolute"
           >
-            <Moon className="text-secondary h-6 w-6" />
+            <Moon className="text-text h-6 w-6" />
           </motion.span>
         )}
       </AnimatePresence>

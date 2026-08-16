@@ -41,9 +41,7 @@ const CertificatesSection = ({
           >
             <h2 className="mb-2 text-xl font-bold">{cert.title}</h2>
             {cert.description === null ? null : (
-              <p className="text-secondary/70 mb-4 text-sm">
-                {cert.description}
-              </p>
+              <p className="text-text-muted mb-4 text-sm">{cert.description}</p>
             )}
 
             <div className="mb-4 flex flex-col gap-2">

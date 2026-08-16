@@ -60,7 +60,7 @@ export default function ProjectCard({
         <h3 className="text-2xl font-bold">{pj.title}</h3>
         <p
           className={`text-sm font-medium ${
-            pj.status === "completed" ? "text-main-green" : "text-main-red"
+            pj.status === "completed" ? "text-success" : "text-danger"
           }`}
         >
           {pj.status === "completed"
@@ -69,7 +69,7 @@ export default function ProjectCard({
         </p>
       </div>
 
-      <p className="text-secondary/70 mb-4">{pj.description}</p>
+      <p className="text-text-muted mb-4">{pj.description}</p>
 
       <div className="mb-4 flex flex-wrap gap-2">
         {visibleTechs.map((techId, idx) => {
@@ -78,7 +78,7 @@ export default function ProjectCard({
           return (
             <span
               key={`${pj.id}-${techId}-${idx}`}
-              className="border-secondary/40 bg-secondary/10 text-secondary border px-3 py-1 text-sm font-medium"
+              className="border-border bg-surface text-text border px-3 py-1 text-sm font-medium"
             >
               {skill.name}
             </span>
@@ -99,7 +99,7 @@ export default function ProjectCard({
 
       {pj.repo && stats ? (
         <div className="mb-4 flex gap-6 text-sm">
-          <span className="text-Gold">
+          <span className="text-accent">
             {formatNumber(stats.stars, locale)} {messages.projects.stars}
           </span>
           <span>
@@ -107,7 +107,7 @@ export default function ProjectCard({
           </span>
         </div>
       ) : pj.repo ? (
-        <p className="mb-4 text-sm text-gray-400">
+        <p className="mb-4 text-sm text-text-muted">
           {messages.projects.statsUnavailable}
         </p>
       ) : null}

@@ -73,13 +73,13 @@ export default async function LocaleArticlePage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-4xl font-bold">{article.title}</h1>
           {article.featured ? (
-            <span className="border-secondary/40 bg-secondary/10 border px-3 py-1 text-sm">
+            <span className="border-border bg-surface border px-3 py-1 text-sm">
               {messages.featured}
             </span>
           ) : null}
         </div>
-        <p className="text-secondary/75 text-lg">{article.excerpt}</p>
-        <dl className="text-secondary/70 flex flex-wrap gap-6 text-sm">
+        <p className="text-text-muted text-lg">{article.excerpt}</p>
+        <dl className="text-text-muted flex flex-wrap gap-6 text-sm">
           <ArticleDate
             label={messages.published}
             value={article.publishedAt}
@@ -122,7 +122,7 @@ export default async function LocaleArticlePage({
       {article.headings.length === 0 ? null : (
         <nav
           aria-label={messages.contents}
-          className="border-secondary/40 border p-4"
+          className="border-border border p-4"
         >
           <h2 className="mb-3 font-semibold">{messages.contents}</h2>
           <ol className="space-y-1">

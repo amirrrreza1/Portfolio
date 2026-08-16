@@ -28,7 +28,7 @@ function OptionButton({
       aria-checked={active}
       onClick={onClick}
       className={`border px-3 py-2 text-sm ${
-        active ? "bg-secondary text-primary" : "border-secondary/40"
+        active ? "bg-primary text-bg" : "border-border"
       }`}
     >
       {children}
@@ -85,7 +85,7 @@ export default function AppearanceSettingsDialog({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="border-secondary/40 flex h-10 w-10 items-center justify-center rounded border"
+        className="border-border flex h-10 w-10 items-center justify-center rounded border"
       >
         <Settings aria-hidden="true" className="h-5 w-5" />
         <span className="sr-only">{messages.appearance.open}</span>
@@ -96,7 +96,7 @@ export default function AppearanceSettingsDialog({
         aria-modal="true"
         aria-labelledby={headingId}
         onClose={close}
-        className="text-secondary bg-primary border-secondary w-[min(94vw,38rem)] border p-0 backdrop:bg-black/70"
+        className="text-text bg-bg border-primary w-[min(94vw,38rem)] border p-0 backdrop:bg-scrim/70"
       >
         <div className="space-y-6 p-6">
           <div className="flex items-start justify-between gap-4">
@@ -104,7 +104,7 @@ export default function AppearanceSettingsDialog({
               <h2 id={headingId} className="text-xl font-semibold">
                 {messages.appearance.title}
               </h2>
-              <p className="text-secondary/70 mt-1 text-sm">
+              <p className="text-text-muted mt-1 text-sm">
                 {messages.appearance.description}
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function AppearanceSettingsDialog({
             <legend className="mb-1 font-medium">
               {messages.appearance.blogFont}
             </legend>
-            <p className="text-secondary/70 mb-2 text-sm">
+            <p className="text-text-muted mb-2 text-sm">
               {messages.appearance.blogFontHelp}
             </p>
             <select
@@ -150,7 +150,7 @@ export default function AppearanceSettingsDialog({
               onChange={(event) =>
                 setBlogFont(event.target.value as typeof blogFont)
               }
-              className="bg-primary border-secondary w-full border p-2"
+              className="bg-bg border-primary w-full border p-2"
             >
               {appearanceOptions.blogFonts.map((font) => (
                 <option key={font.key} value={font.key}>
@@ -208,7 +208,7 @@ export default function AppearanceSettingsDialog({
             </fieldset>
           ) : null}
 
-          <div className="border-secondary/30 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             {isArticleDetail ? null : (
               <a
                 href={targetPath}

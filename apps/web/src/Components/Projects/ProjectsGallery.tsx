@@ -69,7 +69,7 @@ export default function ProjectsGallery({
   return (
     <main className="min-h-screen px-4 py-10 pt-20">
       <header className="fixed top-5 right-0 left-0 z-50 flex justify-center px-4">
-        <div className="bg-secondary/20 border-secondary/20 flex w-full max-w-lg items-center gap-3 rounded border px-3 py-2 shadow-xl backdrop-blur-md md:gap-4 md:px-5">
+        <div className="bg-surface border-border flex w-full max-w-lg items-center gap-3 rounded border px-3 py-2 shadow-xl backdrop-blur-md md:gap-4 md:px-5">
           <Tooltip title={messages.common.back}>
             <Link
               href={localePath(locale)}
@@ -83,13 +83,13 @@ export default function ProjectsGallery({
           </Tooltip>
 
           <div className="group relative flex-1">
-            <Search className="group-focus-within:text-secondary absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors" />
+            <Search className="group-focus-within:text-text absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-muted transition-colors" />
             <input
               type="search"
               placeholder={messages.projects.searchPlaceholder}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              className="bg-secondary/5 border-secondary/20 focus:border-secondary/40 focus:bg-secondary/10 h-10 w-full cursor-none border py-2 pr-10 pl-10 text-sm transition-all outline-none placeholder:text-gray-500"
+              className="bg-surface border-border focus:border-border focus:bg-surface h-10 w-full cursor-none border py-2 pr-10 pl-10 text-sm transition-all outline-none placeholder:text-text-muted"
             />
           </div>
           <Tooltip title={messages.common.theme}>

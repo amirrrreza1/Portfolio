@@ -56,7 +56,7 @@ export default async function LocaleBlogPage({
     <section className="Container my-16 space-y-8 border p-5 md:p-8">
       <header className="space-y-3">
         <h1 className="text-4xl font-bold">{messages.title}</h1>
-        <p className="text-secondary/75 max-w-3xl">{messages.description}</p>
+        <p className="text-text-muted max-w-3xl">{messages.description}</p>
       </header>
 
       {articles.posts.length === 0 ? (
@@ -64,7 +64,7 @@ export default async function LocaleBlogPage({
       ) : (
         <ol className="space-y-6">
           {articles.posts.map((article) => (
-            <li key={article.id} className="border-secondary/40 border p-5">
+            <li key={article.id} className="border-border border p-5">
               <article className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-2xl font-semibold">
@@ -76,13 +76,13 @@ export default async function LocaleBlogPage({
                     </Link>
                   </h2>
                   {article.featured ? (
-                    <span className="border-secondary/40 bg-secondary/10 border px-2 py-1 text-sm">
+                    <span className="border-border bg-surface border px-2 py-1 text-sm">
                       {messages.featured}
                     </span>
                   ) : null}
                 </div>
-                <p className="text-secondary/75">{article.excerpt}</p>
-                <p className="text-secondary/70 flex flex-wrap gap-2 text-sm">
+                <p className="text-text-muted">{article.excerpt}</p>
+                <p className="text-text-muted flex flex-wrap gap-2 text-sm">
                   <time dateTime={article.publishedAt}>
                     {formatPublicTimestamp(article.publishedAt, locale)}
                   </time>

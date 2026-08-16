@@ -28,15 +28,15 @@ const Skills = ({
 
       <div className="my-6 space-y-3 px-1 md:px-4 lg:px-6">
         {skills.map((category) => (
-          <div key={category.id} className="bg-secondary/60 p-5 shadow">
-            <h3 className="text-primary mb-3 text-xl font-semibold">
+          <div key={category.id} className="bg-surface p-5 shadow">
+            <h3 className="text-text mb-3 text-xl font-semibold">
               {category.category}
             </h3>
             <div className="flex flex-wrap gap-2">
               {category.items.map((skill, index) => (
                 <span
                   key={index}
-                  className="border-secondary/40 bg-secondary/10 text-secondary border px-3 py-1 text-sm font-medium"
+                  className="border-border bg-surface text-text border px-3 py-1 text-sm font-medium"
                 >
                   {skill.name}
                 </span>

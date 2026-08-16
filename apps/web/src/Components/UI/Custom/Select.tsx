@@ -34,7 +34,7 @@ export default function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-primary text-secondary border-secondary flex w-full cursor-pointer items-center justify-between gap-3 rounded border px-4 py-2 shadow-sm transition hover:shadow-md"
+        className="bg-bg text-text border-primary flex w-full cursor-pointer items-center justify-between gap-3 rounded border px-4 py-2 shadow-sm transition hover:shadow-md"
       >
         <span>{selected ? selected.label : placeholder}</span>
         <motion.div
@@ -42,7 +42,7 @@ export default function CustomSelect({
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="ml-2"
         >
-          <ChevronDown className="text-secondary h-4 w-4" />
+          <ChevronDown className="text-text h-4 w-4" />
         </motion.div>
       </button>
 
@@ -53,7 +53,7 @@ export default function CustomSelect({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="bg-primary border-secondary absolute z-10 mt-1 w-full overflow-hidden rounded border p-2 shadow-lg"
+            className="bg-bg border-primary absolute z-10 mt-1 w-full overflow-hidden rounded border p-2 shadow-lg"
           >
             {options.map((option) => (
               <motion.li
@@ -61,8 +61,8 @@ export default function CustomSelect({
                 onClick={() => handleSelect(option)}
                 whileHover={{
                   scale: 1.03,
-                  backgroundColor: "var(--color-secondary)",
-                  color: "var(--color-primary)",
+                  backgroundColor: "var(--color-primary)",
+                  color: "var(--color-bg)",
                 }}
                 transition={{ duration: 0.2 }}
                 className="cursor-pointer rounded px-4 py-2 transition-colors"

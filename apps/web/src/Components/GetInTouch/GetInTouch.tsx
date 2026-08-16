@@ -67,11 +67,11 @@ export default function GetInTouchForm({
       <form onSubmit={handleSubmit(onSubmit)} className="px-1 md:px-4 lg:px-6">
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
-            <label className={`${errors.name?.message ? "text-main-red" : ""}`}>
+            <label className={`${errors.name?.message ? "text-danger" : ""}`}>
               {messages.contact.name}
             </label>
             {errors.name?.message && (
-              <p className="text-main-red text-sm">
+              <p className="text-danger text-sm">
                 ({messages.contact.invalidName})
               </p>
             )}
@@ -89,13 +89,11 @@ export default function GetInTouchForm({
         </div>
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
-            <label
-              className={` ${errors.email?.message ? "text-main-red" : ""}`}
-            >
+            <label className={` ${errors.email?.message ? "text-danger" : ""}`}>
               {messages.contact.email}
             </label>
             {errors.email?.message && (
-              <p className="text-main-red text-sm">
+              <p className="text-danger text-sm">
                 ({messages.contact.invalidEmail})
               </p>
             )}
@@ -116,13 +114,13 @@ export default function GetInTouchForm({
           <div className="mb-1 flex items-center gap-2">
             <label
               className={`mb-1 block text-sm font-medium ${
-                errors.message?.message ? "text-main-red" : ""
+                errors.message?.message ? "text-danger" : ""
               }`}
             >
               {messages.contact.message}
             </label>
             {errors.message?.message && (
-              <p className="text-main-red text-sm">
+              <p className="text-danger text-sm">
                 ({messages.contact.invalidMessage})
               </p>
             )}

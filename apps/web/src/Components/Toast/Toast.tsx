@@ -60,7 +60,7 @@ const Toast = ({ message }: { message: string }) => {
 
   return (
     <div
-      className={`bg-secondary text-primary px-4 py-2 text-sm shadow-md ${
+      className={`bg-primary text-bg px-4 py-2 text-sm shadow-md ${
         exit ? "toast-out" : "toast-in"
       } pointer-events-auto select-none`}
     >

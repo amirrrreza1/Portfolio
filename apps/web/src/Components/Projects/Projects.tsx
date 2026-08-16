@@ -49,7 +49,7 @@ export default function ProjectsSection({
               {messages.projects.lookingFor}{" "}
               <B>{messages.projects.moreEmphasis}</B>?
             </h3>
-            <p className="max-w-md text-justify text-gray-400">
+            <p className="max-w-md text-justify text-text-muted">
               {messages.projects.highlights}
             </p>
           </div>

@@ -26,15 +26,15 @@ const Button: FC<CodeButtonProps> = ({
       {...props}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className={`group relative overflow-hidden font-mono shadow-md transition-all duration-300 hover:shadow-lg ${sizeClasses[size]} border-secondary cursor-pointer border ${
-        isFill ? "bg-secondary text-primary" : "text-secondary bg-transparent"
+      className={`group relative overflow-hidden font-mono shadow-md transition-all duration-300 hover:shadow-lg ${sizeClasses[size]} border-primary cursor-pointer border ${
+        isFill ? "bg-primary text-bg" : "text-text bg-transparent"
       } active:scale-95 ${className} `}
     >
       <AnimatePresence mode="wait">
         {hovered && (
           <motion.span
             key="cover"
-            className="bg-primary absolute top-0 left-0 z-10 h-full w-full"
+            className="bg-bg absolute top-0 left-0 z-10 h-full w-full"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -47,11 +47,11 @@ const Button: FC<CodeButtonProps> = ({
         className={`relative z-20 transition-colors duration-300 ${
           isFill
             ? hovered
-              ? "text-secondary"
-              : "text-primary"
+              ? "text-text"
+              : "text-bg"
             : hovered
-              ? "text-secondary"
-              : "text-secondary"
+              ? "text-text"
+              : "text-text"
         }`}
       >
         {children}

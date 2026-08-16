@@ -56,7 +56,7 @@ export default function Header({
   const messages = getMessages(locale);
   return (
     <header className="fixed top-5 right-0 left-0 z-50 h-15 w-full">
-      <div className="bg-secondary/20 border-secondary/20 mx-auto flex w-fit items-center gap-2 rounded border px-2 py-2 shadow-lg backdrop-blur-[5px] md:gap-4 md:px-4">
+      <div className="bg-surface border-border mx-auto flex w-fit items-center gap-2 rounded border px-2 py-2 shadow-lg backdrop-blur-[5px] md:gap-4 md:px-4">
         <nav
           aria-label={messages.navigation.portfolioSections}
           className="contents"
@@ -70,9 +70,9 @@ export default function Header({
                   href={href}
                   aria-label={item.label}
                   onClick={(event) => handleNavigation(event, href)}
-                  className="rounded p-2 transition hover:bg-white/20"
+                  className="hover:bg-surface rounded p-2 transition"
                 >
-                  <Icon className="text-secondary h-6 w-6" />
+                  <Icon className="text-text h-6 w-6" />
                 </a>
               </Tooltip>
             );

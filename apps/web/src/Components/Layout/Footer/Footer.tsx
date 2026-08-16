@@ -21,22 +21,22 @@ import Link from "next/link";
 
 function SocialIcon({ link }: { readonly link: PublicSocialLink }) {
   if (link.kind === "EMAIL") {
-    return <Mail size={19} className="hover:text-primary" />;
+    return <Mail size={19} className="hover:text-bg" />;
   }
   if (link.kind === "DONATE") {
-    return <Heart size={19} className="hover:text-primary" />;
+    return <Heart size={19} className="hover:text-bg" />;
   }
   const hostname = new URL(link.url).hostname;
   if (hostname === "github.com") {
-    return <Github size={19} className="hover:text-primary" />;
+    return <Github size={19} className="hover:text-bg" />;
   }
   if (hostname === "linkedin.com" || hostname.endsWith(".linkedin.com")) {
-    return <Linkedin size={19} className="hover:text-primary" />;
+    return <Linkedin size={19} className="hover:text-bg" />;
   }
   if (hostname === "t.me") {
-    return <Send size={19} className="hover:text-primary" />;
+    return <Send size={19} className="hover:text-bg" />;
   }
-  return <ExternalLink size={19} className="hover:text-primary" />;
+  return <ExternalLink size={19} className="hover:text-bg" />;
 }
 
 function PublicLink({ link }: { readonly link: PublicSocialLink }) {
@@ -48,7 +48,7 @@ function PublicLink({ link }: { readonly link: PublicSocialLink }) {
       title={link.label}
       target={external ? "_blank" : undefined}
       rel={external ? (link.rel ?? "noopener noreferrer") : undefined}
-      className="dark:hover:bg-secondary border-secondary border p-1 transition-all duration-400 hover:text-black"
+      className="border-primary hover:bg-primary hover:text-bg border p-1 transition-all duration-400"
     >
       <SocialIcon link={link} />
     </a>
@@ -72,8 +72,8 @@ export default function Footer({
   }).format(new Date().getFullYear());
 
   return (
-    <footer className="border-secondary/20 w-full border-t backdrop-blur-sm">
-      <div className="Container text-secondary flex flex-col gap-2 py-3 text-[13px]">
+    <footer className="border-border w-full border-t backdrop-blur-sm">
+      <div className="Container text-text flex flex-col gap-2 py-3 text-[13px]">
         <div className="flex flex-col-reverse items-center justify-between gap-3 md:flex-row">
           <p className="FooterSmallText">
             <CodeStyleText
@@ -89,7 +89,7 @@ export default function Footer({
           <div className="flex items-center gap-4">
             <Link
               href={localePath(locale, "blog")}
-              className="hover:text-primary flex items-center gap-1 underline-offset-4 hover:underline"
+              className="hover:text-bg flex items-center gap-1 underline-offset-4 hover:underline"
             >
               <BookOpen aria-hidden="true" size={18} />
               {messages.blog.title}
