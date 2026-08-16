@@ -26,11 +26,16 @@ import { THEME_KEYS, type ThemeKey } from "./registry.js";
  */
 
 /**
- * The page background each theme paints, mirroring `--color-primary` in
+ * The page background each theme paints, mirroring `--color-bg` in
  * `apps/web/src/app/globals.css`.
  *
  * `system` is absent on purpose: it is a resolution mode that lands on one of
  * these two, so checking both already covers it.
+ *
+ * The property was called `--color-primary` until the M5 token migration, where
+ * that name was reused for the primary action fill. The values here are
+ * unchanged; [tokens.ts](./tokens.ts) holds the full vocabulary and its
+ * `bg` entries are asserted equal to this table.
  */
 export const THEME_PAGE_BACKGROUNDS: { readonly [K in ThemeKey]: HexColor } = {
   dark: "#000000",

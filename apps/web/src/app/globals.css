@@ -152,56 +152,147 @@
   font-display: swap;
 }
 
+/*
+ * Theme tokens — THEMING.md §3.
+ *
+ * Every theme declares the same complete set. Components consume these names
+ * and nothing else; `apps/web/test/theme-tokens.spec.ts` fails the build on a
+ * raw colour or a legacy token name in a component.
+ *
+ * The values are per-theme rather than shared. The previous vocabulary carried
+ * one value for `--color-Gold`, `--color-main-red`, and `--color-main-green`
+ * across both themes, and five of those pairings failed WCAG 2.2 AA — muted
+ * body text at 2.60:1 on light, Gold at 1.75:1 on light, green at 2.28:1 on
+ * light, red at 4.47:1 on dark, and the placeholder grey at 4.34:1 on dark.
+ * A colour that has to look right on both #000000 and #ffffff is forced toward
+ * mid-grey; giving each theme its own value is what makes AA reachable without
+ * flattening the palette.
+ *
+ * `--color-primary` and `--color-text` hold the same value in both themes, and
+ * that is deliberate rather than redundant: this design's primary action is the
+ * monochrome inversion of the page, so its fill happens to equal the body text
+ * colour today. They are separate tokens because a future theme can move one
+ * without moving the other, and because the contrast matrix checks them against
+ * different partners — `--color-primary` against `--color-bg` (its label),
+ * `--color-text` against `--color-bg` and `--color-surface`.
+ *
+ * Borders are held to 3:1 (WCAG 1.4.11 non-text contrast) rather than 4.5:1.
+ * `--color-surface` and `--color-secondary` carry no minimum of their own; what
+ * is checked is the text that sits on them.
+ *
+ * Three tokens extend §3's list. `--color-success` is the counterpart of
+ * `--color-danger` that the completed/in-progress project status needs.
+ * `--color-particle` is decorative canvas output read through
+ * `getPropertyValue`, so it carries no contrast requirement. `--color-scrim`
+ * is the modal backdrop and is the one colour that deliberately does NOT flip
+ * with the theme: a scrim exists to darken whatever is behind it, and a white
+ * scrim on the light theme would not dim the page at all.
+ */
+
 :root,
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+:root[data-theme="system"][data-system-theme="dark"] {
   color-scheme: dark;
-  --color-primary: black;
-  --color-secondary: white;
-  --color-Gold: #d0c39d;
-  --color-main-red: #e11d48;
-  --color-main-green: #22c55d;
-  --color-particle: #6b7280;
+
+  --color-bg: #000000;
+  --color-surface: #1a1a1a;
+  --color-border: #666666;
+
+  --color-text: #ffffff;
+  --color-text-muted: #a3a3a3;
+
+  --color-primary: #ffffff;
+  --color-secondary: #333333;
+  --color-accent: #d0c39d;
+  --color-danger: #f43f5e;
+  --color-success: #22c55d;
+
+  --color-code-bg: #0d1117;
+  --color-code-text: #c9d1d9;
+
+  --color-particle: #a3a3a3;
+  --color-scrim: #000000;
 }
 
-:root[data-theme="light"] {
+:root[data-theme="light"],
+:root[data-theme="system"][data-system-theme="light"] {
   color-scheme: light;
-  --color-primary: white;
-  --color-secondary: black;
-  --color-Gold: #d0c39d;
-  --color-main-red: #e11d48;
-  --color-main-green: #22c55d;
-  --color-particle: #6b7280;
+
+  --color-bg: #ffffff;
+  --color-surface: #f2f2f2;
+  --color-border: #858585;
+
+  --color-text: #000000;
+  --color-text-muted: #5c5c5c;
+
+  --color-primary: #000000;
+  --color-secondary: #e5e5e5;
+  --color-accent: #6b5a2a;
+  --color-danger: #e11d48;
+  --color-success: #15803d;
+
+  --color-code-bg: #ffffff;
+  --color-code-text: #24292e;
+
+  --color-particle: #5c5c5c;
+  --color-scrim: #000000;
 }
 
 /* `system` is the only preference the server cannot resolve. CSS keeps the
  * first paint correct without JavaScript; the later CSP nonce script adds
- * explicit pre-paint synchronization for the complete M5 settings surface. */
+ * explicit pre-paint synchronization for the complete M5 settings surface.
+ *
+ * `:not([data-system-theme])` scopes these to the pre-script window only, so
+ * the media fallback and the resolved attribute can never both apply. Without
+ * it the two rule sets differ only in source order. */
 @media (prefers-color-scheme: light) {
-  :root[data-theme="system"] {
+  :root[data-theme="system"]:not([data-system-theme]) {
     color-scheme: light;
-    --color-primary: white;
-    --color-secondary: black;
+
+    --color-bg: #ffffff;
+    --color-surface: #f2f2f2;
+    --color-border: #858585;
+
+    --color-text: #000000;
+    --color-text-muted: #5c5c5c;
+
+    --color-primary: #000000;
+    --color-secondary: #e5e5e5;
+    --color-accent: #6b5a2a;
+    --color-danger: #e11d48;
+    --color-success: #15803d;
+
+    --color-code-bg: #ffffff;
+    --color-code-text: #24292e;
+
+    --color-particle: #5c5c5c;
+    --color-scrim: #000000;
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="system"] {
+  :root[data-theme="system"]:not([data-system-theme]) {
     color-scheme: dark;
-    --color-primary: black;
-    --color-secondary: white;
+
+    --color-bg: #000000;
+    --color-surface: #1a1a1a;
+    --color-border: #666666;
+
+    --color-text: #ffffff;
+    --color-text-muted: #a3a3a3;
+
+    --color-primary: #ffffff;
+    --color-secondary: #333333;
+    --color-accent: #d0c39d;
+    --color-danger: #f43f5e;
+    --color-success: #22c55d;
+
+    --color-code-bg: #0d1117;
+    --color-code-text: #c9d1d9;
+
+    --color-particle: #a3a3a3;
+    --color-scrim: #000000;
   }
-}
-
-:root[data-theme="system"][data-system-theme="light"] {
-  color-scheme: light;
-  --color-primary: white;
-  --color-secondary: black;
-}
-
-:root[data-theme="system"][data-system-theme="dark"] {
-  color-scheme: dark;
-  --color-primary: black;
-  --color-secondary: white;
 }
 
 /* Typography preferences are deliberately scoped to article content only. */
@@ -259,12 +350,41 @@ html[data-motion="reduced"] *::after {
   }
 }
 
-@theme {
+/*
+ * Registers the tokens with Tailwind so `bg-bg`, `text-text-muted`,
+ * `border-border`, and the rest exist as utilities.
+ *
+ * Every entry MUST map to `var(--color-<name>)` rather than to a literal. A
+ * literal here is baked into the generated utility, which pins it to one theme
+ * and makes `[data-theme]` stop working for that token — a failure that shows
+ * up as one stubborn colour, not as a build error.
+ * `apps/web/test/theme-tokens.spec.ts` asserts the shape.
+ *
+ * `inline` is the correct marker for tokens whose value is swapped at runtime.
+ * Because the theme property and the Tailwind namespace happen to share a name
+ * here, it compiles identically to a plain `@theme` today; it is written this
+ * way so that decoupling the two names later does not silently change what the
+ * utilities reference.
+ *
+ * Tailwind emits its own `:root, :host` copy of these declarations inside
+ * `@layer theme`, where each one is a self-reference. That copy never applies:
+ * the theme blocks above are unlayered, and unlayered declarations outrank
+ * every layered one regardless of specificity.
+ */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
   --color-primary: var(--color-primary);
   --color-secondary: var(--color-secondary);
-  --color-Gold: #d0c39d;
-  --color-main-red: var(--color-main-red);
-  --color-main-green: var(--color-main-green);
+  --color-accent: var(--color-accent);
+  --color-danger: var(--color-danger);
+  --color-success: var(--color-success);
+  --color-code-bg: var(--color-code-bg);
+  --color-code-text: var(--color-code-text);
+  --color-scrim: var(--color-scrim);
 }
 
 @layer base {
@@ -277,16 +397,16 @@ html[data-motion="reduced"] *::after {
     scroll-margin-top: 100px;
   }
   body {
-    background-color: var(--color-primary);
-    color: var(--color-secondary);
+    background-color: var(--color-bg);
+    color: var(--color-text);
     cursor: none;
   }
   html {
     cursor: none;
   }
   ::selection {
-    background: var(--color-secondary);
-    color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-bg);
   }
   button,
   a {
@@ -296,11 +416,11 @@ html[data-motion="reduced"] *::after {
     width: 5px;
   }
   *::-webkit-scrollbar-track {
-    background: var(--color-primary);
+    background: var(--color-bg);
   }
 
   *::-webkit-scrollbar-thumb {
-    background: var(--color-secondary);
+    background: var(--color-border);
   }
   input:lang(fa),
   textarea:lang(fa) {
@@ -330,15 +450,15 @@ html[data-motion="reduced"] *::after {
     animation: blink 1s step-end infinite;
   }
   .FormInput {
-    @apply bg-secondary/30 cursor-none;
+    @apply bg-surface cursor-none;
     width: 100%;
-    border: 1px solid var(--color-secondary);
+    border: 1px solid var(--color-border);
     padding: 10px;
     font-size: 16px;
     font-family: JetBrains_Mono, monospace;
     outline: none;
     &:focus {
-      outline: 2px solid var(--color-secondary);
+      outline: 2px solid var(--color-primary);
     }
   }
   .toast-in {
