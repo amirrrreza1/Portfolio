@@ -235,12 +235,26 @@ Exit gate:
 
 Objective: prove Git-backed article integrity and recovery before any editor depends on it.
 
-Current slice: `packages/content-store` now confines writes to `content/` on the
-dedicated branch, exchanges GitHub App installation tokens, verifies and
-deduplicates raw webhook deliveries, and reconciles Git trees through the
-production Markdown renderer. The PostgreSQL apply ledger/outbox schema and
-adapter are present. A real protected content branch, API worker, Git service,
-and forced cross-system failure drill remain required exit evidence.
+Current slice: **the worker and its queue are built.** `packages/content-store`
+confines writes to `content/` on the dedicated branch, exchanges GitHub App
+installation tokens, verifies and deduplicates raw webhook deliveries, and
+reconciles Git trees through the production Markdown renderer. The PostgreSQL
+apply ledger/outbox schema and adapter are present.
+
+ADR-013's durable queue now exists as a `content_jobs` table claimed with
+`FOR UPDATE SKIP LOCKED`, with leases, capped exponential backoff, and
+dead-letter visibility; per-post ordering and burst collapsing are enforced by
+partial unique indexes rather than by application code, and the claim semantics
+are proven against real PostgreSQL under PGlite. A dedicated worker process
+built from the API workspace runs in `sync` or `scheduler` mode behind an
+advisory lock, the webhook endpoint authenticates a delivery and enqueues
+without ever reading the payload as data, and `/health` now separates liveness
+from readiness — a degraded content pipeline reports itself at `200` and stays
+in rotation, because public reads never touched Git.
+
+A real protected content branch, the first real bilingual article, and the
+forced cross-system failure drills remain required exit evidence. None of them
+can be produced without the GitHub App.
 
 Deliverables:
 
