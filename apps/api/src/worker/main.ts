@@ -10,6 +10,7 @@ import {
   createContentIndexStore,
   createContentJobStore,
   createDatabaseClient,
+  createInvalidationOutboxStore,
   createPrismaSqlExecutor,
   withAdvisoryLock,
 } from "@portfolio/database";
@@ -20,6 +21,8 @@ import {
   runContentWorker,
   type ContentJobHandler,
 } from "./content-worker.js";
+import { runInvalidationDrain } from "./invalidation-drain.js";
+import { createSignedInvalidationSender } from "./invalidation-sender.js";
 
 /**
  * The background process from ADR-013.
@@ -42,6 +45,10 @@ const DEFAULTS = {
   idleDelayMs: 2_000,
   reconcileIntervalMs: 15 * 60 * 1_000,
   lockRetryMs: 30_000,
+  invalidationMaxAttempts: 8,
+  invalidationVisibilitySeconds: 120,
+  invalidationBatchSize: 20,
+  invalidationIdleMs: 1_000,
 } as const;
 
 async function main(): Promise<void> {
@@ -99,6 +106,36 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Invalidation delivery is configured independently of the content store.
+    // A deployment can have publishable content and no web app to notify, and
+    // that must degrade to "nothing to deliver" rather than to a crash.
+    const invalidationEndpoint = process.env.CACHE_INVALIDATION_URL?.trim();
+    const invalidationSecret = process.env.CACHE_INVALIDATION_SECRET?.trim();
+    const drainInvalidations = async (
+      isRunning: () => boolean
+    ): Promise<unknown> => {
+      if (!invalidationEndpoint || !invalidationSecret) {
+        log({ event: "invalidation-unconfigured", mode });
+        return null;
+      }
+      return runInvalidationDrain({
+        outbox: createInvalidationOutboxStore(
+          createPrismaSqlExecutor(database)
+        ),
+        sender: createSignedInvalidationSender({
+          endpoint: invalidationEndpoint,
+          secret: invalidationSecret,
+        }),
+        maxAttempts: DEFAULTS.invalidationMaxAttempts,
+        visibilitySeconds: DEFAULTS.invalidationVisibilitySeconds,
+        batchSize: DEFAULTS.invalidationBatchSize,
+        idleDelayMs: DEFAULTS.invalidationIdleMs,
+        sleep: (ms) => delay(ms),
+        running: isRunning,
+        log: (event) => log({ ...event, mode }),
+      });
+    };
+
     const store = await createGitHubContentStoreFromRuntime(
       runtime.config,
       createFetchGitContentTransport()
@@ -118,29 +155,36 @@ async function main(): Promise<void> {
       ADVISORY_LOCKS.contentSync,
       () => running,
       async () => {
-        const summary = await runContentWorker({
-          jobs,
-          handlers: {
-            WEBHOOK_RECONCILE: reconcile,
-            SCHEDULED_RECONCILE: reconcile,
-            // PUBLISH_DUE has no handler yet; M8 owns scheduled publication.
-            // Nothing enqueues it, and if something does it dead-letters
-            // visibly rather than being silently dropped.
-          },
-          worker: workerName,
-          leaseSeconds: number(
-            process.env.CONTENT_WORKER_LEASE_SECONDS,
-            DEFAULTS.leaseSeconds
-          ),
-          idleDelayMs: number(
-            process.env.CONTENT_WORKER_IDLE_MS,
-            DEFAULTS.idleDelayMs
-          ),
-          sleep: (ms) => delay(ms),
-          running: () => running,
-          log: (event) => log({ ...event, mode }),
-        });
-        log({ event: "stopped", mode, ...summary });
+        // Two independent loops under one lock. They fail for unrelated
+        // reasons — one talks to GitHub, the other to the web app — so
+        // sequencing them would put every pending purge behind whatever slow
+        // reconciliation happens to be running.
+        const [jobSummary, invalidationSummary] = await Promise.all([
+          runContentWorker({
+            jobs,
+            handlers: {
+              WEBHOOK_RECONCILE: reconcile,
+              SCHEDULED_RECONCILE: reconcile,
+              // PUBLISH_DUE has no handler yet; M8 owns scheduled publication.
+              // Nothing enqueues it, and if something does it dead-letters
+              // visibly rather than being silently dropped.
+            },
+            worker: workerName,
+            leaseSeconds: number(
+              process.env.CONTENT_WORKER_LEASE_SECONDS,
+              DEFAULTS.leaseSeconds
+            ),
+            idleDelayMs: number(
+              process.env.CONTENT_WORKER_IDLE_MS,
+              DEFAULTS.idleDelayMs
+            ),
+            sleep: (ms) => delay(ms),
+            running: () => running,
+            log: (event) => log({ ...event, mode }),
+          }),
+          drainInvalidations(() => running),
+        ]);
+        log({ event: "stopped", mode, ...jobSummary, invalidationSummary });
       }
     );
   } finally {
