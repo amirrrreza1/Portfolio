@@ -36,6 +36,12 @@ export {
 } from "./legacy-migration.js";
 export { createContentIndexStore } from "./content-sync.js";
 export {
+  createInvalidationOutboxStore,
+  type ClaimedInvalidation,
+  type InvalidationOutboxMetrics,
+  type InvalidationOutboxStore,
+} from "./content-outbox.js";
+export {
   createContentJobStore,
   createPrismaSqlExecutor,
   retryDelaySeconds,

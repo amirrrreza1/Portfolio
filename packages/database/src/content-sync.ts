@@ -1,4 +1,9 @@
 import type { ContentIndexStore } from "@portfolio/content-store";
+import {
+  articleCacheTags,
+  type InvalidationEvent,
+} from "@portfolio/contracts/content";
+import { randomUUID } from "node:crypto";
 
 import type { Database } from "./client.js";
 
@@ -33,10 +38,31 @@ export function createContentIndexStore(database: Database): ContentIndexStore {
               blobSha: input.blobSha,
             },
           });
+          // Written inside the apply transaction, so a commit that succeeds and
+          // an invalidation that never sends is a stale page rather than a lost
+          // publish (ADR-012). The tags are built from the shared contract, not
+          // spelled here: they are a wire agreement with a process this code
+          // never calls, and a mismatched string is an invalidation that
+          // silently does nothing.
+          const tags = articleCacheTags({
+            locale: input.locale,
+            slug: input.slug,
+          });
+          const event: InvalidationEvent = {
+            eventId: randomUUID(),
+            locale: input.locale,
+            reason: "sync",
+            tags: [...tags],
+            issuedAt: new Date().toISOString(),
+          };
           await prisma.contentInvalidationOutbox.create({
             data: {
-              cacheTag: "post:" + input.postId + ":" + input.locale,
-              payload: { postId: input.postId, locale: input.locale },
+              // The primary tag, for operator triage. The full set travels in
+              // the payload, because one apply can affect several tags and
+              // splitting them into rows would let a page be purged while its
+              // listing was not.
+              cacheTag: tags[0] ?? "",
+              payload: event,
             },
           });
           await prisma.contentSyncLog.create({
