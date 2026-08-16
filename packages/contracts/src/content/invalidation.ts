@@ -46,6 +46,24 @@ export const INVALIDATION_NAMESPACES = [
 export type InvalidationNamespace = (typeof INVALIDATION_NAMESPACES)[number];
 
 /**
+ * A tag every article listing carries in addition to its own cache key.
+ *
+ * Listings are paginated, so their cache keys embed a limit and a cursor and
+ * there is an unbounded number of them. The publisher cannot enumerate the
+ * pages a reader happens to have warmed, so a per-key tag alone would mean a
+ * new article never appears in any cached listing until its revalidate window
+ * lapsed. Every listing read therefore registers this collective tag as well,
+ * and one purge reaches all of them.
+ *
+ * This is the reason cache tags are built here rather than spelled at each
+ * call site: the collective tag only works if the reader and the publisher
+ * agree on it, and they are in different processes.
+ */
+export function articleListCacheTag(locale: Locale): string {
+  return publicCacheTag("articles", locale);
+}
+
+/**
  * Tags affected by a change to one article translation.
  *
  * A published article changes its own page and the listings that mention it,
@@ -59,7 +77,7 @@ export function articleCacheTags(input: {
 }): readonly string[] {
   return [
     publicCacheTag(`article:${input.slug}`, input.locale),
-    publicCacheTag("articles", input.locale),
+    articleListCacheTag(input.locale),
   ];
 }
 

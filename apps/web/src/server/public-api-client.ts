@@ -16,7 +16,10 @@ import {
   publicAppearanceEnvelopeSchema,
   type PublicAppearanceEnvelope,
 } from "@portfolio/contracts/appearance";
-import { publicCacheTag } from "@portfolio/contracts/content";
+import {
+  articleListCacheTag,
+  publicCacheTag,
+} from "@portfolio/contracts/content";
 import {
   publicProjectsEnvelopeSchema,
   publicProjectDetailEnvelopeSchema,
@@ -54,8 +57,9 @@ type CacheEntry<TEnvelope extends LocalizedEnvelope> = {
 
 export interface PublicReadCache {
   get(key: string): unknown;
-  set(key: string, value: unknown): void;
+  set(key: string, value: unknown, tags?: readonly string[]): void;
   delete?(key: string): void;
+  deleteByTag?(tag: string): void;
 }
 
 interface PublicClientOptions {
@@ -142,17 +146,38 @@ export class PublicArticleTranslationNotFoundError extends PublicApiResponseErro
 
 class MemoryPublicReadCache implements PublicReadCache {
   readonly #entries = new Map<string, unknown>();
+  /**
+   * Collective tag to the cache keys it covers.
+   *
+   * Next tracks this for its own fetch cache; this map is the same idea for
+   * the in-process layer, which is keyed by one string per entry and would
+   * otherwise be unreachable by a tag that is not itself a key.
+   */
+  readonly #byTag = new Map<string, Set<string>>();
 
   get(key: string): unknown {
     return this.#entries.get(key);
   }
 
-  set(key: string, value: unknown): void {
+  set(key: string, value: unknown, tags: readonly string[] = []): void {
     this.#entries.set(key, value);
+    for (const tag of tags) {
+      if (tag === key) continue;
+      const keys = this.#byTag.get(tag) ?? new Set<string>();
+      keys.add(key);
+      this.#byTag.set(tag, keys);
+    }
   }
 
   delete(key: string): void {
     this.#entries.delete(key);
+    for (const keys of this.#byTag.values()) keys.delete(key);
+  }
+
+  deleteByTag(tag: string): void {
+    this.#entries.delete(tag);
+    for (const key of this.#byTag.get(tag) ?? []) this.#entries.delete(key);
+    this.#byTag.delete(tag);
   }
 }
 
@@ -172,7 +197,7 @@ const processCache = new MemoryPublicReadCache();
  * tag purges both layers.
  */
 export function dropCachedPublicTag(tag: string): void {
-  processCache.delete(tag);
+  processCache.deleteByTag(tag);
 }
 
 export function createPublicProjectsClient(
@@ -266,6 +291,10 @@ export function createPublicArticleListClient(
         ...options,
         maxStaleMs: options.maxStaleMs ?? ARTICLE_MAX_STALE_MS,
         cacheNamespace: `articles:list:${key}`,
+        // Every page of every cursor also carries the collective listing tag,
+        // so publishing one article reaches listings the publisher never knew
+        // existed.
+        collectiveTags: (readLocale) => [articleListCacheTag(readLocale)],
         resourcePath: `blog/posts?${parameters.toString()}`,
         envelopeSchema: publicArticleListEnvelopeSchema,
       });
@@ -305,6 +334,14 @@ export function createPublicArticleDetailClient(
 function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
   options: PublicClientOptions & {
     readonly cacheNamespace: string;
+    /**
+     * Tags registered in addition to this reader's own cache key.
+     *
+     * A paginated resource has an unbounded number of cache keys and the
+     * publisher cannot enumerate the ones a reader warmed, so it names a
+     * collective tag instead and every page registers under it.
+     */
+    readonly collectiveTags?: (locale: Locale) => readonly string[];
     readonly resourcePath: string;
     readonly revalidateSeconds?: number;
     readonly envelopeSchema: z.ZodType<TEnvelope>;
@@ -331,6 +368,10 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
     // strings in invalidation events, and a mismatch is not a type error — it
     // is a purge that silently does nothing.
     const key = publicCacheTag(options.cacheNamespace, locale);
+    // Resolved per call, not per reader. Readers are memoized by pagination
+    // key and serve every locale, so a tag captured at construction would
+    // attach one locale's tag to the other's cached page.
+    const tags = [key, ...(options.collectiveTags?.(locale) ?? [])];
     const cached = readValidCacheEntry(
       cache,
       key,
@@ -351,14 +392,14 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
           signal: controller.signal,
           next: {
             revalidate: revalidateSeconds,
-            tags: [key],
+            tags,
           },
         }
       );
 
       if (response.status === 304 && cached !== undefined) {
         const refreshed = { ...cached, validatedAt: now() };
-        cache.set(key, refreshed);
+        cache.set(key, refreshed, tags);
         return { envelope: refreshed.envelope, stale: false };
       }
 
@@ -370,7 +411,7 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
         const etag = response.headers.get("etag");
         if (!etag) throw new Error("Public API response is missing its ETag.");
 
-        cache.set(key, { envelope, etag, validatedAt: now() });
+        cache.set(key, { envelope, etag, validatedAt: now() }, tags);
         return { envelope, stale: false };
       }
 
