@@ -16,6 +16,7 @@ import {
   publicAppearanceEnvelopeSchema,
   type PublicAppearanceEnvelope,
 } from "@portfolio/contracts/appearance";
+import { publicCacheTag } from "@portfolio/contracts/content";
 import {
   publicProjectsEnvelopeSchema,
   publicProjectDetailEnvelopeSchema,
@@ -54,6 +55,7 @@ type CacheEntry<TEnvelope extends LocalizedEnvelope> = {
 export interface PublicReadCache {
   get(key: string): unknown;
   set(key: string, value: unknown): void;
+  delete?(key: string): void;
 }
 
 interface PublicClientOptions {
@@ -148,9 +150,30 @@ class MemoryPublicReadCache implements PublicReadCache {
   set(key: string, value: unknown): void {
     this.#entries.set(key, value);
   }
+
+  delete(key: string): void {
+    this.#entries.delete(key);
+  }
 }
 
 const processCache = new MemoryPublicReadCache();
+
+/**
+ * Drops a tag from the in-process last-known-good cache.
+ *
+ * `revalidateTag` alone is not enough. This cache is the ADR-014 bounded
+ * stale-read buffer, and it sits *in front of* the fetch cache: an entry here
+ * is served without asking Next for anything. Purging only the fetch tag would
+ * leave a freshly unpublished article being handed out of this map for the
+ * rest of its stale window, which is precisely the disclosure that unpublishing
+ * exists to prevent.
+ *
+ * The cache key and the fetch tag are the same string by construction, so one
+ * tag purges both layers.
+ */
+export function dropCachedPublicTag(tag: string): void {
+  processCache.delete(tag);
+}
 
 export function createPublicProjectsClient(
   options: PublicProjectsClientOptions
@@ -304,7 +327,10 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
   }
 
   return async (locale: Locale) => {
-    const key = `public:${options.cacheNamespace}:${locale}`;
+    // Built by the shared contract, not spelled here: the API names these same
+    // strings in invalidation events, and a mismatch is not a type error — it
+    // is a purge that silently does nothing.
+    const key = publicCacheTag(options.cacheNamespace, locale);
     const cached = readValidCacheEntry(
       cache,
       key,
