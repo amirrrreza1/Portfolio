@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PublicAppearance } from "@portfolio/contracts/appearance";
 import type { Locale } from "@portfolio/contracts/common";
+import { cache } from "react";
 
 import { getLegacyAppearanceData } from "./legacy-portfolio";
 import {
@@ -14,9 +15,9 @@ import { parsePortfolioDataSource } from "./portfolio-data-source";
 let readDatabase:
   ((locale: Locale) => Promise<PublicAppearanceClientResult>) | undefined;
 
-export async function getPortfolioAppearance(
+const readPortfolioAppearance = async (
   locale: Locale
-): Promise<PublicAppearance> {
+): Promise<PublicAppearance> => {
   const source = parsePortfolioDataSource(process.env.PORTFOLIO_DATA_SOURCE);
 
   return selectPortfolioAppearance(source, locale, {
@@ -31,7 +32,14 @@ export async function getPortfolioAppearance(
       return (await readDatabase(requestedLocale)).envelope.data;
     },
   });
-}
+};
+
+/**
+ * The root shell and a blog article both need the same locale-scoped public
+ * allowlist. Deduplicate that read during an RSC render so adding the article
+ * attributes does not add a second API dependency or cache entry.
+ */
+export const getPortfolioAppearance = cache(readPortfolioAppearance);
 
 function requiredApiOrigin(): string {
   const origin = process.env.API_INTERNAL_ORIGIN?.trim();

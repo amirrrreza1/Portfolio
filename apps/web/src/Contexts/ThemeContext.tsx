@@ -10,6 +10,7 @@ import {
   type PublicAppearance,
   type ResolvedAppearance,
   serializeAppearanceCookie,
+  themePreferenceSchema,
   type ThemePreference,
 } from "@portfolio/contracts/appearance";
 
@@ -29,6 +30,9 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+/** The M4 client preference key, consumed once during the M5 cookie migration. */
+export const LEGACY_THEME_STORAGE_KEY = "theme";
+
 function readAppearanceCookie() {
   const prefix = `${PREFERENCES_COOKIE_NAME}=`;
   const raw = document.cookie
@@ -37,6 +41,42 @@ function readAppearanceCookie() {
     ?.slice(prefix.length);
 
   return parseAppearanceCookie(raw);
+}
+
+/**
+ * Returns a safe M4 theme to adopt only when M5 has no valid cookie yet.
+ *
+ * The legacy value is untrusted just like the cookie: old browser storage can
+ * be edited by an extension or script, so only the registry's fixed theme
+ * values are eligible. A valid cookie always wins because it is the visitor's
+ * newer, full appearance preference.
+ */
+export function resolveLegacyThemeMigration(
+  rawTheme: string | null,
+  currentCookie: ReturnType<typeof readAppearanceCookie>
+): ThemePreference | null {
+  if (currentCookie !== null) return null;
+
+  const result = themePreferenceSchema.safeParse(rawTheme);
+  return result.success ? result.data : null;
+}
+
+function consumeLegacyTheme(): ThemePreference | null {
+  try {
+    const legacyTheme = resolveLegacyThemeMigration(
+      window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY),
+      readAppearanceCookie()
+    );
+
+    // Remove malformed values too: this is a one-time compatibility bridge,
+    // not a second preference store that should keep influencing new visits.
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+    return legacyTheme;
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts. The
+    // server-rendered/cookie appearance remains correct without this upgrade.
+    return null;
+  }
 }
 
 function persistAppearance(preferences: Omit<ResolvedAppearance, "corrected">) {
@@ -93,6 +133,17 @@ export function ThemeProvider({
   useEffect(() => {
     applyAppearance(appearance);
   }, [appearance]);
+
+  useEffect(() => {
+    const legacyTheme = consumeLegacyTheme();
+    if (legacyTheme === null) return;
+
+    const { corrected: _corrected, ...initialPreferences } = initialAppearance;
+    const migratedAppearance = { ...initialPreferences, theme: legacyTheme };
+    persistAppearance(migratedAppearance);
+    setAppearance(migratedAppearance);
+    applyAppearance(migratedAppearance);
+  }, [initialAppearance]);
 
   const updateAppearance = (
     change: Partial<Omit<ResolvedAppearance, "corrected">>

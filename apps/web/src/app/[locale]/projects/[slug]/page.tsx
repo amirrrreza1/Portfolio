@@ -103,7 +103,7 @@ export default async function LocaleProjectDetailPage({
       )}
 
       {project.longDescription === null ? null : (
-        <section className="blog-reading-surface prose prose-invert max-w-none">
+        <section className="project-reading-surface prose prose-invert max-w-none">
           <MarkdownContent source={project.longDescription} />
         </section>
       )}
