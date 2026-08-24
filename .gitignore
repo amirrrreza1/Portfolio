@@ -17,6 +17,9 @@ build/
 coverage/
 *.tsbuildinfo
 next-env.d.ts
+test-results/
+playwright-report/
+blob-report/
 
 # local runtime data
 infrastructure/docker/data/

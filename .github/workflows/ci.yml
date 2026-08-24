@@ -75,6 +75,62 @@ jobs:
           BIRTH_DATE: 2000-01-01
         run: pnpm build
 
+  appearance:
+    name: Appearance and accessibility matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable pinned pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate the Prisma client
+        run: pnpm db:generate
+
+      # The web app resolves every workspace package through `dist/`, so the
+      # suite would run against a stale contract without this.
+      - name: Build workspace packages
+        run: pnpm build:packages
+
+      - name: Install the pinned browser
+        run: pnpm --filter @portfolio/web exec playwright install --with-deps chromium
+
+      # THEMING.md §9's browser half: first-response and hydration agreement,
+      # `system` resolution, cookie tampering, allowlist enforcement, shared-cache
+      # behaviour, blog-typography scoping, font requests, reduced motion, dialog
+      # accessibility, the legacy migration, code-block theming, and the CSP and
+      # security headers on both a public page and the localized 503.
+      #
+      # The Playwright config builds and starts the app itself and stands up the
+      # fixture public API, so this needs no database, object store, or API
+      # process. What it does need is the same `next build` the quality job runs,
+      # which is why this is a separate job rather than a step appended to it.
+      - name: Run the appearance and accessibility matrix
+        run: pnpm --filter @portfolio/web test:e2e
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7
+
   secrets:
     name: Secret scanning
     runs-on: ubuntu-latest

@@ -1,12 +1,14 @@
 import { defineConfig } from "vitest/config";
 
 /**
- * Node-environment tests only, for now.
+ * Node-environment tests only.
  *
- * The M0 suites cover pure logic and repository asset integrity, so they need
- * no DOM. Component and accessibility tests arrive with the design-system
- * boundary in M5; that is when a browser environment and a React testing setup
- * are worth their dependency weight.
+ * These suites cover pure logic, contract agreement, and repository asset
+ * integrity, so they need no DOM. The design-system boundary's browser half —
+ * first paint, hydration, computed style, the requests a page actually issues,
+ * and behaviour with JavaScript off — is a real browser's job and lives in
+ * `e2e/` under Playwright (`pnpm test:e2e`), not in a simulated DOM here.
+ * `include` keeps the two apart: `e2e/**` is never collected by vitest.
  */
 export default defineConfig({
   test: {

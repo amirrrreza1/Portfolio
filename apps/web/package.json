@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
@@ -33,6 +34,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@portfolio/markdown": "workspace:*",
     "@tailwindcss/postcss": "4.1.18",
     "@tailwindcss/typography": "0.5.20",
     "@types/locomotive-scroll": "4.1.4",
