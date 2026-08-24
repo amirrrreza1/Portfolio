@@ -1,7 +1,7 @@
 {
   "migrationVersion": "2026-08-14.page-sections.1",
-  "sourceChecksum": "a09a6655d4cfeed409cfa06f6c67a405880c14ea0d13a110e11b4489aa8ecfe3",
-  "birthDateConfigured": false,
+  "sourceChecksum": "b3009272a6a161551c12f366e1ebbd3405a738b6b87f25e56835969c7be3c395",
+  "birthDateConfigured": true,
   "sectionKeys": [
     "hero",
     "about",

@@ -1,7 +1,7 @@
 # M2 applied migration run
 
-Run date: **2026-08-14**  
-Migration version: **2026-08-10.1**  
+Initial run date: **2026-08-14**
+Base migration version: **2026-08-10.1**
 Source checksum: **`1b32cbfbe4063afee36619404a380a526cb4568ef7ddaef5fb9ff6d7d39af539`**
 
 ## Environment
@@ -46,7 +46,7 @@ The migration ledger contains one row for version `2026-08-10.1`, and its checks
 | Navigation items              |      6 |        6 |
 | Social links                  |      3 |        3 |
 | Donate links                  |      1 |        1 |
-| Applied migration ledger rows |      1 |        1 |
+| Applied migration ledger rows |      3 |        3 |
 
 All 55 project-skill rows are protected by the migrated foreign-key constraints, so an orphan relation cannot be present in this applied schema.
 
@@ -63,11 +63,16 @@ All six database rows are `DOCUMENT`/`application/pdf` with `VERIFIED` processin
 | `Web-3.pdf`  | 512759 | `ec4d3b375c1322c6061c19e12c9d9cb92e250fc4fbe9bb3fab15c7a7462d3577` |
 | `resume.pdf` | 279876 | `26b5888c8df0f6ea6b4d7d8bc10772f1d2e21797aec78eefeac7c5734e169b9b` |
 
-## Remaining acceptance work
+## Completion run — 2026-08-24
 
-- The placeholder project URL warning is explained and accepted: `#` becomes `null`.
-- Three `#000000` skill colours remain explained but unresolved and require accessible replacements for Next.js (202), shadcn (306), and Vercel (801).
-- The server-side rollback flag cannot be proven until M4 supplies the migrated public-read path it switches away from.
-- The final public rendering and explicit text-field byte-comparison acceptance checks remain coupled to that M4 read path.
+- PostgreSQL: local `postgres:17-alpine`, server version 17.10; all three tracked schema migrations applied and the deterministic M1 structural seed completed before the page-section step.
+- Object store: private local MinIO bucket `portfolio-media`, running the pinned `RELEASE.2025-09-07T16-13-09Z` image at digest `sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e` with a non-root migration user.
+- Apply output after the base media version was already in the ledger: `Legacy Hero/About and section ordering migrated.` and `Reviewed skill colours applied to 3 skill(s); the frozen source is unchanged.`
+- Immediate replay output: `Legacy migration already applied; no media objects were written.`, `Legacy Hero/About and section ordering already applied.`, and `Reviewed skill colours already applied.`
+- Reconciliation: 14 projects, 26 skills, 5 certificates, 35 quotes, 6 verified media rows, one resume, and 55 project-skill rows; the private bucket contains exactly six objects.
+- Skill colours: legacy IDs 202, 306, and 801 are respectively `#0070f3`, `#767676`, and `#8b5cd6`.
+- Ledger versions: `2026-08-10.1`, `2026-08-14.page-sections.1`, and `2026-08-15.skill-colors.1`.
+
+The placeholder project URL warning is accepted: `#` becomes `null`. M2 has no outstanding acceptance work.
 
 The deterministic preflight artifact is [M2-reconciliation.json](M2-reconciliation.json).
