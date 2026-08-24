@@ -45,3 +45,12 @@ Thumbs.db
 
 # Prisma generated client
 packages/database/src/generated/
+
+# session transfer artifacts
+#
+# A sandboxed development session with no network left a repository bundle and
+# a rescued copy of a corrupted node_modules install in the working tree, and
+# both were committed on 2026-08-24 before being removed again. Neither is a
+# source artifact, and ignoring them keeps a repeat out of the next commit.
+.claude-transfer/
+.node_modules-corrupt-*/
