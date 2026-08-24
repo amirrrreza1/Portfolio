@@ -8,6 +8,7 @@ import {
 } from "../src/i18n/locale-preference";
 import {
   articlePath,
+  decodeSlugParam,
   legacyLocaleRedirect,
   localePath,
   switchLocalePath,
@@ -159,5 +160,29 @@ describe("bare-root locale negotiation", () => {
     );
     expect(post.status).toBe(200);
     expect(checked).toBe(false);
+  });
+});
+
+describe("dynamic slug parameters", () => {
+  it("round-trips the link the blog index generates", () => {
+    // The defect this covers: Next.js hands `[slug]` through percent-encoded
+    // for a non-ASCII segment, so validating the raw param made every Persian
+    // article 404 — including from its own link on the blog index.
+    const slug = "ماتریس-تم";
+    const href = articlePath("fa", slug);
+    const param = href.slice("/fa/blog/".length);
+
+    expect(param).not.toBe(slug);
+    expect(decodeSlugParam(param)).toBe(slug);
+  });
+
+  it("leaves an already-decoded parameter alone", () => {
+    expect(decodeSlugParam("typed-public-reads")).toBe("typed-public-reads");
+  });
+
+  it("reports a malformed escape instead of throwing", () => {
+    // A route must answer 404 for this, not 500.
+    expect(decodeSlugParam("%E0%A4%A")).toBe(null);
+    expect(decodeSlugParam("%")).toBe(null);
   });
 });

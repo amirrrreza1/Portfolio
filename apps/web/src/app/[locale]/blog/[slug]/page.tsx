@@ -1,6 +1,6 @@
 import { formatNumber, formatPublicTimestamp } from "@/i18n/format";
 import { getMessages } from "@/i18n/messages";
-import { articlePath, localePath } from "@/i18n/routing";
+import { articlePath, decodeSlugParam, localePath } from "@/i18n/routing";
 import { getPortfolioAppearance } from "@/server/portfolio-appearance";
 import { getPortfolioArticleDetail } from "@/server/portfolio-article-detail";
 import { PublicDataUnavailableError } from "@/server/public-api-client";
@@ -31,7 +31,9 @@ export async function generateMetadata({
 }: Readonly<{ params: RouteParams }>): Promise<Metadata> {
   const { locale, slug: slugInput } = await params;
   if (!isLocale(locale)) return {};
-  const slug = slugSchemaFor(locale).safeParse(slugInput);
+  const decoded = decodeSlugParam(slugInput);
+  if (decoded === null) return {};
+  const slug = slugSchemaFor(locale).safeParse(decoded);
   if (!slug.success) return {};
 
   try {
@@ -51,7 +53,9 @@ export default async function LocaleArticlePage({
 }: Readonly<{ params: RouteParams }>) {
   const { locale, slug: slugInput } = await params;
   if (!isLocale(locale)) notFound();
-  const slug = slugSchemaFor(locale).safeParse(slugInput);
+  const decoded = decodeSlugParam(slugInput);
+  if (decoded === null) notFound();
+  const slug = slugSchemaFor(locale).safeParse(decoded);
   if (!slug.success) notFound();
 
   let result;
