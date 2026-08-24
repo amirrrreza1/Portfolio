@@ -9,6 +9,7 @@ import {
   blobShaSchema,
   localeSchema,
   postIdSchema,
+  type Frontmatter,
 } from "@portfolio/contracts";
 import { parseArticle, renderArticle } from "@portfolio/markdown";
 
@@ -349,6 +350,8 @@ export interface ContentIndexStore {
     readonly blobSha: string;
     readonly postId: string;
     readonly locale: "en" | "fa";
+    /** The validated source of every indexed publication field. */
+    readonly frontmatter: Frontmatter;
     readonly title: string;
     readonly slug: string;
     readonly status: "draft" | "scheduled" | "published" | "archived";
@@ -362,6 +365,15 @@ export interface ContentIndexStore {
     readonly path: string;
     readonly reason: string;
   }): Promise<void>;
+  /**
+   * Marks known index entries whose canonical files are absent from this tree.
+   * It preserves their last good render; publication removal requires an
+   * explicit owner action.
+   */
+  markMissing?(input: {
+    readonly commitSha: string;
+    readonly presentPaths: readonly string[];
+  }): Promise<number>;
 }
 
 /**
@@ -388,6 +400,7 @@ export async function synchronizeGitFile(input: {
       blobSha: file.sha,
       postId: parsed.frontmatter.postId,
       locale: parsed.frontmatter.locale,
+      frontmatter: parsed.frontmatter,
       title: parsed.frontmatter.title,
       slug: parsed.frontmatter.slug,
       status: parsed.frontmatter.status,
@@ -433,6 +446,11 @@ export async function reconcileGitCommit(input: {
     else if (outcome === "missing") summary.missing += 1;
     else summary.invalid += 1;
   }
+  summary.missing +=
+    (await input.index.markMissing?.({
+      commitSha: input.commitSha,
+      presentPaths: paths,
+    })) ?? 0;
   return summary;
 }
 
