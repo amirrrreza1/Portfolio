@@ -134,13 +134,31 @@ export function ThemeProvider({
     applyAppearance(appearance);
   }, [appearance]);
 
+  /*
+   * The one-time THEMING.md §5.6 migration.
+   *
+   * `localStorage` is an external system the server cannot read, so its value
+   * cannot seed `useState` and cannot be read during render without breaking
+   * hydration: the server has already emitted the cookie's answer, and reading
+   * a different one on the client would make the first client render disagree
+   * with the markup. Reading it after mount and adopting it once is the
+   * supported shape for exactly this case, and it runs at most once per
+   * browser — `consumeLegacyTheme` removes the key.
+   *
+   * `react-hooks/set-state-in-effect` cannot see that: it flags any
+   * synchronous `setState` in an effect body as a cascading render. Here the
+   * cascade is a single extra render for a visitor who has not yet been
+   * migrated, and never again afterwards.
+   */
   useEffect(() => {
     const legacyTheme = consumeLegacyTheme();
     if (legacyTheme === null) return;
 
-    const { corrected: _corrected, ...initialPreferences } = initialAppearance;
+    const { corrected, ...initialPreferences } = initialAppearance;
+    void corrected;
     const migratedAppearance = { ...initialPreferences, theme: legacyTheme };
     persistAppearance(migratedAppearance);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
     setAppearance(migratedAppearance);
     applyAppearance(migratedAppearance);
   }, [initialAppearance]);
