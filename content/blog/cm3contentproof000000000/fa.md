@@ -3,7 +3,7 @@ schemaVersion: 1
 postId: cm3contentproof000000000
 locale: fa
 title: تأیید مخزن محتوای گیت
-slug: تأیید-مخزن-محتوای-گیت
+slug: تایید-مخزن-محتوای-گیت
 excerpt: مقاله‌ای دوزبانه برای تأیید جریان مخزن محتوای گیت و همگام‌سازی آن.
 status: published
 publishedAt: 2026-08-24T09:00:00Z
