@@ -63,10 +63,10 @@ Initial registry:
 
 Rules:
 
-- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. All 17 faces are still declared unconditionally; reducing to the weights and styles the design actually uses is open, and belongs with the subsetting work below.
-- Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs.
+- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. **Done in M5:** the 16 JetBrains Mono faces were reduced to the six the design can actually select — 400, 400 italic, 500, 600, 700, and 700 italic — taking `public/Fonts` to 7 files and 283 KB. The other ten were reachable only through a `font-weight` no rule in this codebase sets.
+- Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs. **Partly done in M5:** every declared face carries a `unicode-range`, and the JetBrains Mono faces declare no Arabic block, so a Persian page never fetches six Latin faces to render text they cannot show. Re-encoding the binaries is deferred: Vazir Code is one dual-script file, so its range bounds _when_ it is requested rather than what it contains.
 - `font-display: swap` with a metric-compatible fallback, so a font swap does not reflow the article.
-- Preload only the critical variant for the active family and locale. Non-default families load on selection.
+- Preload only the critical variant for the active family and locale. Non-default families load on selection. **Done in M5:** the root layout preloads the site font's regular face and nothing else; the article route is the only place that may preload a blog family, and it does so only when that family is self-hosted and is not already the site font. The hrefs are a static literal keyed by the registry key in `apps/web/src/server/font-delivery.ts`, and `test/font-delivery.spec.ts` fails if any other source file names a font file.
 - No dynamic `@font-face` generation from any stored value. Font CSS is static, authored, and reviewed. Upload of font files is out of scope for this release.
 - A family that does not support the current locale's script cannot be selected in that locale; the switcher only offers script-compatible options.
 - Optional blog families MUST NOT be downloaded on non-blog routes. A font selection changes only descendants of `.blog-reading-surface`; no selector may apply the visitor's blog font or size to `html`, `body`, or shared layout components.
@@ -107,10 +107,12 @@ Validation on write: every key MUST exist in the code registry; the default MUST
 - No stored appearance value is ever interpolated into a `style` attribute, a `<style>` block, a CSS custom property value, or a font URL. Stored values are keys; keys map to static CSS. This is what keeps an appearance feature from becoming a CSS injection vector.
 - The preferences cookie is untrusted input. It is size-bounded, schema-validated, and allowlist-checked on every request. An oversized, malformed, or unknown value is discarded, not repaired.
 - The cookie carries no authentication meaning and MUST NOT be used for anything other than appearance.
-- CSP allows exactly one nonced inline script for system-theme resolution and no `unsafe-inline` styles; remaining inline styles in components are to be removed rather than allowed.
+- CSP allows exactly one nonced inline script for system-theme resolution and no `unsafe-inline` styles; remaining inline styles in components are to be removed rather than allowed. **Partly done:** the application components carry no inline styles, and the one inline script is nonced. `style-src` still carries `'unsafe-inline'` for one reason — Shiki writes its per-token colours into `style` attributes on every highlighted span, and `style-src-attr` is not supported widely enough to narrow the directive without losing code-block colour in Firefox. Removing it needs Shiki's output converted from style attributes to generated classes, which is tracked in [`docs/status/M5.md`](status/M5.md) rather than done here.
 - Font and CSS assets are served from the same origin with immutable fingerprinted caching.
 
 ## 9. Tests
+
+The static and unit half runs under `pnpm test`; the half that needs a rendered page runs under `pnpm --filter @portfolio/web test:e2e` (Playwright, against a production build). The most recent full run is recorded in [`docs/status/evidence/M5-appearance-matrix.md`](status/evidence/M5-appearance-matrix.md).
 
 - No flash: the initial HTML for a cookie set to light contains `data-theme="light"`; no theme correction occurs after hydration; no hydration mismatch warning.
 - `system` mode resolves before first paint and follows a live `prefers-color-scheme` change.
