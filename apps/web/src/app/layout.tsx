@@ -17,6 +17,8 @@ import {
 import { cookies, headers } from "next/headers";
 import Script from "next/script";
 
+import { SITE_FONT_PRELOAD_HREF } from "@/server/font-delivery";
+
 export const metadata: Metadata = {
   // Without an absolute base, Next.js resolves every relative metadata URL
   // against localhost. These values move into SiteSettings in M7; the base
@@ -97,6 +99,18 @@ export default async function RootLayout({
       {...appearanceRootAttributes(appearance)}
     >
       <head>
+        {/*
+          The site font's critical variant, and the only font this layout may
+          preload — THEMING.md §4. An optional blog family is preloaded by the
+          article route instead, so a non-blog route never downloads one.
+        */}
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href={SITE_FONT_PRELOAD_HREF}
+          crossOrigin="anonymous"
+        />
         <Script id="system-theme" nonce={nonce} strategy="beforeInteractive">
           {`(function(){var r=document.documentElement;if(r.dataset.theme!=="system")return;var q=window.matchMedia("(prefers-color-scheme: dark)");var a=function(){r.dataset.systemTheme=q.matches?"dark":"light"};a();q.addEventListener("change",a)})()`}
         </Script>

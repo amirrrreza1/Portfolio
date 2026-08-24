@@ -197,17 +197,45 @@ describe("theme tokens in CSS", () => {
     }
   );
 
-  it("scopes the media fallback to the window before the script resolves", () => {
-    // Without `:not([data-system-theme])` the media rule and the resolved rule
+  it("scopes every media fallback to the window before the script resolves", async () => {
+    // Without `:not([data-system-theme])` a media rule and the resolved rule
     // differ only in source order, and the resolved value is the one that has
     // to win once the pre-paint script has run.
-    return readFile(globalsCss, "utf8").then((css) => {
-      const fallbacks = css.match(/:root\[data-theme="system"\][^{,\s]*/g);
-      const inMedia = (fallbacks ?? []).filter((selector) =>
-        selector.includes(":not([data-system-theme])")
-      );
-      expect(inMedia.length).toBe(2);
-    });
+    //
+    // Asserted as a rule over every occurrence rather than as a count: the
+    // token declarations are no longer the only thing that has to fall back
+    // this way — the Shiki light/dark selection does too — and a count would
+    // have to be edited every time another one is added, which is how an
+    // unscoped fallback gets waved through.
+    const css = await readFile(globalsCss, "utf8");
+    const systemSelectors = [
+      ...css.matchAll(/:root\[data-theme="system"\][^{,\s]*/g),
+    ];
+    expect(systemSelectors.length).toBeGreaterThan(0);
+
+    const unscopedInsideMedia: string[] = [];
+    const scopedOutsideMedia: string[] = [];
+
+    for (const match of systemSelectors) {
+      const preceding = css.slice(0, match.index);
+      const mediaStart = preceding.lastIndexOf("@media (prefers-color-scheme:");
+      const insideMedia =
+        mediaStart > -1 &&
+        // Still open: the block's closing brace is a line on its own.
+        preceding.indexOf("\n}", mediaStart) === -1;
+      const scoped = match[0].includes(":not([data-system-theme])");
+
+      if (insideMedia && !scoped) unscopedInsideMedia.push(match[0]);
+      if (!insideMedia && scoped) scopedOutsideMedia.push(match[0]);
+    }
+
+    expect(unscopedInsideMedia).toEqual([]);
+    expect(scopedOutsideMedia).toEqual([]);
+    expect(
+      systemSelectors.filter((match) =>
+        match[0].includes(":not([data-system-theme])")
+      ).length
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("registers every token with Tailwind as a reference, never a literal", async () => {

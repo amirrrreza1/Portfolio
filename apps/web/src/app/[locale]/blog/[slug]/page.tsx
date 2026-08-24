@@ -1,6 +1,7 @@
 import { formatNumber, formatPublicTimestamp } from "@/i18n/format";
 import { getMessages } from "@/i18n/messages";
 import { articlePath, decodeSlugParam, localePath } from "@/i18n/routing";
+import { blogFontPreloadHref } from "@/server/font-delivery";
 import { getPortfolioAppearance } from "@/server/portfolio-appearance";
 import { getPortfolioArticleDetail } from "@/server/portfolio-article-detail";
 import { PublicDataUnavailableError } from "@/server/public-api-client";
@@ -83,9 +84,23 @@ export default async function LocaleArticlePage({
     appearanceSettings
   );
   const nonce = requestHeaders.get("x-portfolio-csp-nonce") ?? undefined;
+  // THEMING.md §4: the resolved family's critical variant, and only when it is
+  // a self-hosted face the root layout has not already requested. This is the
+  // only route allowed to preload a blog family, which is what keeps optional
+  // families off non-blog routes.
+  const fontPreloadHref = blogFontPreloadHref(appearance.blogFont);
 
   return (
     <article className="Container my-16 space-y-8 border p-5 md:p-8">
+      {fontPreloadHref === null ? null : (
+        <link
+          rel="preload"
+          as="font"
+          type="font/woff2"
+          href={fontPreloadHref}
+          crossOrigin="anonymous"
+        />
+      )}
       <Link href={localePath(locale, "blog")} className="underline">
         {messages.backToBlog}
       </Link>

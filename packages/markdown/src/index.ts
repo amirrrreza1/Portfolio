@@ -508,6 +508,20 @@ async function highlightChildren(parent: Node): Promise<void> {
         const highlighted = (await codeToHast(plainText(code), {
           lang: language as any,
           themes: { light: "github-light", dark: "github-dark" },
+          // `defaultColor: false` is what makes the two themes selectable.
+          //
+          // With a default colour Shiki writes one theme's value into `color`
+          // and the other into `--shiki-dark`, so the rendered block is stuck
+          // on whichever theme was named as the default unless CSS overrides
+          // an inline style — which needs `!important` and still leaves the
+          // wrong colour in the markup for anything that reads it. With it
+          // off, Shiki emits only `--shiki-light`/`--shiki-dark` custom
+          // properties and no `color` at all, and globals.css picks between
+          // them from the SELECTED `data-theme` rather than from
+          // `prefers-color-scheme`. The surface itself is painted by
+          // `--color-code-bg`/`--color-code-text`, which is what the
+          // THEMING.md §9 contrast matrix actually measures.
+          defaultColor: false,
         })) as unknown as Node;
         const replacement = highlighted.children?.[0] as Node | undefined;
         if (replacement !== undefined) {

@@ -1,68 +1,38 @@
 @import "tailwindcss";
 
 /*
- * Web fonts: woff2 only.
+ * Web fonts: woff2 only, and only the faces the design actually renders.
  *
  * The .eot, .ttf, and .woff duplicates were removed in M0. Every browser the
  * stack supports (Next.js 16 / React 19) has shipped woff2 since 2016, so the
  * other three formats were 5.5 MB of repository weight that no visitor could
  * ever request. Their hashes are recorded in docs/BASELINE_M0.md.
  *
+ * M5 reduces the 16 declared JetBrains Mono faces to the six the design uses.
+ * The remaining ten were reachable only through a `font-weight` this codebase
+ * never sets: the source names `font-medium` (500), `font-semibold` (600), and
+ * `font-bold` (700) and nothing else, `<strong>` in article Markdown resolves
+ * to 700, and the only two `italic` call sites are at the default 400. Thin,
+ * ExtraLight, Light, their italics, MediumItalic, SemiBoldItalic, ExtraBold,
+ * and ExtraBoldItalic could not be selected by any rule in the stylesheet, so
+ * they were dead declarations pointing at dead files.
+ *
  * Weights are numeric. The previous declarations gave ExtraBold and
  * ExtraBoldItalic `font-weight: bold`, which is 700 — identical to Bold, so the
  * two faces collided and the 800 weight was unreachable.
  *
- * Subsetting and unicode-range splitting are M5 work (ROADMAP.md §6); this
- * change only removes what is unambiguously dead.
+ * `unicode-range` is what keeps the two scripts apart (THEMING.md §4). The
+ * JetBrains Mono faces declare no Arabic block, so a Persian page never fetches
+ * six Latin faces to render text they cannot show, and Vazir Code is requested
+ * only once Persian-range text is actually on the page. Vazir Code is a single
+ * dual-script file, so its range bounds WHEN it is requested rather than what
+ * it contains; splitting it into per-script files needs re-encoding the binary
+ * and is recorded as deferred in docs/status/M5.md.
+ *
+ * apps/web/test/font-delivery.spec.ts holds this file and public/Fonts to each
+ * other: a face declared here must exist on disk, a file on disk must be
+ * declared here, and every declared face must carry a unicode-range.
  */
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-Thin.woff2") format("woff2");
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-ThinItalic.woff2") format("woff2");
-  font-weight: 100;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-ExtraLight.woff2") format("woff2");
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-ExtraLightItalic.woff2") format("woff2");
-  font-weight: 200;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-LightItalic.woff2") format("woff2");
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
 
 @font-face {
   font-family: "JetBrains_Mono";
@@ -70,6 +40,11 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -78,6 +53,11 @@
   font-weight: 400;
   font-style: italic;
   font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -86,14 +66,11 @@
   font-weight: 500;
   font-style: normal;
   font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-MediumItalic.woff2") format("woff2");
-  font-weight: 500;
-  font-style: italic;
-  font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -102,14 +79,11 @@
   font-weight: 600;
   font-style: normal;
   font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-SemiBoldItalic.woff2") format("woff2");
-  font-weight: 600;
-  font-style: italic;
-  font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -118,6 +92,11 @@
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -126,22 +105,11 @@
   font-weight: 700;
   font-style: italic;
   font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-ExtraBold.woff2") format("woff2");
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "JetBrains_Mono";
-  src: url("/Fonts/JetBrainsMono-ExtraBoldItalic.woff2") format("woff2");
-  font-weight: 800;
-  font-style: italic;
-  font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0100-024f, u+0259, u+02bb-02bc, u+02c6, u+02da, u+02dc,
+    u+0300-036f, u+0370-03ff, u+0400-04ff, u+1e00-1eff, u+2000-206f,
+    u+2070-209f, u+20a0-20cf, u+2100-214f, u+2190-21ff, u+2200-22ff,
+    u+2500-257f, u+25a0-25ff, u+2600-27bf, u+fb00-fb06, u+feff, u+fffd;
 }
 
 @font-face {
@@ -150,6 +118,10 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+  unicode-range:
+    u+0000-00ff, u+0600-06ff, u+0750-077f, u+200c-200f, u+2010-2011,
+    u+2018-201f, u+2020-2021, u+2026, u+202a-202e, u+2070-209f, u+20a0-20cf,
+    u+fb8a, u+fbfc-fbff, u+fd3e-fd3f, u+fdf2, u+fdfc, u+fe70-feff, u+fffd;
 }
 
 /*
@@ -328,6 +300,57 @@
   direction: ltr;
   unicode-bidi: isolate;
   text-align: start;
+}
+
+/*
+ * Shiki dual-theme code blocks — THEMING.md §3 and §8.
+ *
+ * `@portfolio/markdown` highlights with `themes: { light, dark }` and
+ * `defaultColor: false`, so every `pre.code-block` and every token span carries
+ * `--shiki-light` and `--shiki-dark` custom properties and NO `color`. Nothing
+ * selects between them on its own: without these rules a code block inherits
+ * body text colour and the two measured tokens are decorative.
+ *
+ * The selectors deliberately mirror the token declarations above, including the
+ * two `prefers-color-scheme` fallbacks scoped `:not([data-system-theme])`. A
+ * `dark:` variant or a bare media query would follow the OPERATING SYSTEM, not
+ * the selected `data-theme` — the same defect the M5 migration removed from
+ * three utilities, and one that shows up as dark-theme token colours on a white
+ * code surface for a dark-theme visitor on a light OS.
+ *
+ * The surface itself is `--color-code-bg`/`--color-code-text` rather than
+ * Shiki's own background, so the pairing the §9 contrast matrix measures is the
+ * pairing a reader sees. Shiki's per-token colours then sit on that surface;
+ * both GitHub themes are authored against a background at least as light (light)
+ * or as dark (dark) as ours, so no token loses contrast against it.
+ */
+.code-block {
+  background-color: var(--color-code-bg);
+  color: var(--color-code-text);
+  overflow-x: auto;
+}
+
+:root .code-block span,
+:root[data-theme="dark"] .code-block span,
+:root[data-theme="system"][data-system-theme="dark"] .code-block span {
+  color: var(--shiki-dark);
+}
+
+:root[data-theme="light"] .code-block span,
+:root[data-theme="system"][data-system-theme="light"] .code-block span {
+  color: var(--shiki-light);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"]:not([data-system-theme]) .code-block span {
+    color: var(--shiki-light);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"]:not([data-system-theme]) .code-block span {
+    color: var(--shiki-dark);
+  }
 }
 
 html[data-motion="reduced"] *,
