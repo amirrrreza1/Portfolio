@@ -83,13 +83,13 @@ export default function ProjectsGallery({
           </Tooltip>
 
           <div className="group relative flex-1">
-            <Search className="group-focus-within:text-text absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-muted transition-colors" />
+            <Search className="group-focus-within:text-text text-text-muted absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transition-colors" />
             <input
               type="search"
               placeholder={messages.projects.searchPlaceholder}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              className="bg-surface border-border focus:border-border focus:bg-surface h-10 w-full cursor-none border py-2 pr-10 pl-10 text-sm transition-all outline-none placeholder:text-text-muted"
+              className="bg-surface border-border focus:border-border focus:bg-surface placeholder:text-text-muted h-10 w-full cursor-none border py-2 pr-10 pl-10 text-sm transition-all outline-none"
             />
           </div>
           <Tooltip title={messages.common.theme}>

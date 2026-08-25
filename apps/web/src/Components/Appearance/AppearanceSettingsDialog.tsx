@@ -96,7 +96,7 @@ export default function AppearanceSettingsDialog({
         aria-modal="true"
         aria-labelledby={headingId}
         onClose={close}
-        className="text-text bg-bg border-primary w-[min(94vw,38rem)] border p-0 backdrop:bg-scrim/70"
+        className="text-text bg-bg border-primary backdrop:bg-scrim/70 w-[min(94vw,38rem)] border p-0"
       >
         <div className="space-y-6 p-6">
           <div className="flex items-start justify-between gap-4">

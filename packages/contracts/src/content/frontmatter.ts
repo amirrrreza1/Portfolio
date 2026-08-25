@@ -18,22 +18,19 @@ import {
  * [CONTENT_PIPELINE.md](../../../../docs/CONTENT_PIPELINE.md) §3.
  *
  * This is the single validation point every authoring path converges on: the
- * admin editor, the `.md`/`.mdx` import, and a direct `git push`. That is the
+ * admin editor, the `.md`/`.mdx` import, and deterministic export. That is the
  * whole reason it lives in a shared contracts package rather than in whichever
  * module happens to parse the file — three paths validating three different
  * ways is three different sets of publishable content.
  *
- * Frontmatter is **authored intent**. The database mirror is the realized
- * state, and §7 of the pipeline spec covers the one case where they may
- * legitimately differ: a scheduled article that published while Git was
- * unreachable, which is flagged `FRONTMATTER_DRIFT` rather than reconciled by
- * guessing.
+ * PostgreSQL persists the validated metadata as realized state. Frontmatter is
+ * a portable import/export envelope rather than another authoritative store.
  */
 
 /**
  * Supported schema versions.
  *
- * An unsupported version blocks sync rather than guessing. A file written by a
+ * An unsupported version blocks import rather than guessing. A file written by a
  * future version of the pipeline may use fields this build does not
  * understand, and interpreting it partially would publish something the author
  * did not write.
@@ -215,7 +212,7 @@ export interface PathMismatch {
  * Takes plain strings rather than a validated `Frontmatter`.
  *
  * This check exists precisely to run on input that has not been trusted yet —
- * during import, during a webhook sync, on a file someone pushed by hand.
+ * during import or while validating a deterministic exported file.
  * Requiring branded, already-validated values would make it unusable at the
  * only moment it matters.
  */

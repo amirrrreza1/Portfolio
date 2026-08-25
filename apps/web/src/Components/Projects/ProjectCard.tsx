@@ -107,7 +107,7 @@ export default function ProjectCard({
           </span>
         </div>
       ) : pj.repo ? (
-        <p className="mb-4 text-sm text-text-muted">
+        <p className="text-text-muted mb-4 text-sm">
           {messages.projects.statsUnavailable}
         </p>
       ) : null}

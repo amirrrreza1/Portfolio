@@ -10,7 +10,7 @@ import { z } from "zod";
  * `requestId`, which is the one value that appears in both places.
  */
 
-/** Stable codes from API_SPEC §2, plus the content-store codes from §3. */
+/** Stable machine-readable codes from API_SPEC §2. */
 export const ERROR_CODES = [
   "VALIDATION_FAILED",
   "AUTHENTICATION_REQUIRED",
@@ -23,7 +23,6 @@ export const ERROR_CODES = [
   "PAYLOAD_TOO_LARGE",
   "UNSUPPORTED_MEDIA",
   "INTERNAL_ERROR",
-  "CONTENT_STORE_UNAVAILABLE",
   "CONTENT_VALIDATION_FAILED",
   "CONTENT_CONFLICT",
   "TRANSLATION_NOT_FOUND",
@@ -52,7 +51,6 @@ export const ERROR_STATUS: { readonly [K in ErrorCode]: number } = {
   PAYLOAD_TOO_LARGE: 413,
   UNSUPPORTED_MEDIA: 415,
   INTERNAL_ERROR: 500,
-  CONTENT_STORE_UNAVAILABLE: 503,
   CONTENT_VALIDATION_FAILED: 422,
   CONTENT_CONFLICT: 409,
   TRANSLATION_NOT_FOUND: 404,
@@ -77,7 +75,6 @@ export const ERROR_MESSAGES: { readonly [K in ErrorCode]: string } = {
   PAYLOAD_TOO_LARGE: "The request payload is too large.",
   UNSUPPORTED_MEDIA: "That media type is not supported.",
   INTERNAL_ERROR: "Something went wrong.",
-  CONTENT_STORE_UNAVAILABLE: "The content store is unavailable.",
   CONTENT_VALIDATION_FAILED: "The content could not be validated.",
   CONTENT_CONFLICT: "The content changed since it was loaded.",
   TRANSLATION_NOT_FOUND: "That translation is not available.",

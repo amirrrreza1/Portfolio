@@ -66,7 +66,7 @@ describe("public article contracts", () => {
           renderedHtml: "<p>Body</p>",
           headings: [{ depth: 2, id: "bad fragment", text: "Bad" }],
           alternates: [],
-          sourceBlobSha: "a".repeat(40),
+          bodyMarkdown: "private source",
         },
       },
       meta: { requestId: "detail-request" },

@@ -51,7 +51,7 @@ export function createLegacyPageSectionMigrationStore(
 /**
  * Applies the reviewed skill-colour replacements under their own ledger entry.
  *
- * Separate from the media/content store because it must be able to run against
+ * Separate from live media/article repositories because it must run against
  * a database the base migration already wrote, without re-opening that
  * migration's checksum.
  */
