@@ -1,216 +1,150 @@
 # Content pipeline specification
 
-How article text gets in, where it lives, how it is rendered, and how the file store and the database stay honest with each other.
+Article text, publication state, rendered output, and revision history have one authority: PostgreSQL. MinIO stores binary media. Markdown files are an optional import/export format, never another authoritative content store.
 
-Normative decisions: [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies) and [ADR-004](DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution).
+Normative decisions: [ADR-004](DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution) and [ADR-015](DECISIONS.md#adr-015--postgresql-native-article-authoring-and-publication).
 
-**Implementation status.** The render pipeline in §8 and the directive allowlist in §9 are built and tested in `packages/markdown`. The store mechanics — App-token exchange, `content/`-confined commits, webhook verification and deduplication, tree reconciliation through the production renderer — are built in `packages/content-store`, with the apply-ledger and outbox adapters in `packages/database`. None of it has run against a real repository: there is no API worker, no protected `content` branch, and no `content/` directory yet. Treat the described behaviour as specified-and-coded but unproven until M3's gate closes.
+## 1. Storage responsibilities
 
-## 1. Roles of the two stores
+| Concern                                                           | Authority  |
+| ----------------------------------------------------------------- | ---------- |
+| Article body, locale, editorial metadata, and publication state   | PostgreSQL |
+| Sanitized HTML, heading tree, reading time, and source digest     | PostgreSQL |
+| Drafts, optimistic versions, revision snapshots, and audit events | PostgreSQL |
+| Publication schedules and cache-invalidation outbox               | PostgreSQL |
+| Images, documents, and other binary media                         | MinIO      |
 
-| Concern                                            | Authority            |
-| -------------------------------------------------- | -------------------- |
-| Article body text                                  | Git repository       |
-| Frontmatter as authored intent                     | Git repository       |
-| Post identity, slug history, taxonomy              | PostgreSQL           |
-| Realized publication state and timestamps          | PostgreSQL           |
-| Sanitized render cache, reading time, heading tree | PostgreSQL           |
-| Blob SHA and sync state per translation            | PostgreSQL           |
-| Media binaries                                     | MinIO object storage |
+The API never reads article bodies from the Git repository, a mounted content directory, or MinIO. Public responses expose reviewed rendered output, not authoring Markdown or internal integrity metadata.
 
-The rule that resolves every ambiguity: **Git is authoritative for what the text says; PostgreSQL is authoritative for what the site is currently doing with it.**
+## 2. Article identity and integrity
 
-The API MUST NOT serve a body whose render cache does not match the recorded blob SHA. On mismatch it re-renders from Git before responding, or fails closed if Git is unreachable and no valid cache exists.
+A `Post` owns immutable identity and shared taxonomy. Each `PostTranslation` owns one `en` or `fa` article, including its `bodyMarkdown`, `bodySha256`, rendered HTML, renderer version, locale-specific metadata, publication state, timestamps, and monotonically increasing `version`.
 
-## 2. Repository layout
+The source digest is the SHA-256 of the normalized UTF-8 Markdown body. A public translation is discoverable only when it is published, not archived, has a valid source body and digest, and its complete render cache was produced by the current renderer. Missing or inconsistent integrity data fails closed.
 
-Content lives in the same repository as the application, in a directory that no build step imports:
+Markdown export may use `content/blog/<postId>/<locale>.md` as a portable filename convention. Exported files are snapshots and are never watched, synchronized, or treated as production authority.
 
-```text
-content/
-├─ blog/
-│  └─ <postId>/
-│     ├─ en.md
-│     ├─ fa.md
-│     └─ assets/          # optional per-post images, mirrored to MinIO
-└─ .content-schema         # integer schema version of the frontmatter contract
-```
+## 3. Editorial metadata and frontmatter
 
-Rules:
+The shared strict frontmatter schema remains the import/export envelope and editor metadata contract:
 
-- The directory name is the immutable `Post.id` (a CUID), never the slug. Slugs change; identity does not. This means a slug change is a database and redirect operation with no file move.
-- Locale filenames come from a fixed allowlist (`en`, `fa`). Any other filename is a sync error, not a new locale.
-- Paths are constructed server-side from validated identifiers only. No user-supplied string ever contributes a path segment. Any resolved path outside `content/` is a hard rejection with an audit event.
-- `content/` is excluded from the Next.js build trace and from Docker runtime images. The application reads content through the Git API and the database index, never from the local working tree in production.
-- Content commits land on the protected dedicated `content` branch and are not merged into the application deployment branch during normal publishing. Repository rules disallow force-push/deletion and the Git App cannot modify workflows; see [ADR-011](DECISIONS.md#adr-011--article-bodies-use-a-protected-dedicated-content-branch).
-
-## 3. Frontmatter contract
-
-YAML frontmatter, parsed in **safe mode** — no custom tags, no anchors/aliases expansion beyond a bounded budget, no arbitrary object construction. Parsed with a Zod schema in `packages/contracts` that rejects unknown keys.
-
-```markdown
----
+```yaml
 schemaVersion: 1
 postId: clx8k2p9q0000abcd1234efgh
 locale: en
 title: Rendering Markdown without shipping a Markdown renderer
 slug: rendering-markdown-server-side
-status: published # draft | scheduled | published | archived
-publishedAt: 2026-08-04T09:00:00Z
+status: draft
+publishedAt: null
 scheduledFor: null
 updatedAt: 2026-08-06T11:20:00Z
-excerpt: A short original summary used for listings, meta description, and RSS.
+excerpt: A short original summary for listings and metadata.
 category: engineering
 tags: [nextjs, markdown, security]
-coverImage: media_01hq2v8x9y
-coverImageAlt: A terminal showing a build log
+coverImage: null
+coverImageAlt: null
 seoTitle: null
 seoDescription: null
 canonicalUrl: null
 socialImage: null
 translationOf: null
----
-
-Body starts at an H2. The H1 is generated from `title`.
 ```
 
-Validation rules:
+- Unknown fields, unsupported schema versions, empty titles/excerpts, invalid locale-specific slugs, and unsafe canonical URLs are rejected.
+- Published translations require `publishedAt`; scheduled translations require a future `scheduledFor` and cannot already have `publishedAt`.
+- Categories, tags, cover images, and social images must reference existing approved records. An informative cover requires nonempty alternative text.
+- The Markdown body must be nonempty, contain no level-one heading, and pass the complete production renderer and sanitizer.
+- Imported YAML is bounded and safely parsed; unknown tags, unbounded aliases, and arbitrary object construction are forbidden.
 
-- `schemaVersion` MUST match a supported version. An unsupported version blocks sync rather than guessing.
-- `postId` MUST match the containing directory. `locale` MUST match the filename. A mismatch is a sync error.
-- `title` and `excerpt` are required, trimmed, length-bounded, and MUST NOT be empty after normalization.
-- `slug` follows [ADR-010](DECISIONS.md#adr-010--unicode-persian-slugs-are-canonical): English is lowercase ASCII; Persian is normalized Persian Unicode stored as NFC and percent-encoded in URLs. A reviewed Latin transliteration may exist as a redirect alias, never as a competing canonical form.
-- `status: published` requires `publishedAt`; `status: scheduled` requires a future `scheduledFor` and forbids `publishedAt`.
-- `category` and every `tag` MUST already exist as taxonomy records. Sync does not silently create taxonomy; it reports the missing slug.
-- `coverImage` and `socialImage` MUST reference existing `MediaAsset` IDs. An informative cover image requires non-empty `coverImageAlt`.
-- `canonicalUrl`, when present, MUST be an absolute `https` URL and triggers an off-site warning in the editor.
-- The body MUST NOT be empty, MUST NOT contain a level-one heading, and MUST parse cleanly.
+## 4. Admin authoring
 
-Frontmatter is authored intent. The database mirror is the realized state; §7 covers the one case where they can legitimately differ.
+Admin mutation endpoints are introduced only after the M6 authentication, authorization, session, and CSRF boundaries are complete. Before then, the article repository and renderer may be tested directly but must not be exposed as unauthenticated routes.
 
-## 4. Authoring in the admin panel
+1. The editor loads the current translation, including its integer optimistic-concurrency `version`.
+2. Typing autosaves an author-scoped `PostDraft` carrying the base version. Autosave never changes published output.
+3. Authenticated previews use the production renderer and are short-lived, unguessable, `noindex`, and `no-store`.
+4. Explicit save validates metadata, references, and body; normalizes the body; computes SHA-256; and renders sanitized HTML.
+5. One PostgreSQL transaction checks the expected version, writes the translation and render cache, increments the version, records a content revision and audit event, and enqueues affected cache tags in the durable invalidation outbox.
+6. A stale expected version returns `409 CONTENT_CONFLICT` with the current version and does not modify article state.
 
-1. The editor loads the post; the response carries the current blob SHA per translation as the concurrency token.
-2. Typing autosaves to a **local draft** — a database `PostDraft` row keyed by post, locale, and author. Autosave never commits to Git.
-3. Preview renders through the exact production pipeline of §8 on an authenticated, short-lived, unguessable, `noindex`, `no-store` URL.
-4. On explicit save the API:
-   - validates the whole document against the frontmatter schema and the directive allowlist;
-   - serializes frontmatter deterministically (stable key order, LF endings, UTF-8, no BOM, single trailing newline) so a no-op save produces no diff;
-   - creates or reuses a durable operation intent keyed by the request idempotency key;
-   - commits to Git with `If-Match` on the known blob SHA and the operation ID in fixed metadata;
-   - on success, atomically applies the index row, render cache, revision, audit event, operation state, and invalidation outbox;
-   - on a SHA mismatch, returns `409 CONFLICT` with a diff and writes nothing.
-5. Rapid successive saves are coalesced by a short debounce and a per-post queue so the Git host is not hammered.
+The editor remains a plain Markdown surface with preview, a directive palette, and a prepublication checklist. User-authored HTML is never round-tripped through a WYSIWYG editor.
 
-If Git succeeds but the apply transaction fails, the durable operation plus commit metadata allow webhook/reconciliation processing to re-read the blob by SHA and apply it idempotently. The same `(repository, commitSha, path)` never creates two revisions. Cache invalidation is delivered from the outbox with bounded retries; see [ADR-012](DECISIONS.md#adr-012--durable-operation-log-idempotent-recovery-and-invalidation-outbox-for-git-writes).
+## 5. Markdown import and export
 
-The editor is a plain Markdown textarea with a live preview, a directive insert palette, and a pre-publish checklist. It is not a WYSIWYG surface that round-trips HTML, because HTML round-tripping is how sanitized pipelines get bypassed.
+Import is a deliberate **parse and report, then confirm and save** operation:
 
-## 5. Importing an uploaded `.md` or `.mdx` file
+1. Accept one bounded `.md`, `.markdown`, or `.mdx` upload decoded as strict UTF-8.
+2. Reject unsafe HTML, unknown metadata, unsafe URL protocols, executable MDX constructs, and unmapped JSX components with useful diagnostics.
+3. Present validated or explicitly labeled inferred metadata for review; never silently invent required values.
+4. Resolve referenced images through the normal approved MinIO media pipeline.
+5. On confirmation, save the normalized Markdown through the same transactional PostgreSQL article path as the editor.
 
-Upload is a two-step, never-blind operation: **parse and report, then confirm and commit.**
+Accepted MDX is converted to safe Markdown/directives before storage. Export serializes current PostgreSQL metadata and Markdown deterministically. Import/export does not require Git credentials, a webhook, a content branch, or a deployment.
 
-1. Accept a single file, size-bounded, extension in `{.md, .mdx, .markdown}`, decoded strictly as UTF-8. Invalid byte sequences are rejected, not replaced.
-2. Reject or strip, with a line-referenced report:
-   - raw HTML blocks and inline HTML tags;
-   - MDX `import`/`export` statements, JSX expression containers, and any component without a directive mapping;
-   - unsafe link and image protocols;
-   - frontmatter keys outside the schema.
-3. Parse frontmatter. Missing fields are presented as a form pre-filled with what could be inferred (title from the first heading, excerpt from the first paragraph, reading time computed). Nothing is invented — an inferred value is labeled as inferred.
-4. Rewrite relative image references: each referenced local file must be resolvable from an accompanying upload or an existing `MediaAsset`, otherwise the import is reported as incomplete. Images are ingested through the normal media pipeline in [API_SPEC.md](API_SPEC.md) §7.
-5. The owner reviews the normalized result and the exact diff that will be committed, then confirms. Only then is a commit made.
-6. `.mdx` input is always normalized to a `.md` file. The original upload is retained in quarantine for the audit window so an import can be re-examined, and is never served.
+## 6. Versions, revisions, and conflict handling
 
-A file that fails validation is never partially imported. Import is transactional in the same sense as any other write.
+`PostTranslation.version` is the only article write concurrency token. `PostDraft.baseVersion` records the revision an editor started from. Every committed content change creates an immutable `ContentRevision` snapshot containing enough information to inspect and restore the article.
 
-## 6. Sync from Git and conflict handling
+Concurrent writes with the same expected version cannot both succeed. A failed render, reference check, transaction, or optimistic-concurrency check leaves the previous public article and revision history unchanged. Revision restore is a new validated save, not an in-place rewrite of history.
 
-Direct pushes to `content/` are a supported authoring path, so sync is bidirectional in effect even though writes are one-directional.
+## 7. Scheduled publication
 
-- The Git host calls a signed webhook. The signature is verified with a constant-time comparison over the raw body, with a timestamp window and nonce replay store, exactly as specified for cache invalidation in [SECURITY.md](SECURITY.md) §6.
-- The webhook payload is a trigger, not data. The worker re-reads the affected paths from the Git API by commit SHA and validates them from scratch.
-- A dedicated worker consumes PostgreSQL-backed webhook and reconciliation jobs. A reconciliation job also runs on a schedule and on demand, comparing the recorded blob SHA of every translation against the branch head, so a missed webhook self-heals.
-- Validation failures do not change published output. The index row is flagged `SYNC_FAILED` with the reason, the previous good render stays live, and the owner is notified. Broken content in the repository can never take the site down or publish itself.
-- Conflict resolution: the blob SHA is the only concurrency token. Admin writes always use `If-Match`. A push that lands between load and save produces a `409` with a diff; the owner chooses to reload, or to overwrite with an explicit force that is separately audited. There is no automatic merge of article bodies.
-- Sync never deletes. A file removed from Git marks the translation `MISSING_IN_GIT` and unpublishes it after owner confirmation, so an accidental force-push cannot silently erase published articles.
+A scheduled translation stores its intended publication time directly in PostgreSQL. A dedicated lightweight scheduler, protected by a PostgreSQL advisory lock, enqueues due publication work; HTTP API replicas run no scheduler timers.
 
-## 7. Scheduled publishing across two stores
+The publication worker transactionally confirms that the translation remains due and valid, sets `status = PUBLISHED` and `publishedAt`, increments its version, records a revision/audit event, and enqueues cache invalidation. The article is live after transaction commit, without a Git commit, webhook, reconciliation pass, or deployment.
 
-A scheduled post is an intent recorded in a file and a transition realized in a database. Reconciling them is the one genuinely awkward consequence of ADR-003, and it is handled explicitly.
-
-1. Saving with `status: scheduled` and a future `scheduledFor` commits that intent and sets the same values in the index.
-2. The dedicated scheduler process holds a PostgreSQL advisory lock before enqueueing due translations. HTTP API replicas have no timers; see [ADR-013](DECISIONS.md#adr-013--postgresql-backed-jobs-with-dedicated-sync-and-scheduler-workers).
-3. At the due time the worker transactionally sets `status = PUBLISHED` and `publishedAt`, writes a revision and audit event, and invalidates routes. **The article is live at this instant, with no commit and no deploy.**
-4. The worker then enqueues a **bot reconciliation commit** that rewrites only `status` and `publishedAt` in the frontmatter, with a fixed message (`chore(content): publish <postId>/<locale>`) and a bot identity. This commit is idempotent and retried with backoff.
-5. If the reconciliation commit cannot land, the translation is flagged `FRONTMATTER_DRIFT`. The site is correct, the file is stale, and the drift is visible in the admin dashboard until resolved. Publication is never blocked on a Git write.
-6. Drift detection runs in the reconciliation job: for every translation, realized state is compared to authored intent and any difference other than a pending bot commit is reported.
-
-Unpublishing follows the same shape and additionally invalidates immediately, since leaving a withdrawn article cached is a disclosure issue rather than a staleness issue.
+Jobs and invalidation delivery are idempotent, bounded, and retryable. Unpublishing invalidates affected article, listing, feed, and sitemap tags immediately because stale withdrawn content is a disclosure risk.
 
 ## 8. Render pipeline
 
-Rendering happens **once, server-side, at write or sync time**, and the sanitized result is cached in the database with the source blob SHA. The web app renders cached HTML into server components. No Markdown parser, sanitizer, or syntax highlighter is shipped to the browser.
+Rendering happens once, server-side, when an article is saved. The sanitized result is cached in PostgreSQL with its source SHA-256 and renderer version. No Markdown parser, sanitizer, or syntax highlighter is shipped to the browser.
 
 Fixed order, no step optional:
 
-1. `remark-parse` with GFM (tables, strikethrough, task lists, autolinks). Footnotes enabled.
-2. `remark-directive`, then a custom transform that validates each directive against the allowlist in §9 and rejects unknown names and attributes.
-3. Bounded-cost transforms: heading slugs (deterministic, unique, stable across renders), autolinked heading anchors, table-of-contents extraction, reading-time estimate, internal-link resolution.
-4. `remark-rehype` with `allowDangerousHtml: false`.
-5. Shiki highlighting server-side, with a fixed theme pair and a bounded language allowlist. An unknown language renders as plain text with a visible label, never as an error.
-6. `rehype-sanitize` with an explicit schema: allowlisted tags, attributes, and class names; `href`/`src` restricted to `https`, site-relative, and `mailto`; `javascript:` and `data:` rejected except a narrowly specified safe-image case; every external link gets `rel="noopener noreferrer nofollow ugc"` where appropriate and target rules applied.
-7. Serialize to HTML. Sanitization is the **last** transform, so nothing after it can reintroduce unsafe output.
+1. Parse Markdown with GFM and bounded footnotes.
+2. Parse directives, validating every directive name and attribute against the allowlist in §9.
+3. Produce deterministic heading anchors, a table of contents, reading-time estimates, and safe internal links.
+4. Convert Markdown to HTML with raw HTML disabled.
+5. Highlight code server-side using Shiki, fixed light/dark themes, and bounded language support; unknown languages fall back to plain text.
+6. Apply the explicit HTML sanitizer, including safe protocols, bounded attributes/classes, and reviewed external-link handling.
+7. Serialize sanitized HTML. Sanitization remains the last content-changing transform.
 
-The cached HTML is inserted through exactly one reviewed boundary in the codebase. That boundary and the JSON-LD serializer are the only permitted uses of `dangerouslySetInnerHTML`, and both are covered by tests against an XSS corpus.
+One reviewed rendering boundary inserts cached article HTML. That boundary and reviewed JSON-LD serialization are the only permitted `dangerouslySetInnerHTML` uses and are covered by XSS tests.
 
-Cache invalidation for the render cache is keyed on the blob SHA plus a `rendererVersion` constant. Bumping the renderer version re-renders everything on next access, which is how a sanitizer or highlighter upgrade rolls out safely.
+Cached output is valid only for the recorded SHA-256 and current `rendererVersion`. Renderer upgrades require rerendering before an article can be publicly served.
 
 ## 9. Directive allowlist
 
-Each directive has a name, a Zod attribute schema, a reviewed React component, an accessibility contract, and sanitizer allowances. Adding one is a code change with a test, by design.
+| Directive   | Form      | Attributes                                      | Accessibility and safety                                  |
+| ----------- | --------- | ----------------------------------------------- | --------------------------------------------------------- |
+| `::callout` | container | `type`, optional `title`                        | Labeled region; meaning is never conveyed by color alone. |
+| `::figure`  | container | approved media `src`, `alt`, optional `caption` | Semantic figure/caption and known dimensions.             |
+| `::video`   | leaf      | allowlisted `provider`, `id`, `title`           | User-initiated, sandboxed embed; no autoplay.             |
+| `::details` | container | `summary`                                       | Native keyboard-accessible disclosure.                    |
+| `::steps`   | container | optional `start`                                | Semantic ordered procedure list.                          |
 
-| Directive   | Form      | Attributes                                              | Notes                                                                                       |
-| ----------- | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `::callout` | container | `type` ∈ {note, tip, warning, danger}, optional `title` | Renders a labeled region; type conveyed by text and icon, never colour alone                |
-| `::figure`  | container | `src` (MediaAsset ID), `alt`, optional `caption`        | `figure`/`figcaption`; known dimensions to prevent layout shift                             |
-| `::video`   | leaf      | `provider` ∈ {youtube, vimeo}, `id`, `title`            | Facade image that loads the iframe on interaction; sandboxed, no autoplay, host allowlisted |
-| `::details` | container | `summary`                                               | Native `details`/`summary`, keyboard accessible                                             |
-| `::steps`   | container | optional `start`                                        | Ordered procedure list with correct list semantics                                          |
-
-Rules:
-
-- Attribute values are validated, not interpolated. An ID must resolve to an existing record; a free-text attribute is escaped.
-- No directive may emit a script, a style attribute, an event handler, or an unsandboxed iframe.
-- An unknown directive is a validation error at write time, so it can never reach a reader as broken markup.
+Attributes are validated rather than interpolated. Unknown directives, scripts, inline styles, event handlers, and unsandboxed frames are rejected before persistence.
 
 ## 10. Portfolio prose fields
 
-Short portfolio text (About Me paragraphs, hero lines, project summaries, section intros) is stored in PostgreSQL, not in files, per [ADR-007](DECISIONS.md#adr-007--portfolio-content-is-database-backed-and-fully-admin-editable). These fields use a **restricted inline Markdown** profile: emphasis, strong, inline code, and links only. Block elements, images, and directives are rejected. They pass through the same sanitizer with a tighter schema and are cached alongside the record.
-
-This is what replaces the `<B>` and `<I>` helper components currently embedded in `AboutMe.tsx`, and what lets the owner edit that prose without touching source.
+Short portfolio text also remains PostgreSQL-authoritative under [ADR-007](DECISIONS.md#adr-007--portfolio-content-is-database-backed-and-fully-admin-editable). It uses a tighter inline-Markdown profile supporting emphasis, inline code, and safe links but rejecting blocks, images, and article directives.
 
 ## 11. Feeds, sitemaps, and derived surfaces
 
-RSS, sitemap, robots, and archive pages are generated from the database index and render cache — never by reading the repository at request time. They are per-locale, and they include only translations whose realized state is `PUBLISHED`. A translation in `SYNC_FAILED`, `MISSING_IN_GIT`, or drift state is excluded from newly generated feeds and reported to the owner.
+Feeds, sitemaps, archives, and localized article listings read published, integrity-valid PostgreSQL translations only. Missing translations never fall back to another locale. Drafts, scheduled translations, archived translations, stale renderers, and incomplete source metadata are never discoverable.
 
 ## 12. Backup and recovery
 
-Content has two independent recovery paths, which is a deliberate benefit of this design:
+Encrypted PostgreSQL backups contain complete article bodies, metadata, versions, revisions, drafts, publication schedules, taxonomy, and audit history. MinIO backups contain referenced binary media.
 
-- **Git**: a clone of the content branch is a complete, human-readable copy of every article body and its full history.
-- **PostgreSQL**: encrypted backups carry the index, taxonomy, revisions, and audit history.
+A successful restore proves that every published translation has a valid Markdown source, matching SHA-256, current sanitized render, resolvable media references, and correct bilingual publication behavior. No content-repository clone or Git reconciliation is needed.
 
-Recovery drills MUST verify that a database restore plus a repository clone reproduce the site, and that reconciliation reports zero unexplained differences: every index row has a matching file at the recorded SHA, every content file has an index row, every referenced media asset exists, and every published translation renders.
+## 13. Required verification
 
-## 13. Tests specific to this pipeline
-
-- Frontmatter schema: required fields, unknown keys, bad dates, non-existent taxonomy and media references, `postId`/`locale` mismatch, unsupported `schemaVersion`.
-- Path safety: traversal attempts, absolute paths, symlinks, non-allowlisted locale filenames, and unicode normalization tricks in any identifier.
-- YAML safety: oversized documents, deep nesting, alias expansion, and unsafe tags.
-- Import: `.mdx` with imports/exports/JSX, raw HTML, unsafe protocols, mixed encodings, invalid UTF-8, missing images, no frontmatter.
-- Determinism: save → no-op save produces an empty diff; round-tripping frontmatter is byte-stable.
-- Concurrency: stale `If-Match` returns `409` and writes nothing; concurrent push and save do not lose text.
-- Scheduling: due transition publishes without a commit; failed reconciliation commit leaves the site correct and raises drift; the scheduler does not double-publish under two replicas.
-- Sync resilience: missed webhook self-heals; invalid file in Git does not change live output; deleted file does not silently unpublish.
-- Render: XSS corpus, unsafe-link corpus, unknown directive, unknown code language, heading ID stability and uniqueness, renderer-version cache busting.
-- Recovery: reconciliation detects an index row without a file, a file without a row, and a SHA mismatch.
+- Metadata validation, bounded safe YAML import, locale-aware canonical slugs, and approved taxonomy/media references.
+- Markdown/MDX import rejection for executable JSX, unsafe HTML/protocols, invalid UTF-8, and missing media.
+- Optimistic version conflict, rollback after render/transaction failure, immutable revision creation, and safe revision restore.
+- Atomic scheduled publication under concurrent scheduler replicas and idempotent repeated job delivery.
+- Render integrity, source SHA-256, renderer-version fail-closed behavior, bilingual no-fallback reads, and XSS/directive regression cases.
+- Transactional cache-outbox creation, bounded signed delivery/retries, and withdrawal invalidation.
+- PostgreSQL-and-MinIO backup restoration with complete article/media integrity checks.

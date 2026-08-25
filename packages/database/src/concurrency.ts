@@ -101,7 +101,7 @@ export async function updateWithVersion<T>(
 }
 
 /**
- * Advisory lock keys for the scheduler and sync worker (ADR-013).
+ * Advisory lock keys for publication scheduling and delivery workers.
  *
  * PostgreSQL advisory locks take a 64-bit integer, so a stable name has to be
  * hashed into one. This is FNV-1a folded to 63 bits — deterministic across
@@ -125,8 +125,7 @@ export function advisoryLockKey(name: string): bigint {
 
 export const ADVISORY_LOCKS = {
   scheduler: advisoryLockKey("portfolio:scheduler"),
-  contentSync: advisoryLockKey("portfolio:content-sync"),
-  reconciliation: advisoryLockKey("portfolio:reconciliation"),
+  publication: advisoryLockKey("portfolio:publication"),
 } as const;
 
 /**

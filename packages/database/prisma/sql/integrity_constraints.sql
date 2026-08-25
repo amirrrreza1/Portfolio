@@ -84,15 +84,25 @@ ALTER TABLE "post_translations"
   ADD CONSTRAINT "post_translations_render_cache_provenance"
   CHECK (
     "renderedHtml" IS NULL
-    OR ("rendererVersion" IS NOT NULL AND "sourceBlobSha" IS NOT NULL)
+    OR (
+      "rendererVersion" IS NOT NULL
+      AND "bodyMarkdown" IS NOT NULL
+      AND "bodySha256" ~ '^[0-9a-f]{64}$'
+    )
   );
 
--- A published translation must have a body in Git. Publishing an index row with
--- no corresponding file is the split-brain state M3 exists to prevent, and it
--- should be impossible rather than merely reported.
+-- Published content must retain its authoritative Markdown and a complete
+-- SHA-256 digest. Legacy indexed rows fail closed until explicitly reimported.
 ALTER TABLE "post_translations"
   ADD CONSTRAINT "post_translations_published_has_source"
-  CHECK ("status" <> 'PUBLISHED' OR "sourceBlobSha" IS NOT NULL);
+  CHECK (
+    "status" <> 'PUBLISHED'
+    OR (
+      "bodyMarkdown" IS NOT NULL
+      AND octet_length("bodyMarkdown") > 0
+      AND "bodySha256" ~ '^[0-9a-f]{64}$'
+    )
+  );
 
 ALTER TABLE "post_translations"
   ADD CONSTRAINT "post_translations_title_not_blank"
@@ -316,26 +326,21 @@ CREATE INDEX "sessions_active_lookup"
 -- ---------------------------------------------------------------------------
 
 -- Partial indexes matching the shape of the public queries. Every public blog
--- read filters to PUBLISHED and SYNCED before anything else, so indexing only
+-- read filters to PUBLISHED with complete authoritative source, so indexing only
 -- those rows keeps the index proportional to what is actually served rather
 -- than to everything ever drafted.
 CREATE INDEX "post_translations_public_listing"
   ON "post_translations" ("locale", "publishedAt" DESC)
-  WHERE "status" = 'PUBLISHED' AND "syncState" = 'SYNCED' AND "archivedAt" IS NULL;
+  WHERE "status" = 'PUBLISHED' AND "bodyMarkdown" IS NOT NULL AND "bodySha256" IS NOT NULL AND "archivedAt" IS NULL;
 
 CREATE INDEX "post_translations_public_slug"
   ON "post_translations" ("locale", "slug")
-  WHERE "status" = 'PUBLISHED' AND "syncState" = 'SYNCED' AND "archivedAt" IS NULL;
+  WHERE "status" = 'PUBLISHED' AND "bodyMarkdown" IS NOT NULL AND "bodySha256" IS NOT NULL AND "archivedAt" IS NULL;
 
 -- The scheduler's only query: what is due to publish now.
 CREATE INDEX "post_translations_due_for_publication"
   ON "post_translations" ("scheduledFor")
   WHERE "status" = 'SCHEDULED';
-
--- The dashboard's degraded-content query.
-CREATE INDEX "post_translations_degraded"
-  ON "post_translations" ("syncState", "updatedAt" DESC)
-  WHERE "syncState" <> 'SYNCED';
 
 -- ---------------------------------------------------------------------------
 -- Content job queue

@@ -14,7 +14,7 @@
  * - `common` — IDs, locales, slugs, scalar values, pagination, errors
  * - `appearance` — theme, blog typography, motion, and the preferences cookie
  * - `auth` — credentials, password policy, sessions, CSRF, WebAuthn
- * - `content` — article frontmatter and content-store sync state
+ * - `content` — article frontmatter, source integrity, and invalidation
  * - `blog` — the article lifecycle commands
  */
 export * from "./appearance/index.js";

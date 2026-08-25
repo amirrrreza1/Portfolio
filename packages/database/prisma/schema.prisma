@@ -5,11 +5,10 @@
 //
 // Two rules shape everything below and are worth stating once:
 //
-//   1. PostgreSQL is authoritative for everything EXCEPT article body text,
-//      which lives in Git (ADR-003). For articles this schema holds a derived
-//      index: identity, taxonomy, realized publication state, the Git blob SHA,
-//      and a render cache. `renderedHtml` is never written from a request
-//      payload and is discarded rather than trusted when its source changes.
+//   1. PostgreSQL is authoritative for complete article Markdown, metadata,
+//      publication state, revisions, and render provenance (ADR-015). MinIO
+//      stores binary media only. `renderedHtml` is never accepted from a
+//      request and is discarded rather than trusted when its source changes.
 //
 //   2. Translatable fields are stored per locale, never concatenated. Portfolio
 //      content requires English and falls back to it; article translations do
@@ -101,35 +100,6 @@ enum TranslationStatus {
 
 /// Anything other than SYNCED is surfaced on the admin dashboard and excludes
 /// the translation from newly generated feeds and sitemaps.
-enum SyncState {
-  SYNCED
-  PENDING
-  SYNC_FAILED
-  MISSING_IN_GIT
-  FRONTMATTER_DRIFT
-}
-
-enum SyncTrigger {
-  ADMIN_SAVE
-  WEBHOOK
-  RECONCILE
-  SCHEDULER_BOT
-  IMPORT
-}
-
-enum SyncOutcome {
-  SUCCESS
-  PARTIAL
-  FAILURE
-}
-
-enum ContentWriteOperationState {
-  PENDING
-  GIT_COMMITTED
-  APPLIED
-  FAILED
-}
-
 enum OutboxState {
   PENDING
   DELIVERED
@@ -140,12 +110,6 @@ enum OutboxState {
 /// so an unknown kind is a rejected job rather than a job that runs the wrong
 /// handler.
 enum ContentJobKind {
-  /// A webhook fired. The payload carries no article data (CONTENT_PIPELINE.md
-  /// §7): the worker re-reads the branch head from Git.
-  WEBHOOK_RECONCILE
-  /// The scheduler's periodic whole-tree pass, so a missed webhook self-heals.
-  SCHEDULED_RECONCILE
-  /// A translation whose scheduledFor has arrived.
   PUBLISH_DUE
 }
 
@@ -729,7 +693,7 @@ model ResumeVersion {
 }
 
 // ---------------------------------------------------------------------------
-// Blog index over the Git content store
+// PostgreSQL-native blog content and publication state
 // ---------------------------------------------------------------------------
 
 /// Carries only what is shared across languages: identity, authorship,
@@ -763,44 +727,30 @@ model Post {
 }
 
 model PostTranslation {
-  id       String @id @default(cuid(2))
-  postId   String
-  locale   Locale
-  title    String
-  /// Unique per locale, not globally: English and Persian may coincidentally
-  /// share a slug and that is not a conflict.
-  slug     String
-  excerpt  String?
-
+  id             String @id @default(cuid(2))
+  postId         String
+  locale         Locale
+  title          String
+  slug           String
+  excerpt        String?
   seoTitle       String?
   seoDescription String?
   canonicalUrl   String?
   socialImageId  String?
 
   status       TranslationStatus @default(DRAFT)
-  /// A CHECK constraint enforces the status/timestamp invariants, so a
-  /// PUBLISHED row without publishedAt cannot exist even if application code
-  /// has a bug.
   publishedAt  DateTime?         @db.Timestamptz(6)
   scheduledFor DateTime?         @db.Timestamptz(6)
 
+  /// Nullable only so the forward migration does not invent source for legacy
+  /// Git-index rows. New saves require a nonempty body and digest; public reads
+  /// fail closed until old rows are explicitly reimported.
+  bodyMarkdown  String?
+  bodySha256    String?
   readingMinutes Int?
   headingTree    Json?
-
-  /// Render cache, valid only while sourceBlobSha AND rendererVersion both
-  /// match. Never written from a request payload, and regenerable from Git, so
-  /// it is excluded from backups by policy rather than by accident.
   renderedHtml    String?
   rendererVersion String?
-
-  /// Git blob SHA of the body file. Doubles as the optimistic-concurrency
-  /// token for body writes: a stale value is a 409 with a diff, not a
-  /// last-write-wins overwrite.
-  sourceBlobSha String?
-
-  syncState                SyncState @default(PENDING)
-  syncError                String?
-  lastSyncedAt             DateTime? @db.Timestamptz(6)
   frontmatterSchemaVersion Int?
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)
@@ -815,13 +765,12 @@ model PostTranslation {
   @@unique([locale, slug])
   @@index([locale, status, publishedAt(sort: Desc)])
   @@index([status, scheduledFor])
-  @@index([syncState])
-  @@index([sourceBlobSha])
+  @@index([bodySha256])
   @@map("post_translations")
 }
 
 /// Editor autosave only. These rows are working state, never a publication
-/// source, and are deleted once their content is committed to Git. Draft
+/// source, and are deleted once their content is explicitly saved. Draft
 /// bodies are excluded from revision snapshots.
 model PostDraft {
   id            String   @id @default(cuid(2))
@@ -832,7 +781,7 @@ model PostDraft {
   frontmatter   Json?
   /// What the author started from, so a conflict can be shown as a diff
   /// rather than as "someone else changed this, good luck".
-  baseBlobSha   String?
+  baseVersion   Int?
   createdAt     DateTime @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @db.Timestamptz(6)
 
@@ -948,69 +897,7 @@ model SlugRedirect {
   @@map("slug_redirects")
 }
 
-/// Append-only operational history of the content store, used for drift
-/// investigation and the dashboard's last-successful-reconciliation indicator.
-/// Contains no body text.
-model ContentSyncLog {
-  id             String      @id @default(cuid(2))
-  commitSha      String?
-  trigger        SyncTrigger
-  affectedPaths  String[]
-  outcome        SyncOutcome
-  errorSummary   String?
-  startedAt      DateTime    @default(now()) @db.Timestamptz(6)
-  finishedAt     DateTime?   @db.Timestamptz(6)
-
-  @@index([startedAt(sort: Desc)])
-  @@index([outcome, startedAt(sort: Desc)])
-  @@map("content_sync_logs")
-}
-
-/// Durable intent for a Git write. The idempotency key is user/request scoped;
-/// retries discover the commit rather than issuing another write.
-model ContentWriteOperation {
-  id             String                     @id @default(cuid(2))
-  idempotencyKey String                     @unique
-  postId         String
-  locale         Locale
-  path           String
-  expectedBlobSha String?
-  payloadSha256  String
-  commitSha      String?
-  state          ContentWriteOperationState @default(PENDING)
-  failureReason  String?
-  createdAt      DateTime                   @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime                   @updatedAt @db.Timestamptz(6)
-
-  @@index([postId, locale])
-  @@index([state, updatedAt])
-  @@map("content_write_operations")
-}
-
-/// A unique commit/path means webhook, retry, and reconciliation cannot create
-/// two revisions or outbox messages for the same Git blob application.
-model ContentApplyLedger {
-  id        String   @id @default(cuid(2))
-  commitSha String
-  path      String
-  blobSha   String
-  appliedAt DateTime @default(now()) @db.Timestamptz(6)
-
-  @@unique([commitSha, path])
-  @@index([blobSha])
-  @@map("content_apply_ledger")
-}
-
-model WebhookDelivery {
-  deliveryId String   @id
-  expiresAt  DateTime @db.Timestamptz(6)
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-
-  @@index([expiresAt])
-  @@map("webhook_deliveries")
-}
-
-/// The durable queue from [ADR-013](../../../../docs/DECISIONS.md#adr-013--postgresql-backed-jobs-with-dedicated-sync-and-scheduler-workers).
+/// Durable scheduled-publication queue retained by ADR-015.
 ///
 /// PostgreSQL is the queue. Workers claim with `FOR UPDATE SKIP LOCKED`, hold a
 /// lease rather than a connection, and a worker killed mid-job is recovered by
@@ -1020,8 +907,8 @@ model WebhookDelivery {
 /// cannot express, and both are load-bearing:
 ///
 ///   - unique `lockKey` while CLAIMED, which is what actually serializes work
-///     per post. Ordering matters — an apply for a translation must not overtake
-///     an earlier one — and enforcing it in the database means two workers
+///     per translation. Ordering prevents two publication transitions from
+///     interleaving, and enforcing it in the database means two workers
 ///     racing produces a unique violation the loser retries, rather than two
 ///     handlers interleaving.
 ///   - unique `dedupeKey` while PENDING, so ten webhooks in a burst collapse
@@ -1058,7 +945,7 @@ model ContentJob {
 
 model ContentInvalidationOutbox {
   id          String      @id @default(cuid(2))
-  operationId String?
+
   cacheTag    String
   payload     Json
   state       OutboxState @default(PENDING)

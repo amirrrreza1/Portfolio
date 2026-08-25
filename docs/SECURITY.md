@@ -8,16 +8,16 @@ No system can promise “maximum security.” This document establishes defense 
 
 ## 2. Trust boundaries and sensitive assets
 
-Untrusted inputs include every browser value, Markdown document, YAML frontmatter block, **file read from the content repository**, appearance preferences cookie, locale path segment, URL, uploaded file, request header, proxy header, database row created from old data, webhook/invalidation request, and third-party API response.
+Untrusted inputs include every browser value, Markdown document, YAML frontmatter block, uploaded/imported Markdown source, appearance preferences cookie, locale path segment, URL, uploaded file, request header, proxy header, database row created from old data, signed invalidation request, and third-party API response.
 
-A file in the content repository is untrusted **even though it is in our own repository**. It may arrive by a direct push, a merged pull request, or a compromised Git account, and it is therefore validated on every sync exactly as an upload would be.
+Author-submitted or imported Markdown is untrusted even when created by an authenticated owner. Every save/import is validated and rendered through the bounded production sanitizer before an atomic PostgreSQL transaction can change public output.
 
 Highest-value assets:
 
 - owner/editor credentials, WebAuthn records, recovery codes, and sessions
 - unpublished posts and preview links
 - database/storage/mail credentials
-- **the content-repository write credential and the webhook secret**
+- independent cache-invalidation signing secrets and publication worker credentials
 - content integrity, redirects, resume and downloadable files
 - contact names, email addresses, and message bodies
 - audit/revision history and backups
@@ -59,8 +59,6 @@ Highest-value assets:
 - Only accept mutation content types that the endpoint expects; reject ambiguous form/simple requests where not required.
 - Login CSRF is handled by origin checks and pre-auth flow binding.
 - Signed server-to-server cache invalidation includes timestamp, nonce, body digest, constant-time signature comparison, a narrow clock window, and replay storage.
-- The Git webhook endpoint uses the same signature discipline over the **raw request body** before any parsing, with its own independent secret. It is excluded from session middleware and CSRF, because it is signature-authenticated rather than cookie-authenticated, and a browser must not be able to reach it with ambient credentials.
-- Webhook payloads are treated as triggers, not data. Affected content is always re-read from the Git API by commit SHA and re-validated, so a forged or replayed payload cannot inject content.
 - Proxy trust is configured to the known proxy count/ranges only; client-supplied forwarding headers are otherwise ignored.
 
 ## 7. Input, output, and content safety
@@ -71,7 +69,7 @@ Highest-value assets:
 - Rendering uses a schema-based HTML sanitizer as the **final** transform in the pipeline, so no later step can reintroduce unsafe output. Links reject `javascript:`, `data:` (except an explicit safe image policy), and unsafe protocols.
 - Directives are a closed allowlist with validated attribute schemas ([CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §9). No directive may emit a script, a style attribute, an event handler, or an unsandboxed iframe. An unknown directive is a write-time validation error, so it can never reach a reader.
 - YAML frontmatter is parsed in safe mode: no custom tags, no arbitrary object construction, bounded document size, bounded nesting, and a bounded alias-expansion budget to prevent entity-expansion denial of service.
-- **Path construction is server-side from validated identifiers only.** No user-supplied string contributes a path segment. Any resolved content path outside `content/`, any non-allowlisted locale filename, any symlink, and any unicode-normalization trick in an identifier is rejected with an audit event.
+- **Import/export filenames and media identifiers are constructed server-side from validated identifiers only.** Traversal, absolute paths, symlinks, non-allowlisted locales, and unicode-normalization ambiguity are rejected.
 - React output escaping remains enabled. `dangerouslySetInnerHTML` is prohibited except a reviewed JSON-LD serializer that escapes `<` and exactly one reviewed sanitized-content boundary. Both are covered by XSS-corpus tests.
 - Markdown parsing, sanitizing, and highlighting happen server-side only. No parser or sanitizer is shipped to the browser, so client-side rendering cannot become a bypass.
 - Appearance preferences are keys selecting static, authored CSS. **No stored value is ever interpolated into a `style` attribute, a `<style>` block, a CSS custom property, or a font URL.** This is what prevents the appearance feature from becoming a CSS injection vector.
@@ -163,9 +161,9 @@ Release is blocked until all applicable items pass:
 - Markdown XSS and unsafe-link corpus tests, plus unknown-directive and directive-attribute injection tests
 - YAML frontmatter safety tests: oversized documents, deep nesting, alias expansion, unsafe tags
 - content path-safety tests: traversal, absolute paths, symlinks, non-allowlisted locale filenames, unicode-normalization tricks in identifiers
-- Git webhook tests: forged signature, replayed payload, timestamp outside the window, payload contents ignored as data
-- content-store failure tests: invalid file in the repository does not change live output; a deleted file does not silently unpublish; Git unavailable blocks saves but not reads or scheduled publication; stale `If-Match` writes nothing
-- commit-path tests: a commit outside `content/` is refused and audited; commit metadata contains no user input
+- Signed invalidation tests: forged signature, replayed nonce, stale timestamp, and body digest mismatch.
+- Article transaction tests: invalid Markdown/reference, stale integer version, failed rendering, and forced transaction failure never change live output or create partial revisions/outbox entries.
+- Publication tests: authenticated-only writes, owner-only lifecycle transitions, idempotent scheduling, revision history, and source-digest/render-integrity enforcement.
 - appearance tests: tampered, oversized, and disabled-option cookie values fall back safely; no stored value reaches CSS; public responses do not send `Vary: Cookie`
 - upload polyglot, spoofed MIME, oversized, traversal filename, malformed image/PDF tests, plus `.mdx` uploads containing imports, exports, JSX, and raw HTML
 - injection and malformed pagination/filter property tests
@@ -177,38 +175,27 @@ Release is blocked until all applicable items pass:
 
 Use an established verification standard such as OWASP ASVS as the implementation checklist, and obtain an independent review before exposing the admin panel to the public internet.
 
-## 16. Content-store security
+## 16. PostgreSQL-native article security
 
-Storing article bodies in Git introduces a write-capable credential for a repository that also holds application code. That is the central risk of [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies) and it is contained as follows.
+[ADR-015](DECISIONS.md#adr-015--postgresql-native-article-authoring-and-publication) eliminates the write-capable GitHub App credential, public content webhook, protected content branch, and cross-store synchronization attack surface. PostgreSQL is the single authority for article source, metadata, publication state, and revision history.
 
-### Credential scope
+### Authorization and mutation boundaries
 
-- Use a **GitHub App installation token**, not a personal access token. Installation tokens are short-lived, automatically expiring, and scoped to an installation rather than to a human account.
-- The installation is limited to **one repository** with **contents: write** as its only write permission. No workflow, package, admin, or actions permission.
-- The app private key is server-only, mounted at runtime, never a build argument, image layer, or repository file. It is redacted from every log and error report.
-- Only the `content-store` module may hold or use the credential. No other API module, no migration script, and nothing in the web app may reach it.
-- The credential MUST NOT have permission to modify workflow files. A content credential that can write CI configuration is a code-execution credential, which defeats the whole boundary.
-- Rotation is documented and exercised. Compromise response: revoke the installation, rotate the app key and webhook secret, audit the commit history of the content branch, and re-validate every file against its recorded blob SHA.
+- Do not expose article mutation endpoints until M6 authentication, session, CSRF, role, and recent-authentication controls are verified.
+- Validate every authoring/import payload and existing taxonomy/media reference before persistence. Never accept rendered HTML, source digest, version increments, or publication authority from a browser.
+- Use integer optimistic versions; stale writes return a bounded conflict response and cannot overwrite newer Markdown.
+- Persist source, source SHA-256, sanitized render, version, revision/audit records, and cache-outbox intent in one PostgreSQL transaction. A failed transaction leaves all previous public state unchanged.
 
-### Commit-path controls
+### Source and rendering integrity
 
-- Commits are constrained to paths under `content/` by explicit prefix validation before the request is made, in addition to whatever the host enforces. A commit attempt outside that prefix is a security event, not a validation error.
-- Commit messages, author names, and bot identities come from fixed templates and configuration, never from user input, since commit metadata is public in a public repository.
-- Commit messages MUST NOT contain draft text, contact messages, security details, or secrets.
-- Bot commits use a distinct identity so human and automated authorship stay distinguishable in the history.
-- Branch protection on the deployment branch prevents the content credential from being a route to modifying application code, even if the prefix check were bypassed.
+- Normalize and bound Markdown input; reject executable MDX, unsafe HTML, unknown directives, unsafe URLs, malformed frontmatter, and unsupported locales.
+- Compute SHA-256 from the authoritative normalized UTF-8 body on the server and bind rendered HTML to that digest and the current renderer version.
+- Public reads fail closed for missing Markdown, invalid source hashes, stale renderers, unpublished/archived states, and locale mismatches. Raw Markdown, internal digests, versions, drafts, and revision snapshots never appear in public DTOs.
+- Revision restore is a new authenticated validated transaction; immutable audit/revision history is never rewritten.
 
-### Sync-path controls
+### Publication, availability, and recovery
 
-- Every file read from Git is fully re-validated: frontmatter schema, path/locale/ID agreement, taxonomy and media references, directive allowlist, body size, and encoding.
-- A file that fails validation MUST NOT change live output. The translation is flagged, the previous good render stays published, and the owner is notified. **Broken or malicious content in the repository can neither publish itself nor take the site down.**
-- Sync never deletes. A missing file is flagged and requires owner confirmation, so a force-push cannot silently erase published articles.
-- Content-store operations have timeouts, bounded retries with jitter, a per-post queue, and rate-limit backoff, so a Git-host incident cannot exhaust the API.
-- Git unavailability degrades authoring only. Public reads never touch Git, so an outage cannot affect readers.
-- Force-overwriting a conflicting blob is owner-only, requires recent authentication and an acknowledged diff, and is separately audited.
-
-### Availability and integrity
-
-- The render cache is only trusted while it matches the recorded blob SHA and renderer version, so a tampered cache row cannot serve content that no file backs.
-- Reconciliation detects an index row with no file, a file with no index row, a SHA mismatch, and frontmatter drift. It runs on a schedule and is available on demand.
-- Recovery requires both a database backup and a repository clone to agree; a restore is invalid until reconciliation reports zero unexplained differences.
+- Exactly one logical scheduler holds the advisory lock; publication jobs and invalidation delivery use bounded leases, retries, and idempotency.
+- Signed invalidations have independent secrets, bounded timestamps, nonce replay prevention, body digests, and constant-time signature checks.
+- Public reads require no content provider, external content credential, or inbound webhook.
+- Recovery verifies encrypted PostgreSQL article bodies/revisions together with referenced MinIO binaries, source digests, renderer integrity, and bilingual publication visibility.

@@ -14,14 +14,14 @@ gate.
 
 ## Modules
 
-| Import                            | Contents                                                                    |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `@portfolio/contracts`            | Everything below                                                            |
-| `@portfolio/contracts/common`     | IDs, locales, slugs, scalar values, pagination, errors                      |
-| `@portfolio/contracts/appearance` | Theme and blog typography registry, preferences cookie, settings validation |
-| `@portfolio/contracts/auth`       | Password policy, login, WebAuthn, sessions, CSRF, recovery codes            |
-| `@portfolio/contracts/content`    | Article frontmatter and content-store sync state                            |
-| `@portfolio/contracts/blog`       | The article lifecycle commands                                              |
+| Import                            | Contents                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `@portfolio/contracts`            | Everything below                                                                |
+| `@portfolio/contracts/common`     | IDs, locales, slugs, scalar values, pagination, errors                          |
+| `@portfolio/contracts/appearance` | Theme and blog typography registry, preferences cookie, settings validation     |
+| `@portfolio/contracts/auth`       | Password policy, login, WebAuthn, sessions, CSRF, recovery codes                |
+| `@portfolio/contracts/content`    | Article frontmatter, SHA-256 source integrity, and optimistic version conflicts |
+| `@portfolio/contracts/blog`       | The article lifecycle commands                                                  |
 
 ### `common`
 
@@ -53,8 +53,8 @@ pnpm --filter @portfolio/contracts test
 
 ### `content`
 
-- **`frontmatter`** — the [CONTENT_PIPELINE.md](../../docs/CONTENT_PIPELINE.md) §3 contract. The single validation point the editor, the file import, and a direct `git push` all converge on. `.strict()` matters more here than anywhere else: an unknown key means the file was written against a different contract, and silently dropping it is how an author's `draft: true` gets published because the real field is `status`.
-- **`sync`** — sync state, drift reporting, blob SHAs, and conflict payloads. `isDiscoverable` is a function rather than an inline `=== "SYNCED"` so every listing, feed, and sitemap asks the same question.
+- **`frontmatter`** — the [CONTENT_PIPELINE.md](../../docs/CONTENT_PIPELINE.md) §3 contract. The single validation point the editor, validated Markdown import, and deterministic export share. `.strict()` matters more here than anywhere else: an unknown key means the file was written against a different contract, and silently dropping it is how an author's `draft: true` gets published because the real field is `status`.
+- **`integrity`** — SHA-256 source digests and version-based conflict payloads. Published discovery requires valid authoritative Markdown and current renderer provenance.
 
 ### `blog`
 

@@ -4,36 +4,34 @@ This repository is being migrated from a static Next.js portfolio into a secure 
 
 What that means concretely:
 
-- **Blog articles are Markdown files in this repository**, under `content/blog/<postId>/<locale>.md`. They can be written in the admin panel, uploaded as a `.md`/`.mdx` file, or pushed directly with Git — all three paths converge, and publishing never requires a deployment.
+- **Blog articles are Markdown stored directly in PostgreSQL**, with bilingual translations, immutable revisions, version-based conflict protection, and sanitized render caches. They can be written in the admin panel or imported/exported as Markdown files, and publishing never requires a deployment.
 - **Every article exists in English and Persian** as two independent translations. One language is shown at a time; a missing translation is a `404` in that language, not a silent fallback.
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
 - **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
-Where the work stands: the shared packages are built — contracts, Prisma schema, Markdown pipeline, media adapters, legacy migration, Git content store, and authentication primitives — and the public site now has a locale-prefixed shell with server-resolved appearance and a server-side contact path. What has not happened is proof: no migration has been run against a real PostgreSQL, no content has been pushed through a real Git branch, and the admin panel and blog do not exist. Portfolio content still comes from the preserved legacy JSON. [docs/ROADMAP.md](docs/ROADMAP.md) tracks which gates are open and why; [docs/BASELINE_M0.md](docs/BASELINE_M0.md) holds the frozen pre-migration record of the legacy site.
+Where the work stands: shared contracts, Prisma migrations, safe Markdown rendering, media adapters, deterministic legacy migration, public bilingual reads, accessible appearance, and authentication primitives are built. The PostgreSQL/MinIO portfolio migration and public-read boundaries have live evidence. Article persistence is being migrated to the PostgreSQL-native architecture in ADR-015; authenticated admin authoring remains gated on the completed M6 security boundary. [docs/ROADMAP.md](docs/ROADMAP.md) tracks current implementation gates; [docs/BASELINE_M0.md](docs/BASELINE_M0.md) preserves the original legacy baseline.
 
 ## Workspace
 
-| Path                     | Responsibility                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `apps/web`               | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
-| `apps/api`               | NestJS/Fastify API scaffold; all authenticated writes and the only Git credential live here      |
-| `packages/contracts`     | Shared Zod request/response schemas and TypeScript types                                         |
-| `packages/database`      | Prisma schema, migrations, and PostgreSQL client                                                 |
-| `packages/markdown`      | Frontmatter schema, directive allowlist, and the server-side render pipeline                     |
-| `packages/media`         | Private object-store adapters, magic-byte MIME verification, and content-hash media identity     |
-| `packages/migration`     | Legacy JSON preflight, normalization, reconciliation reporting, and the transactional writer     |
-| `packages/content-store` | GitHub App authentication, prefix-confined commits, webhook verification, and reconciliation     |
-| `packages/auth-core`     | Argon2id hashing, opaque session and CSRF tokens, recovery codes, and WebAuthn challenges        |
-| `content/`               | Article bodies as Markdown files — the source of truth for article text. Created in M3           |
-| `infrastructure/docker`  | Production and local Docker assets in the implementation phase                                   |
-| `docs`                   | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
+| Path                    | Responsibility                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `apps/web`              | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
+| `apps/api`              | NestJS/Fastify API; authenticated writes, public reads, and database-native article publication  |
+| `packages/contracts`    | Shared Zod request/response schemas and TypeScript types                                         |
+| `packages/database`     | Prisma schema, migrations, and PostgreSQL client                                                 |
+| `packages/markdown`     | Frontmatter schema, directive allowlist, and the server-side render pipeline                     |
+| `packages/media`        | Private object-store adapters, magic-byte MIME verification, and content-hash media identity     |
+| `packages/migration`    | Legacy JSON preflight, normalization, reconciliation reporting, and the transactional writer     |
+| `packages/auth-core`    | Argon2id hashing, opaque session and CSRF tokens, recovery codes, and WebAuthn challenges        |
+| `infrastructure/docker` | Production and local Docker assets in the implementation phase                                   |
+| `docs`                  | Product, architecture, content, i18n, theming, API, security, SEO, and deployment specifications |
 
 ## Chosen stack
 
 - Frontend: Next.js 16, React 19, Tailwind CSS 4
 - Backend: NestJS 11 with Fastify
 - Database: PostgreSQL through `DATABASE_URL`, accessed with Prisma
-- Content store: this Git repository, written through a repository-scoped GitHub App token
+- Article store: PostgreSQL Markdown bodies, transactional revisions, scheduled publication, and signed cache invalidation
 - Authoring format: GFM Markdown with an allowlisted directive set, sanitized server-side. **MDX is never executed** — see [ADR-004](docs/DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution)
 - Validation: Zod contracts shared by the web and API workspaces
 - Admin authentication: Argon2id password verification plus WebAuthn/passkeys, opaque server-side sessions, and secure cookies

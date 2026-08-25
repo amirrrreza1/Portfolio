@@ -6,7 +6,7 @@ import {
 } from "@portfolio/database";
 
 /**
- * The sync worker's loop, with every dependency injected.
+ * The publication worker loop, with every dependency injected.
  *
  * ADR-013 puts this in its own process so a deploy or a horizontal scale-out
  * cannot duplicate, interrupt, or hide background work. The loop itself is kept
@@ -128,23 +128,19 @@ export async function runContentWorker(
 }
 
 export interface SchedulerOptions {
-  readonly jobs: ContentJobStore;
+  readonly enqueueDue: () => Promise<number>;
   readonly intervalMs: number;
   readonly sleep: (ms: number) => Promise<void>;
   readonly running: () => boolean;
-  readonly log?: (event: { readonly type: "enqueued" | "skipped" }) => void;
+  readonly log?: (event: {
+    readonly type: "enqueued" | "skipped";
+    readonly count: number;
+  }) => void;
 }
 
 /**
- * The periodic whole-tree reconciliation.
- *
- * This is what makes a missed webhook self-heal (CONTENT_PIPELINE.md §7), so it
- * is not an optimisation — without it, one dropped delivery leaves an article
- * permanently absent from the index with nothing reporting it.
- *
- * The dedupe key means a tick that lands while the previous reconciliation is
- * still queued does nothing, rather than stacking passes that all read the same
- * tree.
+ * Periodically scans PostgreSQL for due scheduled translations and enqueues
+ * idempotent per-translation publication work.
  */
 export async function runContentScheduler(
   options: SchedulerOptions
@@ -153,35 +149,16 @@ export async function runContentScheduler(
   let skipped = 0;
 
   while (options.running()) {
-    const outcome = await options.jobs.enqueue({
-      kind: "SCHEDULED_RECONCILE",
-      lockKey: CONTENT_HEAD_LOCK_KEY,
-      dedupeKey: SCHEDULED_RECONCILE_DEDUPE_KEY,
-      payload: { reason: "schedule" },
-    });
-    if (outcome === "queued") {
-      enqueued += 1;
-      options.log?.({ type: "enqueued" });
+    const count = await options.enqueueDue();
+    if (count > 0) {
+      enqueued += count;
+      options.log?.({ type: "enqueued", count });
     } else {
       skipped += 1;
-      options.log?.({ type: "skipped" });
+      options.log?.({ type: "skipped", count: 0 });
     }
     await options.sleep(options.intervalMs);
   }
 
   return { enqueued, skipped };
 }
-
-/**
- * Every branch-head reconciliation shares one lock key.
- *
- * Two whole-tree passes at once would read the same commit and race each other
- * into the apply ledger. The ledger would keep it correct, but the second pass
- * is pure waste against a rate-limited Git API.
- */
-export const CONTENT_HEAD_LOCK_KEY = "content:head";
-
-export const SCHEDULED_RECONCILE_DEDUPE_KEY = "content:head:scheduled";
-
-/** Webhooks dedupe separately, so a push is never folded into a stale tick. */
-export const WEBHOOK_RECONCILE_DEDUPE_KEY = "content:head:webhook";

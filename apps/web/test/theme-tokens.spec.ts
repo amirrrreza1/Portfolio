@@ -238,6 +238,35 @@ describe("theme tokens in CSS", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it.each(["light", "dark"] as const)(
+    "selects %s Shiki tokens for explicit, resolved, and no-script system themes",
+    async (theme) => {
+      const css = await readFile(globalsCss, "utf8");
+      const resolvedRule = css.match(
+        new RegExp(
+          `:root\\[data-theme="${theme}"\\] \\.code-block span,\\s*` +
+            `:root\\[data-theme="system"\\]\\[data-system-theme="${theme}"\\] ` +
+            `\\.code-block span\\s*\\{([^}]*)\\}`
+        )
+      );
+      const systemFallbackRule = css.match(
+        new RegExp(
+          `@media \\(prefers-color-scheme: ${theme}\\)\\s*\\{\\s*` +
+            `:root\\[data-theme="system"\\]:not\\(\\[data-system-theme\\]\\) ` +
+            `\\.code-block span\\s*\\{([^}]*)\\}`
+        )
+      );
+
+      expect(resolvedRule?.[1] ?? "", `${theme} Shiki theme rule`).toContain(
+        `color: var(--shiki-${theme})`
+      );
+      expect(
+        systemFallbackRule?.[1] ?? "",
+        `${theme} Shiki no-script system fallback`
+      ).toContain(`color: var(--shiki-${theme})`);
+    }
+  );
+
   it("registers every token with Tailwind as a reference, never a literal", async () => {
     const css = await readFile(globalsCss, "utf8");
     // The invariant is the `var()`. A literal in the @theme block is baked into

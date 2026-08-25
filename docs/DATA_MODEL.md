@@ -2,7 +2,7 @@
 
 ## 1. Database choice and connection
 
-PostgreSQL is the source of truth **for everything except article body text**, which lives in the Git repository per [ADR-003](DECISIONS.md#adr-003--git-repository-is-the-source-of-truth-for-article-bodies). For article bodies the database holds a derived index: identity, taxonomy, realized publication state, the Git blob SHA, and the sanitized render cache. Portfolio content, identity, media metadata, and all operational state are database-authoritative.
+PostgreSQL is the sole source of truth for portfolio content, complete Markdown article bodies, localized metadata, publication state, revision history, identity, media metadata, and operational state under [ADR-015](DECISIONS.md#adr-015--postgresql-native-article-authoring-and-publication). MinIO stores binary media only.
 
 Prisma owns the schema and migrations in `packages/database`. The application receives one server-only connection string:
 
@@ -25,7 +25,7 @@ Media binaries are not stored in PostgreSQL. The database stores object metadata
 - Flexible section payloads may use `jsonb`, but each section key has a versioned Zod schema. Arbitrary unvalidated JSON is forbidden.
 - URLs are stored as absolute `https` URLs except internal paths; unsafe schemes are rejected.
 - **Translatable fields** are stored per locale, never as a single concatenated value. Locale codes come from the closed allowlist in [I18N.md](I18N.md) §1.
-- **Rendered HTML is a cache, never an input.** Any column holding rendered HTML records the source identity (blob SHA or record version) plus a `rendererVersion`, and is discarded rather than trusted when either changes.
+- **Rendered HTML is a cache, never an input.** Any column holding rendered HTML records the source identity (SHA-256 body digest or record version) plus a `rendererVersion`, and is discarded rather than trusted when either changes.
 - Colour values are validated `#rrggbb` strings, and are checked for contrast against every enabled theme before they can be saved.
 
 ## 3. Identity and security models
@@ -143,7 +143,7 @@ Article bodies are **not** stored in PostgreSQL. `Post` and `PostTranslation` ar
 
 ### `PostTranslation`
 
-`id`, `postId`, `locale`, `title`, `slug`, `excerpt`, `seoTitle`, `seoDescription`, `canonicalUrl`, `socialImageId`, `status`, `publishedAt`, `scheduledFor`, `readingMinutes`, `headingTree` (jsonb), `renderedHtml`, `rendererVersion`, `sourceBlobSha`, `syncState`, `syncError`, `lastSyncedAt`, `frontmatterSchemaVersion`, version, timestamps, archivedAt.
+`id`, `postId`, `locale`, `title`, `slug`, `excerpt`, `seoTitle`, `seoDescription`, `canonicalUrl`, `socialImageId`, `status`, `publishedAt`, `scheduledFor`, `readingMinutes`, `headingTree` (jsonb), `bodyMarkdown`, `bodySha256`, `renderedHtml`, `rendererVersion`, `frontmatterSchemaVersion`, version, timestamps, archivedAt.
 
 Rules:
 
@@ -153,32 +153,30 @@ Rules:
 - Status is **per translation**: `DRAFT` is not publicly readable; `SCHEDULED` has a future `scheduledFor` and no `publishedAt`; `PUBLISHED` has `publishedAt` and appears in that locale's feeds and sitemap; `ARCHIVED` is absent from discovery, with prior URLs resolving to an explicit redirect or `410` and never leaking a draft.
 - A `Post` MUST have at least one `PostTranslation`. A `Post` whose every translation is non-public is itself non-public.
 - **No fallback.** A locale without a `PUBLISHED` translation is not served in that locale, per [ADR-005](DECISIONS.md#adr-005--bilingual-articles-as-per-locale-translations-of-one-post).
-- `sourceBlobSha` is the Git blob SHA of the body file and doubles as the optimistic-concurrency token for body writes.
-- `renderedHtml` is a cache produced by the pipeline in [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8, valid only while `sourceBlobSha` and `rendererVersion` both match. It is never written from a request payload.
-- `syncState` ∈ `{SYNCED, PENDING, SYNC_FAILED, MISSING_IN_GIT, FRONTMATTER_DRIFT}`. Anything other than `SYNCED` is surfaced on the admin dashboard and excludes the translation from newly generated feeds and sitemaps.
+- `bodyMarkdown` is the authoritative normalized Markdown source, `bodySha256` is its normalized UTF-8 SHA-256 digest, and `version` is the optimistic-concurrency token.
+- `renderedHtml` is a cache produced by the pipeline in [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8, valid only while `bodySha256` matches the authoritative Markdown and `rendererVersion` is current. It is never written from a request payload.
+- Incomplete source metadata, invalid source hashes, or stale renderer versions exclude a translation from public discovery and surface an owner-visible integrity warning.
 - A check constraint enforces the status/timestamp invariants, so a `PUBLISHED` row without `publishedAt` cannot exist.
 
 ### `PostDraft`
 
-`id`, `postId`, `locale`, `authorId`, `bodyMarkdown`, `frontmatter` (jsonb), `baseBlobSha`, `updatedAt`.
+`id`, `postId`, `locale`, `authorId`, `bodyMarkdown`, `frontmatter` (jsonb), `baseVersion`, `updatedAt`.
 
-Editor autosave only. Unique on `(postId, locale, authorId)`. These rows are working state, never a publication source, and are deleted once their content is committed. `baseBlobSha` records what the author started from so a conflict can be diffed. Draft bodies are excluded from revision snapshots.
+Editor autosave only. Unique on `(postId, locale, authorId)`. These rows are working state, never a publication source, and are deleted once their content is saved. `baseVersion` records the integer translation revision the author started from. Draft bodies are excluded from revision snapshots.
 
 ### `Category`, `Tag`, `CategoryTranslation`, `TagTranslation`, and `PostTag`
 
 Categories and tags have a stable `key`, enabled state, sort order, and timestamps. Human-readable name, slug, and description are per locale in `CategoryTranslation(categoryId, locale, name, slug, description)` and `TagTranslation(tagId, locale, name, slug, description)`, each unique on `(locale, slug)`.
 
-Taxonomy is shared across a post's translations: a post has zero or one category and many tags through `PostTag(postId, tagId)` with a composite unique key. Sync never creates taxonomy implicitly — an unknown category or tag in frontmatter is a reported sync error.
+Taxonomy is shared across a post's translations: a post has zero or one category and many tags through `PostTag(postId, tagId)` with a composite unique key. Article saves/imports never create taxonomy implicitly; unknown category or tag references are rejected transactionally.
 
 ### `SlugRedirect`
 
 `id`, `locale`, unique `(locale, fromPath)`, `toPath`, status code restricted to `301` or `308`, source entity ID/type, createdBy, createdAt. Redirect chains and loops are rejected; changes collapse to the final target. A slug change in one locale creates a redirect only within that locale.
 
-### `ContentSyncLog`
+### Publication jobs and invalidation outbox
 
-`id`, `commitSha`, `trigger` ∈ `{ADMIN_SAVE, WEBHOOK, RECONCILE, SCHEDULER_BOT, IMPORT}`, affected paths, outcome, error summary, `startedAt`, `finishedAt`.
-
-Append-only operational history of the content store, used for drift investigation and for the dashboard's last-successful-reconciliation indicator. Contains no body text.
+PostgreSQL-backed publication jobs track due scheduled translations with bounded leases, retries, and dead-letter visibility. The transactional cache-invalidation outbox records signed-delivery work without storing article bodies or introducing a second source of truth.
 
 ## 6. Governance and operational models
 
@@ -222,8 +220,8 @@ erDiagram
 - Unique `(postId, locale)` and `(locale, slug)` on `PostTranslation`; unique `(locale, slug)` on category and tag translations; unique project slug.
 - Unique `(locale, fromPath)` on `SlugRedirect`.
 - Index `PostTranslation(locale, status, publishedAt DESC)` for listings and feeds, and `(status, scheduledFor)` for the scheduler.
-- Index `PostTranslation(syncState)` for the dashboard's degraded-content query.
-- Index `PostTranslation(sourceBlobSha)` for reconciliation lookups.
+- Index scheduled publication status/time for the publication scheduler.
+- Index `PostTranslation(bodySha256)` for source-integrity diagnostics where needed.
 - Index enabled/sort-order columns used for portfolio reads, and `(entityId, locale)` on every translation table.
 - Index session token hash and expiration/revocation fields.
 - Index audit/revision by target and descending creation time.
@@ -235,8 +233,8 @@ erDiagram
 ## 9. Backup and retention
 
 - Daily encrypted database backups plus provider point-in-time recovery where available.
-- **Article bodies have a second, independent recovery path:** a clone of the content repository. A valid restore requires the database backup _and_ a repository clone to reconcile — every index row matching a file at its recorded blob SHA, every file having an index row, and every published translation rendering. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
-- `renderedHtml` is a cache and need not be backed up; it is regenerable from Git. It MUST NOT be the only surviving copy of any article.
+- **Article bodies, metadata, drafts, and revision history are fully contained in encrypted PostgreSQL backups.** A valid restore additionally verifies every referenced MinIO object, article source SHA-256, and published render; no repository clone is required. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §12.
+- `renderedHtml` is a cache and need not be backed up; it is regenerable from the authoritative PostgreSQL Markdown source. It MUST NOT be the only surviving copy of any article.
 - `PostDraft` rows are working state with a short retention window and are excluded from revision snapshots.
 - MinIO versioning or equivalent retention for resume/blog assets.
 - Contact messages are automatically purged after the configured window.

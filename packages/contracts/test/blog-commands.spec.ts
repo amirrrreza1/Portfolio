@@ -13,16 +13,10 @@ import {
   unpublishTranslationSchema,
   warningsSatisfied,
 } from "../src/blog/commands.js";
-import {
-  blobShaSchema,
-  isDiscoverable,
-  SYNC_STATE_MEANING,
-  syncStateSchema,
-} from "../src/content/sync.js";
 import { CURRENT_FRONTMATTER_VERSION } from "../src/content/frontmatter.js";
 
 const POST_ID = "clx8k2p9q0000abcd1234efg";
-const SHA = "a".repeat(40);
+const VERSION = 3;
 
 const frontmatter = {
   schemaVersion: CURRENT_FRONTMATTER_VERSION,
@@ -53,27 +47,27 @@ describe("bodyMarkdownSchema", () => {
 });
 
 describe("saveTranslationSchema", () => {
-  it("accepts a save with a base SHA", () => {
+  it("accepts a save with a base version", () => {
     expect(
       saveTranslationSchema.safeParse({
         frontmatter,
         body: "## Heading\n\nText.",
-        baseSha: SHA,
+        baseVersion: VERSION,
       }).success
     ).toBe(true);
   });
 
-  it("accepts a null base SHA for a first save", () => {
+  it("accepts a null base version for a first save", () => {
     expect(
       saveTranslationSchema.safeParse({
         frontmatter,
         body: "## Heading",
-        baseSha: null,
+        baseVersion: null,
       }).success
     ).toBe(true);
   });
 
-  it("requires baseSha to be present even when null", () => {
+  it("requires baseVersion to be present even when null", () => {
     // An omitted field is indistinguishable from a client that forgot it, and
     // guessing wrong silently overwrites someone else's work.
     expect(
@@ -81,12 +75,12 @@ describe("saveTranslationSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects a malformed blob SHA", () => {
+  it("rejects a malformed blob version", () => {
     expect(
       saveTranslationSchema.safeParse({
         frontmatter,
         body: "## H",
-        baseSha: "not-a-sha",
+        baseVersion: "not-a-sha",
       }).success
     ).toBe(false);
   });
@@ -96,7 +90,7 @@ describe("saveTranslationSchema", () => {
       saveTranslationSchema.safeParse({
         frontmatter: { ...frontmatter, status: "published" },
         body: "## H",
-        baseSha: SHA,
+        baseVersion: VERSION,
       }).success
     ).toBe(false);
   });
@@ -110,7 +104,7 @@ describe("autosaveDraftSchema", () => {
       autosaveDraftSchema.safeParse({
         body: "half a sentence",
         frontmatter: { title: "" },
-        baseSha: null,
+        baseVersion: null,
       }).success
     ).toBe(true);
   });
@@ -119,7 +113,7 @@ describe("autosaveDraftSchema", () => {
     expect(
       autosaveDraftSchema.safeParse({
         body: "text",
-        baseSha: null,
+        baseVersion: null,
         status: "published",
       }).success
     ).toBe(false);
@@ -128,10 +122,9 @@ describe("autosaveDraftSchema", () => {
 
 describe("publishTranslationSchema", () => {
   it("accepts a publish command", () => {
-    expect(
-      publishTranslationSchema.safeParse({ version: 3, expectedSha: SHA })
-        .success
-    ).toBe(true);
+    expect(publishTranslationSchema.safeParse({ version: 3 }).success).toBe(
+      true
+    );
   });
 
   it("carries no client-supplied timestamp", () => {
@@ -140,16 +133,13 @@ describe("publishTranslationSchema", () => {
     expect(
       publishTranslationSchema.safeParse({
         version: 3,
-        expectedSha: SHA,
         publishedAt: "2020-01-01T00:00:00Z",
       }).success
     ).toBe(false);
   });
 
   it("requires the concurrency token", () => {
-    expect(publishTranslationSchema.safeParse({ version: 3 }).success).toBe(
-      false
-    );
+    expect(publishTranslationSchema.safeParse({}).success).toBe(false);
   });
 });
 
@@ -161,7 +151,6 @@ describe("scheduleTranslationSchema", () => {
     expect(
       scheduleTranslationSchema.safeParse({
         version: 1,
-        expectedSha: SHA,
         scheduledFor: future,
       }).success
     ).toBe(true);
@@ -173,7 +162,6 @@ describe("scheduleTranslationSchema", () => {
     expect(
       scheduleTranslationSchema.safeParse({
         version: 1,
-        expectedSha: SHA,
         scheduledFor: past,
       }).success
     ).toBe(false);
@@ -183,7 +171,6 @@ describe("scheduleTranslationSchema", () => {
     expect(
       scheduleTranslationSchema.safeParse({
         version: 1,
-        expectedSha: SHA,
         scheduledFor: "next tuesday",
       }).success
     ).toBe(false);
@@ -265,36 +252,5 @@ describe("publish checklist", () => {
     expect(
       warningsSatisfied({ blockers: [], warnings: [] }, ["SHORT_BODY"])
     ).toBe(true);
-  });
-});
-
-describe("sync state", () => {
-  it("treats only SYNCED as discoverable", () => {
-    for (const state of syncStateSchema.options) {
-      expect(isDiscoverable(state)).toBe(state === "SYNCED");
-    }
-  });
-
-  it("explains every state for the dashboard", () => {
-    for (const state of syncStateSchema.options) {
-      expect(SYNC_STATE_MEANING[state].length).toBeGreaterThan(0);
-    }
-  });
-});
-
-describe("blobShaSchema", () => {
-  it("accepts SHA-1 and SHA-256 lengths", () => {
-    // GitHub is migrating; accepting only one length breaks on whichever side
-    // of that transition this was not written for.
-    expect(blobShaSchema.safeParse("a".repeat(40)).success).toBe(true);
-    expect(blobShaSchema.safeParse("a".repeat(64)).success).toBe(true);
-  });
-
-  it.each([39, 41, 63, 65])("rejects length %s", (length) => {
-    expect(blobShaSchema.safeParse("a".repeat(length)).success).toBe(false);
-  });
-
-  it("rejects uppercase hex", () => {
-    expect(blobShaSchema.safeParse("A".repeat(40)).success).toBe(false);
   });
 });

@@ -34,7 +34,7 @@ export function publicCacheTag(namespace: string, locale: Locale): string {
   return `public:${namespace}:${locale}`;
 }
 
-/** Namespaces that a publication or sync transaction can invalidate. */
+/** Namespaces that a publication or content transaction can invalidate. */
 export const INVALIDATION_NAMESPACES = [
   "site",
   "home",
@@ -94,7 +94,7 @@ export const invalidationEventSchema = z.object({
     "unpublish",
     "redirect",
     "resume-activate",
-    "sync",
+    "save",
   ]),
   /** Bounded: an event is a purge instruction, not a bulk-purge channel. */
   tags: z.array(z.string().trim().min(1).max(200)).min(1).max(50),
@@ -131,7 +131,7 @@ export const INVALIDATION_CLOCK_SKEW_SECONDS = 300;
  *
  * The body is passed as a digest rather than as bytes so the caller must have
  * already hashed exactly what it will send or did receive — the same
- * discipline the Git webhook uses, for the same reason.
+ * discipline required by any signed request body.
  */
 export function invalidationSigningString(input: {
   readonly timestamp: string;

@@ -1,5 +1,7 @@
 # M3 live Git content-store run
 
+> Historical evidence only: the Git-backed article architecture documented below was superseded by ADR-015 on 2026-08-25. Preserve this record for audit history; it does not describe the active article storage design.
+
 Date: 2026-08-24  
 Milestone: [M3](../M3.md) — Git content-store proof  
 Environment: local PostgreSQL, repository-scoped GitHub App installation, and the real `content` branch of `amirrrreza1/Portfolio`.

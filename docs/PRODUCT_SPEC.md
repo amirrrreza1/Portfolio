@@ -4,13 +4,13 @@
 
 Turn the existing portfolio into a full-stack personal publishing platform where visitors can browse a fast, indexable **portfolio and bilingual blog**, use their preferred theme across the public site, and read blog content in their preferred font, while the owner can securely manage every visible content section—including the resume file—without editing source code.
 
-Articles are authored and stored as Markdown files in the Git repository. Portfolio content is stored in PostgreSQL. Both are edited from the same admin panel.
+Articles and portfolio content are authored and stored in PostgreSQL. Article bodies remain portable Markdown with optional file import/export, immutable revisions, and one authenticated admin workflow.
 
 ## 2. Product goals
 
 - Preserve the current visual identity and public routes during migration.
 - Make every portfolio content area editable from an authenticated admin panel, down to the About Me prose and the resume file.
-- Publish long-form technical writing in English and Persian, as durable Markdown files with real version history.
+- Publish long-form technical writing in English and Persian as durable PostgreSQL-backed Markdown with immutable revision history and portable file export.
 - Let a visitor choose a site-wide theme, blog-only font and size, motion, and language without a flash, a layout shift, or an accessibility regression.
 - Keep all privileged mutations behind a dedicated API and auditable authorization checks.
 - Use a PostgreSQL connection string so local, hosted, and container deployments share one configuration contract.
@@ -24,7 +24,7 @@ The four decisions that shape this specification are recorded with rationale and
 
 | Decision | Summary                                                              | Detail                                        |
 | -------- | -------------------------------------------------------------------- | --------------------------------------------- |
-| ADR-003  | Git holds article bodies; PostgreSQL holds the operational index     | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md)    |
+| ADR-015  | PostgreSQL owns complete articles, publication state, and revisions  | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md)    |
 | ADR-004  | Markdown plus an allowlisted directive set; no runtime MDX execution | [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §9 |
 | ADR-005  | Per-locale translations of one post, no fallback rendering           | [I18N.md](I18N.md)                            |
 | ADR-006  | Visitor-selectable appearance from an owner-defined allowlist        | [THEMING.md](THEMING.md)                      |
@@ -79,27 +79,25 @@ Public navigation MUST be present in the server-rendered HTML. The current heade
 
 ### BLOG-001 — Publishing lifecycle
 
-Every translation MUST independently support `DRAFT`, `SCHEDULED`, `PUBLISHED`, and `ARCHIVED`, so an English article can be live while its Persian translation is still a draft. A scheduled translation becomes public only when its due time has passed **and** the publishing worker has committed the transition transactionally. Publication MUST NOT require a deployment or a successful Git write; see [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §7.
+Every translation MUST independently support `DRAFT`, `SCHEDULED`, `PUBLISHED`, and `ARCHIVED`, so an English article can be live while its Persian translation is still a draft. A scheduled translation becomes public only when its due time has passed **and** the publishing worker has committed the transition transactionally. Publication MUST NOT require a deployment or external content provider; see [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §7.
 
-### BLOG-002 — File-backed storage
+### BLOG-002 — PostgreSQL-backed Markdown storage
 
-Article bodies MUST be stored as `.md` files in the Git repository at `content/blog/<postId>/<locale>.md`, with YAML frontmatter validated against a versioned schema. PostgreSQL MUST hold a derived index — identity, slugs, taxonomy, realized status, blob SHA, and the sanitized render cache — and MUST NOT be the authority for body text. The API MUST NOT serve a body whose render cache does not match the recorded blob SHA.
-
-Direct pushes to `content/` are a supported authoring path and MUST reconcile into the index without manual intervention. Invalid content in the repository MUST NOT change live output or publish itself.
+Article bodies MUST be stored as normalized Markdown in PostgreSQL alongside locale-specific metadata, publication state, immutable revisions, an optimistic version, a SHA-256 source digest, and the sanitized render cache. The API MUST NOT serve an article whose source integrity or current-render provenance is incomplete. Markdown files are optional import/export representations, never a second production authority.
 
 ### BLOG-003 — Authoring and preview
 
 The admin editor MUST support Markdown with live preview through the production render pipeline, locally autosaved drafts that never commit, headings, lists, tables, footnotes, links, code blocks with language labels, images with alt text, excerpt, canonical URL, social image, tags, category, SEO title and description, and the directive palette from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §9.
 
-Raw HTML MUST be disabled. Runtime MDX execution MUST NOT exist anywhere in the system. Explicit saves MUST use optimistic concurrency against the blob SHA and MUST show a diff on conflict rather than overwriting.
+Raw HTML MUST be disabled. Runtime MDX execution MUST NOT exist anywhere in the system. Explicit saves MUST use optimistic concurrency against the translation version and MUST show a diff on conflict rather than overwriting.
 
 ### BLOG-004 — File upload and import
 
-The owner MUST be able to create or update an article by uploading a `.md` or `.mdx` file. Import MUST be a two-step operation: parse, validate, and report — then confirm and commit. Import MUST never be partial. An `.mdx` upload MUST be normalized to `.md`, with imports, exports, JSX expressions, raw HTML, and unmapped components rejected in a line-referenced report. Missing frontmatter MUST be presented as a pre-filled form with inferred values clearly labelled as inferred; nothing may be silently invented.
+The owner MUST be able to create or update an article by uploading a `.md` or `.mdx` file. Import MUST be a two-step operation: parse, validate, and report — then confirm and save transactionally. Import MUST never be partial. An `.mdx` upload MUST be normalized to `.md`, with imports, exports, JSX expressions, raw HTML, and unmapped components rejected in a line-referenced report. Missing frontmatter MUST be presented as a pre-filled form with inferred values clearly labelled as inferred; nothing may be silently invented.
 
 ### BLOG-005 — Bilingual articles
 
-Every article MUST be writable in English and Persian as two translations of one post, each with its own title, slug, excerpt, SEO fields, body file, and status. Exactly one language is shown at a time. A locale with no published translation MUST return `404` with a link to the version that exists — English text MUST NOT be served under a Persian URL. The language switcher MUST offer only locales that exist for that post. Details in [I18N.md](I18N.md) §3.
+Every article MUST be writable in English and Persian as two translations of one post, each with its own title, slug, excerpt, SEO fields, Markdown body, and status. Exactly one language is shown at a time. A locale with no published translation MUST return `404` with a link to the version that exists — English text MUST NOT be served under a Persian URL. The language switcher MUST offer only locales that exist for that post. Details in [I18N.md](I18N.md) §3.
 
 ### BLOG-006 — Discovery
 
@@ -114,11 +112,11 @@ For each locale the public site MUST provide:
 
 ### BLOG-007 — Slugs and redirects
 
-Published slugs MUST be unique per locale, human-readable, and stable as a URL identity. Changing a slug creates a one-hop permanent redirect from every prior slug within that locale. Because files are keyed by immutable post ID rather than slug, a slug change MUST NOT move or rewrite any file.
+Published slugs MUST be unique per locale, human-readable, and stable as a URL identity. Changing a slug creates a one-hop permanent redirect from every prior slug within that locale. Immutable post identity remains unchanged when a translation slug changes.
 
 ### BLOG-008 — Revision safety
 
-Article bodies carry Git history, which is the primary record. In addition, every index and metadata change MUST create a revision with actor, timestamp, before/after snapshots, and the associated commit SHA. Owners MUST be able to preview and restore a revision without editing the database or the repository by hand; restoring writes a new commit and a new revision rather than rewriting history.
+Every article or metadata change MUST create an immutable PostgreSQL revision with actor, timestamp, before/after snapshots, and translation version. Owners MUST be able to preview and restore a revision without editing the database by hand; restoring performs a new validated transactional save and creates a new revision rather than rewriting history.
 
 ## 6. Admin requirements
 
@@ -158,7 +156,7 @@ Every item is enumerated field by field, against its current source, in [CONTENT
 
 Edits MUST use optimistic concurrency. If another session changed a record after the editor loaded it, the API returns `409 CONFLICT` and does not overwrite the newer revision.
 
-For database records the token is the integer `version`. For article bodies the token is the Git blob SHA, and a conflict MUST present a diff. Article bodies MUST NOT be auto-merged.
+Every editable record, including article translations, uses its integer `version` as the optimistic-concurrency token. A conflict MUST expose the current version without overwriting newer content. Article bodies MUST NOT be auto-merged.
 
 ### ADMIN-006 — Destructive actions
 
@@ -166,9 +164,9 @@ Destructive actions MUST use explicit confirmation. Content SHOULD be archived/s
 
 A file removed from the repository MUST NOT silently unpublish an article; it is flagged and requires owner confirmation, so an accidental force-push cannot erase published content.
 
-### ADMIN-007 — Content sync visibility
+### ADMIN-007 — Publication and delivery visibility
 
-The dashboard MUST surface content-store health: translations that failed validation on sync, translations missing from Git, frontmatter drift after a scheduled publish, pending or failed bot commits, and the last successful reconciliation time. A degraded content store MUST be visible to the owner rather than silently serving stale output.
+The authenticated owner dashboard MUST show scheduled publication, pending/dead-letter publication jobs, cache-invalidation delivery failures, and source/render integrity warnings without exposing Markdown bodies, credentials, or internal infrastructure to visitors.
 
 ## 7. Quality attributes
 
@@ -180,7 +178,7 @@ The dashboard MUST surface content-store health: translations that failed valida
 | API correctness      | All mutation payloads runtime-validated; OpenAPI contract generated in CI                                                                                                 |
 | Internationalization | Both locales render with correct `lang`/`dir`; `hreflang` reciprocal for published pairs; no untranslated UI string reaches production                                    |
 | Appearance           | Every enabled theme passes AA contrast; correct theme and blog typography in the first HTML byte; blog typography never affects non-blog UI; no layout shift on font swap |
-| Content integrity    | Every published translation matches a file at its recorded blob SHA; reconciliation reports zero unexplained differences                                                  |
+| Content integrity    | Every published translation has authoritative PostgreSQL Markdown, a matching SHA-256 source digest, and current sanitized renderer output                                |
 | Recovery             | Automated encrypted backups plus an independent content-repository clone; restore drill documented and tested before production launch                                    |
 | Observability        | Structured redacted logs, request IDs, health metrics, and actionable error reporting                                                                                     |
 | Browser support      | Current and previous major versions of evergreen browsers; progressive enhancement for public reading                                                                     |
@@ -217,8 +215,8 @@ The release is acceptable when:
 4. Draft, scheduled, archived, and preview content cannot be fetched by unauthenticated users in either locale.
 5. Security tests and the checklist in [SECURITY.md](SECURITY.md) §15 pass.
 6. Blog metadata, structured data, per-locale sitemaps, RSS, canonicals, `hreflang`, and redirects pass automated tests.
-7. An article can be authored in the panel, uploaded as a file, edited by a direct push, scheduled, and published — each path producing identical rendered output and a reconciled index.
-8. A scheduled article publishes on time with the Git host unreachable, and the resulting frontmatter drift is reported rather than hidden.
+7. An article can be authored in the authenticated panel, imported/exported as Markdown, scheduled, and published — each write producing consistent PostgreSQL source, rendered output, revisions, and cache invalidation.
+8. A scheduled article publishes on time through one idempotent database transaction and delivers signed cache invalidation without an external content provider.
 9. Both locales render with correct `lang`/`dir`, a missing translation returns `404` rather than falling back, and `hreflang` is reciprocal for every published pair.
 10. Every enabled theme passes AA contrast, appearance is correct in the first HTML byte, and public responses do not vary on the preferences cookie.
 11. Containers start from a clean checkout, migrations run once, and a restore drill reproduces the site from a database backup plus a repository clone.

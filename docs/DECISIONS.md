@@ -2,28 +2,29 @@
 
 Each decision is dated, has an owner-approved status, and lists what was rejected and why. A decision may only be changed by adding a superseding entry; entries are never edited into silence.
 
-| ID      | Decision                                                                           | Status   | Date       |
-| ------- | ---------------------------------------------------------------------------------- | -------- | ---------- |
-| ADR-001 | Modular monorepo with separate Next.js web and NestJS API                          | Accepted | 2026-08-05 |
-| ADR-002 | PostgreSQL as the operational source of truth, accessed only by the API            | Accepted | 2026-08-05 |
-| ADR-003 | Git repository is the source of truth for article bodies                           | Accepted | 2026-08-08 |
-| ADR-004 | Markdown with an allowlisted directive set; no runtime MDX execution               | Accepted | 2026-08-08 |
-| ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering   | Accepted | 2026-08-08 |
-| ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist           | Accepted | 2026-08-08 |
-| ADR-007 | Portfolio content is database-backed and fully admin-editable                      | Accepted | 2026-08-05 |
-| ADR-008 | MinIO is the object store for media and backups                                    | Accepted | 2026-08-09 |
-| ADR-009 | Dynamic HTML shell with shared cached public data for visitor appearance           | Accepted | 2026-08-09 |
-| ADR-010 | Unicode Persian slugs are canonical                                                | Accepted | 2026-08-09 |
-| ADR-011 | Article bodies use a protected dedicated content branch                            | Accepted | 2026-08-09 |
-| ADR-012 | Durable operation log, idempotent recovery, and invalidation outbox for Git writes | Accepted | 2026-08-09 |
-| ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers                   | Accepted | 2026-08-09 |
-| ADR-014 | Bounded last-known-good public reads during API outages                            | Accepted | 2026-08-09 |
+| ID      | Decision                                                                           | Status                          | Date       |
+| ------- | ---------------------------------------------------------------------------------- | ------------------------------- | ---------- |
+| ADR-001 | Modular monorepo with separate Next.js web and NestJS API                          | Accepted                        | 2026-08-05 |
+| ADR-002 | PostgreSQL as the operational source of truth, accessed only by the API            | Accepted                        | 2026-08-05 |
+| ADR-003 | Git repository is the source of truth for article bodies                           | Superseded by ADR-015           | 2026-08-08 |
+| ADR-004 | Markdown with an allowlisted directive set; no runtime MDX execution               | Accepted                        | 2026-08-08 |
+| ADR-005 | Bilingual articles as per-locale translations of one post, no fallback rendering   | Accepted                        | 2026-08-08 |
+| ADR-006 | Site-wide theme and blog-only typography from an owner-defined allowlist           | Accepted                        | 2026-08-08 |
+| ADR-007 | Portfolio content is database-backed and fully admin-editable                      | Accepted                        | 2026-08-05 |
+| ADR-008 | MinIO is the object store for media and backups                                    | Accepted                        | 2026-08-09 |
+| ADR-009 | Dynamic HTML shell with shared cached public data for visitor appearance           | Accepted                        | 2026-08-09 |
+| ADR-010 | Unicode Persian slugs are canonical                                                | Accepted                        | 2026-08-09 |
+| ADR-011 | Article bodies use a protected dedicated content branch                            | Superseded by ADR-015           | 2026-08-09 |
+| ADR-012 | Durable operation log, idempotent recovery, and invalidation outbox for Git writes | Superseded by ADR-015           | 2026-08-09 |
+| ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers                   | Partially superseded by ADR-015 | 2026-08-09 |
+| ADR-014 | Bounded last-known-good public reads during API outages                            | Accepted                        | 2026-08-09 |
+| ADR-015 | PostgreSQL-native article authoring and publication                                | Accepted                        | 2026-08-25 |
 
 ---
 
 ## ADR-003 — Git repository is the source of truth for article bodies
 
-**Status:** Accepted, 2026-08-08.
+**Status:** Superseded by ADR-015, 2026-08-25. Originally accepted 2026-08-08.
 
 ### Context
 
@@ -73,7 +74,7 @@ The owner asked whether `.md` or `.mdx` is better, and wants rich articles witho
 
 Store and author **Markdown (GFM)**. Extend it with a closed set of block and inline **directives** (`::callout`, `::figure`, `::video`, `::details`, `::steps`) using the `remark-directive` syntax, each mapped to a reviewed React component with a validated attribute schema. Render server-side and sanitize the resulting HTML against a schema allowlist.
 
-`.mdx` uploads are **accepted** as an input format for convenience: the importer parses them, converts recognized JSX component calls to equivalent directives where a mapping exists, and rejects the file with a precise report when it contains imports, exports, expressions, or unmapped components. Stored files always use the `.md` extension.
+`.mdx` uploads are **accepted** as an input format for convenience: the importer parses them, converts recognized JSX component calls to equivalent directives where a mapping exists, and rejects the file with a precise report when it contains imports, exports, expressions, or unmapped components. Accepted documents are stored as normalized Markdown in PostgreSQL; Markdown file export remains available without making files authoritative.
 
 ### Why `.md` is the better answer here
 
@@ -107,7 +108,7 @@ Every article should be writable in English and Persian. Exactly one language is
 
 ### Decision
 
-One `Post` record carries editorial identity and taxonomy. Each language is a `PostTranslation` row with its own title, slug, excerpt, SEO fields, and body file (`content/blog/<postId>/<locale>.md`). Public URLs are locale-prefixed: `/en/blog/<en-slug>` and `/fa/blog/<fa-slug>`.
+One `Post` record carries editorial identity and taxonomy. Each language is a `PostTranslation` row with its own title, slug, excerpt, SEO fields, and canonical `bodyMarkdown` stored in PostgreSQL. Public URLs are locale-prefixed: `/en/blog/<en-slug>` and `/fa/blog/<fa-slug>`.
 
 **There is no fallback rendering.** A locale with no translation is not served in that locale. The language switcher only offers locales that exist for the current post, and requesting a missing locale returns `404` with a link to the version that does exist.
 
@@ -167,9 +168,9 @@ Everything currently visible on the portfolio is either hard-coded in a componen
 
 ### Decision
 
-All of it moves to PostgreSQL and becomes editable from the admin panel, including the resume PDF and certificate PDFs as managed media. Portfolio content is **not** stored as Markdown files — ADR-003 applies to article bodies only. Short prose fields are stored as validated inline Markdown (emphasis, links, inline code) rendered through the same sanitizer as articles.
+All of it moves to PostgreSQL and becomes editable from the admin panel, including the resume PDF and certificate PDFs as managed media. ADR-015 extends the same database-authoritative model to long-form articles. Short portfolio prose fields are stored as validated inline Markdown (emphasis, links, inline code) rendered through the same sanitizer as articles.
 
-Rationale for the split: article bodies are long-form documents whose history matters and whose authoring benefits from files. Portfolio fields are structured records that are queried, sorted, filtered, and joined; expressing them as files would mean reimplementing a database.
+Portfolio fields and article translations are structured records that are queried, sorted, filtered, joined, and revised. PostgreSQL preserves their history transactionally without introducing a second authoritative article store.
 
 Every item is enumerated in [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) with its target admin field, so "editable in the admin panel" is a checklist rather than an aspiration.
 
@@ -203,7 +204,7 @@ MinIO versioning/retention is enabled where supported for resume, blog media, an
 
 ### Consequences
 
-MinIO becomes an additional authoritative recovery input alongside PostgreSQL and the Git content repository. The restore drill must reconcile all three. MinIO credentials, endpoints, and signed URLs are server-only and redacted from logs.
+MinIO becomes the authoritative recovery input for binary media alongside PostgreSQL, which contains all portfolio and article text. The restore drill reconciles those two stores. MinIO credentials, endpoints, and signed URLs are server-only and redacted from logs.
 
 ---
 
@@ -260,7 +261,7 @@ M1 owns normalization contracts and database uniqueness tests. The normalization
 
 ## ADR-011 — Article bodies use a protected dedicated content branch
 
-**Status:** Accepted, 2026-08-09.
+**Status:** Superseded by ADR-015, 2026-08-25. Originally accepted 2026-08-09.
 
 ### Context
 
@@ -285,7 +286,7 @@ M3 must verify repository rules and secret scanning before accepting automated o
 
 ## ADR-012 — Durable operation log, idempotent recovery, and invalidation outbox for Git writes
 
-**Status:** Accepted, 2026-08-09.
+**Status:** Superseded by ADR-015, 2026-08-25. Originally accepted 2026-08-09. The transactional invalidation-outbox pattern remains accepted without the Git operation log or apply ledger.
 
 ### Context
 
@@ -311,7 +312,7 @@ M1 defines the IDs/error/idempotency contracts. M3 implements the operation log,
 
 ## ADR-013 — PostgreSQL-backed jobs with dedicated sync and scheduler workers
 
-**Status:** Accepted, 2026-08-09.
+**Status:** Partially superseded by ADR-015, 2026-08-25. PostgreSQL-backed scheduling, advisory locking, bounded retries, and invalidation delivery remain accepted; Git synchronization, webhook processing, and branch reconciliation are removed.
 
 ### Context
 
@@ -358,6 +359,44 @@ Default windows are: site/navigation/project listings 60 minutes; article and ta
 ### Consequences
 
 M4 implements one typed client policy and tests cold outage, warm outage, expiry, malformed cache data, locale isolation, and disclosure-sensitive invalidation. M9 alerts on stale-serving duration and invalidation failures.
+
+---
+
+## ADR-015 — PostgreSQL-native article authoring and publication
+
+**Status:** Accepted, 2026-08-25. Supersedes ADR-003, ADR-011, ADR-012, and the Git-specific portions of ADR-013.
+
+### Context
+
+The product is a single-owner portfolio with an authenticated admin editor. Maintaining canonical article bodies in both GitHub and PostgreSQL introduced a GitHub App, protected content branch, webhook, synchronization worker, apply ledger, drift states, and cross-store recovery drills without improving the planned editor workflow. An article save could succeed in Git while its database transaction failed, creating an operational problem that exists only because two systems own one document.
+
+### Decision
+
+PostgreSQL is the sole authority for every article translation: its Markdown body, editorial metadata, version, publication state, scheduled time, and revision history. `PostTranslation.bodyMarkdown` contains normalized Markdown. `bodySha256` and `rendererVersion` bind the sanitized server-rendered HTML to its current source; rendered HTML is derived data, never an authoring input.
+
+An explicit admin save validates the locale, metadata, taxonomy, media references, and Markdown; renders and sanitizes the body; checks the translation's integer version; and atomically writes the translation, revision, audit record, and locale-scoped invalidation-outbox event in one PostgreSQL transaction. A stale version returns `409 CONFLICT` without writing. Autosave remains isolated in `PostDraft`, which records `baseVersion` and never publishes.
+
+Publication, unpublication, scheduling, archival, and restoration are explicit database-backed commands. A single advisory-locked publication scheduler may process due translations, and a small background delivery worker may retry signed cache invalidations. Neither process communicates with GitHub. Markdown upload/import and export remain supported conveniences; exported files and Git backups are optional, never authoritative.
+
+MinIO remains the sole binary-media store. Public routes continue to consume published, locale-specific API projections and never expose draft Markdown, revision snapshots, database credentials, or object-storage credentials.
+
+### Rationale
+
+- One database transaction removes Git-success/database-failure divergence.
+- Integer versions and database revisions provide conflict detection and history without Git credentials.
+- Publication and scheduled publishing no longer depend on a GitHub App, webhook, content branch, internet access, or reconciliation.
+- PostgreSQL supports indexed filtering, bilingual metadata, revision lookup, and future full-text search directly.
+- The existing safe Markdown renderer, public read boundaries, MinIO adapters, and signed invalidation infrastructure remain reusable.
+
+### Rejected alternatives
+
+- **Retain Git as a second canonical source.** It preserves direct-push editing, but adds synchronization, secrets, outages, and duplicated ownership to an admin-first product.
+- **Store article bodies in MinIO.** It separates document text from its metadata and reintroduces cross-store consistency without improving binary-media handling.
+- **Compile or execute arbitrary MDX.** It weakens the existing sanitize-last Markdown security boundary.
+
+### Consequences
+
+M3 becomes the database-native article foundation: migration, source/render integrity, atomic bilingual saves, version conflicts, durable revisions, and publication-state tests. M4 proves public bilingual reads and publication invalidation against those records. M6 still owns authentication and authorization before any admin mutation endpoint is exposed; M8 builds the authenticated editor, imports, publishing UX, discovery, and scheduled publication on the M3 foundation. M9 backs up PostgreSQL and MinIO and verifies that their restore reproduces the site without cloning a content repository.
 
 ---
 

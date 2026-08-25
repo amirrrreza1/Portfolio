@@ -12,6 +12,7 @@ import {
   type NestFastifyApplication,
 } from "@nestjs/platform-fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import { AppModule } from "../src/app.module.js";
 import { configureApplication } from "../src/configure-app.js";
@@ -28,6 +29,10 @@ const translationId = "t12345678901234567890123";
 const secondTranslationId = "u12345678901234567890123";
 const publishedAt = new Date("2026-08-14T12:00:00.000Z");
 const updatedAt = new Date("2026-08-14T13:00:00.000Z");
+const bodyMarkdown = "## Introduction\n\nSafe body.";
+const bodySha256 = createHash("sha256")
+  .update(bodyMarkdown, "utf8")
+  .digest("hex");
 
 const summary = {
   id: postId,
@@ -214,11 +219,11 @@ describe("PublicArticlesService", () => {
       where: {
         locale: "en",
         status: "PUBLISHED",
-        syncState: "SYNCED",
         archivedAt: null,
         renderedHtml: { not: null },
         rendererVersion: "1",
-        sourceBlobSha: { not: null },
+        bodyMarkdown: { not: null },
+        bodySha256: { not: null },
         post: { archivedAt: null },
       },
       orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
@@ -242,8 +247,8 @@ describe("PublicArticlesService", () => {
     expect(result.kind).toBe("found");
     if (result.kind !== "found") throw new Error("Expected article detail.");
     expect(result.data.post.renderedHtml).toContain("Safe body");
-    expect(result.data.post).not.toHaveProperty("sourceBlobSha");
-    expect(result.data.post).not.toHaveProperty("syncState");
+    expect(result.data.post).not.toHaveProperty("bodyMarkdown");
+    expect(result.data.post).not.toHaveProperty("bodySha256");
     expect(result.data.post.alternates.map(({ locale }) => locale)).toEqual([
       "en",
       "fa",
@@ -257,7 +262,7 @@ describe("PublicArticlesService", () => {
     const findUnique = vi
       .fn()
       .mockResolvedValueOnce(detailRow({ rendererVersion: "0" }))
-      .mockResolvedValueOnce(detailRow({ sourceBlobSha: "not-a-git-sha" }));
+      .mockResolvedValueOnce(detailRow({ bodySha256: "not-a-sha256" }));
     const service = new PublicArticlesService({
       postTranslation: { findUnique },
     } as unknown as Database);
@@ -306,6 +311,8 @@ function listRow(id: string, slug: string, date: Date) {
     publishedAt: date,
     readingMinutes: 4,
     updatedAt,
+    bodyMarkdown,
+    bodySha256,
     post: {
       id: postId,
       featured: true,
@@ -337,7 +344,8 @@ function detailRow(
     headingTree: [{ depth: 2, id: "intro", text: "Introduction" }],
     renderedHtml: '<h2 id="intro">Introduction</h2><p>Safe body.</p>',
     rendererVersion: "1",
-    sourceBlobSha: "a".repeat(40),
+    bodyMarkdown,
+    bodySha256,
     updatedAt,
     archivedAt: null,
     post: {

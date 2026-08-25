@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { postIdSchema, recordVersionSchema } from "../common/ids.js";
 import { localeSchema } from "../common/locale.js";
-import { blobShaSchema } from "../content/sync.js";
 import { frontmatterSchema } from "../content/frontmatter.js";
 
 /**
@@ -48,19 +47,15 @@ export type TranslationRef = z.infer<typeof translationRefSchema>;
 /**
  * `PUT /admin/blog/posts/:id/translations/:locale` — explicit save.
  *
- * `baseSha` is the optimistic-concurrency token, and it is `null` only for the
- * first save of a translation that has no file yet. Making it required but
- * nullable rather than optional is deliberate: an omitted field would be
- * indistinguishable from a client that forgot to send it, and the failure mode
- * of guessing wrong is a silent overwrite of someone else's work.
+ * `baseVersion` is the optimistic-concurrency token and is null only for the
+ * first save. Requiring the field prevents a client from silently omitting the
+ * concurrency boundary.
  */
 export const saveTranslationSchema = z
   .object({
     frontmatter: frontmatterSchema,
     body: bodyMarkdownSchema,
-    baseSha: blobShaSchema.nullable(),
-    /** Shown in the commit message. Bounded and single-line. */
-    commitNote: z.string().trim().max(200).optional(),
+    baseVersion: recordVersionSchema.nullable(),
   })
   .strict();
 
@@ -70,7 +65,7 @@ export type SaveTranslation = z.infer<typeof saveTranslationSchema>;
  * `PUT .../draft` — autosave.
  *
  * Writes to `PostDraft` and nothing else. **Never commits, never publishes,
- * and requires no `If-Match`** — an autosave that could conflict would
+ * and performs no publication version check** — an autosave that could conflict would
  * interrupt typing, and an autosave that could publish would turn a stray
  * keystroke into a live change.
  *
@@ -83,7 +78,7 @@ export const autosaveDraftSchema = z
   .object({
     body: bodyMarkdownSchema,
     frontmatter: z.unknown().optional(),
-    baseSha: blobShaSchema.nullable(),
+    baseVersion: recordVersionSchema.nullable(),
   })
   .strict();
 
@@ -105,7 +100,6 @@ export type AutosaveDraft = z.infer<typeof autosaveDraftSchema>;
 export const publishTranslationSchema = z
   .object({
     version: recordVersionSchema,
-    expectedSha: blobShaSchema,
     acknowledgedWarnings: z.array(z.string()).default([]),
   })
   .strict();
@@ -123,7 +117,6 @@ export type PublishTranslation = z.infer<typeof publishTranslationSchema>;
 export const scheduleTranslationSchema = z
   .object({
     version: recordVersionSchema,
-    expectedSha: blobShaSchema,
     scheduledFor: z
       .string()
       .refine((value) => !Number.isNaN(Date.parse(value)), {
@@ -258,7 +251,7 @@ export const PUBLISH_BLOCKERS = [
   "COVER_WITHOUT_ALT",
   "SLUG_COLLISION",
   "UNSAFE_LINK",
-  "NOT_SYNCED",
+  "INVALID_SOURCE_INTEGRITY",
 ] as const;
 
 export const PUBLISH_WARNINGS = [

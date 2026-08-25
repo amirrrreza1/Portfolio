@@ -149,8 +149,7 @@ jobs:
       # repository under a GitHub organization requires a GITLEAKS_LICENSE
       # secret, or this step will start failing.
       #
-      # M3 extends scanning to the protected `content` branch before automated
-      # or direct content commits are accepted (ROADMAP.md §6).
+      # Scan repository history for credentials; article bodies live in PostgreSQL.
       - name: Scan repository for committed secrets
         uses: gitleaks/gitleaks-action@v2
         env:

@@ -8,10 +8,11 @@ import {
   type PublicArticleList,
   type PublicArticleSummary,
 } from "@portfolio/contracts/blog";
-import { blobShaSchema } from "@portfolio/contracts/content";
+import { articleSourceSha256Schema } from "@portfolio/contracts/content";
 import type { Database } from "@portfolio/database";
 import { RENDERER_VERSION } from "@portfolio/markdown";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 
 const articleCursorSchema = z
   .object({
@@ -44,7 +45,7 @@ export type PublicArticleDetailRead =
       readonly availableTranslations: readonly PublicArticleAlternate[];
     };
 
-/** Published article index reads; Git is deliberately absent from this path. */
+/** Published article reads from authoritative PostgreSQL source/render state. */
 export class PublicArticlesService {
   public constructor(private readonly database: Database) {}
 
@@ -58,14 +59,14 @@ export class PublicArticlesService {
       where: {
         locale,
         status: "PUBLISHED",
-        syncState: "SYNCED",
         archivedAt: null,
         publishedAt: { not: null },
         excerpt: { not: null },
         readingMinutes: { not: null },
         renderedHtml: { not: null },
         rendererVersion: RENDERER_VERSION,
-        sourceBlobSha: { not: null },
+        bodyMarkdown: { not: null },
+        bodySha256: { not: null },
         post: { archivedAt: null },
         ...(cursor === undefined
           ? {}
@@ -89,6 +90,8 @@ export class PublicArticlesService {
         publishedAt: true,
         readingMinutes: true,
         updatedAt: true,
+        bodyMarkdown: true,
+        bodySha256: true,
         post: {
           select: {
             id: true,
@@ -105,16 +108,17 @@ export class PublicArticlesService {
     });
 
     const pageRows = rows.slice(0, options.limit);
-    const posts = pageRows.map((row) =>
-      toSummary({
+    const posts = pageRows.map((row) => {
+      assertSourceIntegrity(row);
+      return toSummary({
         ...row,
         id: row.post.id,
         tagKeys: row.post.tags
           .filter(({ tag }) => tag.enabled)
           .map(({ tag }) => tag.key)
           .sort(),
-      })
-    );
+      });
+    });
     const last = pageRows.at(-1);
     const nextCursor =
       rows.length > options.limit && last?.publishedAt
@@ -146,7 +150,8 @@ export class PublicArticlesService {
         headingTree: true,
         renderedHtml: true,
         rendererVersion: true,
-        sourceBlobSha: true,
+        bodyMarkdown: true,
+        bodySha256: true,
         updatedAt: true,
         archivedAt: true,
         post: {
@@ -165,6 +170,9 @@ export class PublicArticlesService {
                 status: "PUBLISHED",
                 archivedAt: null,
                 publishedAt: { not: null },
+                bodyMarkdown: { not: null },
+                bodySha256: { not: null },
+                rendererVersion: RENDERER_VERSION,
               },
               select: { locale: true, slug: true, updatedAt: true },
             },
@@ -196,10 +204,11 @@ export class PublicArticlesService {
       row.readingMinutes === null ||
       row.renderedHtml === null ||
       row.rendererVersion !== RENDERER_VERSION ||
-      !blobShaSchema.safeParse(row.sourceBlobSha).success
+      !articleSourceSha256Schema.safeParse(row.bodySha256).success
     ) {
       throw new Error("A published article has an invalid render index.");
     }
+    assertSourceIntegrity(row);
 
     const headings = z
       .array(publicArticleHeadingSchema)
@@ -312,4 +321,18 @@ function decodeCursor(cursor: string): z.infer<typeof articleCursorSchema> {
 function latestDate(values: readonly Date[]): Date {
   if (values.length === 0) return new Date(0);
   return new Date(Math.max(...values.map((value) => value.getTime())));
+}
+
+function assertSourceIntegrity(row: {
+  readonly bodyMarkdown: string | null;
+  readonly bodySha256: string | null;
+}): void {
+  if (
+    row.bodyMarkdown === null ||
+    !articleSourceSha256Schema.safeParse(row.bodySha256).success ||
+    createHash("sha256").update(row.bodyMarkdown, "utf8").digest("hex") !==
+      row.bodySha256
+  ) {
+    throw new Error("A published article has invalid source integrity.");
+  }
 }

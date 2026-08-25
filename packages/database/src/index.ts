@@ -34,7 +34,13 @@ export {
   createLegacyPageSectionMigrationStore,
   createLegacySkillColorMigrationStore,
 } from "./legacy-migration.js";
-export { createContentIndexStore } from "./content-sync.js";
+export {
+  ArticleVersionConflictError,
+  createArticleStore,
+  enqueueDuePublications,
+  publishDueTranslation,
+  type SavedArticleTranslation,
+} from "./articles.js";
 export {
   createInvalidationOutboxStore,
   type ClaimedInvalidation,
@@ -53,4 +59,3 @@ export {
 } from "./content-jobs.js";
 export { createPasswordLoginStore } from "./auth.js";
 export { createWebAuthnChallengeStore } from "./webauthn.js";
-export { createWebhookDeliveryStore } from "./webhook-delivery.js";

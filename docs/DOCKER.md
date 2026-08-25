@@ -26,7 +26,7 @@ The MinIO deployment uses the same private adapter contract in local and product
 - Pin base images by supported version and, in production automation, digest.
 - Stages: dependency resolution with frozen lockfile, workspace build, production dependency pruning, minimal runtime copy.
 - Cache pnpm’s content-addressable store without embedding credentials.
-- Never copy `.env`, `.git`, `content/`, local uploads, tests, source maps (unless secured for monitoring), package-manager caches, or development dependencies into runtime images. `content/` is data fetched through the Git API at runtime, not build input; baking it into an image would create a stale second copy with unclear authority.
+- Never copy `.env`, `.git`, local uploads, tests, source maps (unless secured for monitoring), package-manager caches, or development dependencies into runtime images. Article Markdown is fetched from PostgreSQL through the API and never baked into a runtime image.
 - Next.js uses standalone output (`output: "standalone"`, which the current empty `next.config.ts` does not set) and includes only required workspace traces/public assets.
 - Only the `woff2` font files actually referenced by the appearance registry are copied into the image. The `.eot`, `.ttf`, and `.woff` duplicates are not shipped.
 - API runs compiled JavaScript; TypeScript tooling and Nest CLI stay out of runtime.
@@ -50,10 +50,10 @@ PostgreSQL and MinIO run with least-privilege settings and are never exposed pub
 
 ## 5. Networks and routing
 
-- `edge` can reach `web` and `/api` upstream, and routes `/webhooks/content-git` to the API with its own stricter body-size and rate limits.
-- `web` can reach API for server-side reads but not PostgreSQL and not the Git host.
-- `api` can reach PostgreSQL, MinIO, SMTP, the Git host, and approved outbound APIs. Outbound access to the Git host is an explicit allowlist entry, not open egress.
-- `scheduler` can reach PostgreSQL and the API/Git host but accepts no inbound traffic.
+- `edge` can reach `web` and `/api` upstream, and never exposes internal publication workers.
+- `web` can reach API for server-side reads but not PostgreSQL or private object storage.
+- `api` can reach PostgreSQL, MinIO, SMTP, and explicitly approved outbound APIs.
+- `scheduler` can reach PostgreSQL and the internal API when required but accepts no inbound traffic.
 - PostgreSQL and MinIO accept only required private-service traffic.
 - Browser requests use `https://site.example/api/v1`; no production credentialed cross-origin API is required.
 - The edge applies request/header/body limits and TLS policy; the API repeats relevant validation.
@@ -62,15 +62,14 @@ PostgreSQL and MinIO run with least-privilege settings and are never exposed pub
 
 Local Compose may read a developer `.env` ignored by Git. Production uses orchestrator/provider secrets mounted or injected at runtime.
 
-The Git App private key and webhook secret are mounted as runtime secrets or files, never build arguments. The key is readable only by the API user.
+Database, object-store, authentication, SMTP, and cache-invalidation secrets are mounted at runtime and readable only by the processes that require them.
 
 Prohibited:
 
 - credentials in Dockerfiles, Compose YAML, build args, image labels, repository history, or health-check command output
-- `NEXT_PUBLIC_DATABASE_URL` or any browser-exposed database/storage/mail/Git secret
-- the Git credential in the `web` or `scheduler` image environment when those processes do not need it
+- `NEXT_PUBLIC_DATABASE_URL` or any browser-exposed database/storage/mail/signing secret
 - default passwords in deployed configurations
-- sharing the same secret across session, CSRF, database, storage, Git webhook, or cache-invalidation signing purposes
+- sharing the same secret across session, CSRF, database, storage, or cache-invalidation signing purposes
 
 Configuration is validated before the process listens. Startup logs state only which configuration class failed, not the value.
 
@@ -82,22 +81,22 @@ Database migration is a separate one-shot deployment job:
 2. Run `prisma migrate deploy` once with migration credentials.
 3. Stop deployment on failure; do not start incompatible application replicas.
 4. Start/update API, wait for readiness, then web/edge.
-5. Run smoke tests and content reconciliation.
+5. Run smoke tests and article/media integrity verification.
 
 Application replicas MUST NOT race by running migrations in every entrypoint. Schema changes follow expand/migrate/contract patterns for zero- or low-downtime rollout. Destructive contract steps occur only after old code is gone and backup/rollback criteria are met.
 
 Two more single-instance rules follow from the content pipeline:
 
 - **Exactly one scheduler.** Whether it is a platform cron trigger or the `scheduler` service, scheduled publication MUST NOT fire once per API replica. When it runs in-process, a PostgreSQL advisory lock enforces the single instance.
-- **Content sync is serialized per post.** Multiple API replicas may receive webhooks; the work is queued and locked per post so two syncs cannot interleave on one translation.
+- **Scheduled publication is idempotent per translation.** Durable jobs and database locking prevent concurrent workers from publishing the same translation twice.
 
-After a deployment that changes the render pipeline, bump `rendererVersion` rather than clearing the cache manually. Content re-renders on next access from Git, which is the safe rollout path for a sanitizer or highlighter upgrade.
+After a deployment that changes the render pipeline, bump `rendererVersion` rather than clearing the cache manually. Content is regenerated from authoritative PostgreSQL Markdown before it is served, which is the safe rollout path for a sanitizer or highlighter upgrade.
 
 ## 8. Health checks
 
 - `GET /api/v1/health` is liveness: process/event loop can answer and returns minimal data.
 - `GET /api/v1/health/ready` is readiness: required configuration, database query, and critical adapter state are usable within strict timeouts.
-- **Git-host reachability is NOT part of readiness.** Public reads never touch Git, so a Git outage must not remove a healthy replica from rotation. Content-store health is reported on the admin dashboard and through monitoring instead.
+- **Publication-worker backlog is observable but does not make healthy public-read replicas unavailable.** Article reads rely only on their validated PostgreSQL state and bounded cache.
 - Web health checks a local lightweight route and does not depend synchronously on every downstream service.
 - Object/database vendor health commands use secret-safe mechanisms.
 - Health endpoints are rate-limited/internal where possible and expose neither dependency details nor version information.
@@ -117,9 +116,9 @@ Only the local dependency profile may publish PostgreSQL/MinIO console ports to 
 ## 10. Backup, restore, and upgrades
 
 - Schedule encrypted PostgreSQL backups and object-version retention outside the application container.
-- Article bodies have an independent recovery path in the content repository; a mirror clone is kept outside the Git host so provider loss is survivable.
+- Encrypted PostgreSQL backups contain complete article bodies, metadata, publication state, drafts, and revision history.
 - Define RPO/RTO after a hosting target is chosen; test restore into an isolated environment before launch and after major schema changes.
-- Reconciliation checks media checksums/references, active resume, post/translation counts and statuses, every recorded blob SHA against the repository, redirects, and owner access. A restore is not valid until it reports zero unexplained differences.
+- Restore verification checks media checksums/references, active resume, post/translation counts and statuses, every authoritative article body against its SHA-256 and rendered output, redirects, and owner access. A restore is not valid until it reports zero unexplained differences.
 - Upgrade one dependency class at a time: database engine, Prisma migration, API, then web when coupling requires it.
 - Rollback deploys the previous compatible images; database rollback uses a reviewed forward-fix/restore plan, never an automatic destructive downgrade.
 
@@ -131,7 +130,7 @@ apps/api/Dockerfile
 infrastructure/docker/compose.yaml
 infrastructure/docker/compose.production.yaml
 infrastructure/docker/Caddyfile (or selected edge config)
-infrastructure/docker/.dockerignore source at repository root  # must exclude content/ and .git
+infrastructure/docker/.dockerignore source at repository root  # must exclude .git and local secrets
 infrastructure/docker/scripts/ (non-secret health/entrypoint helpers only)
 ```
 

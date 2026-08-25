@@ -10,9 +10,9 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start:worker": "node dist/worker/main.js --mode=sync",
+    "start:worker": "node dist/worker/main.js --mode=publication",
     "start:scheduler": "node dist/worker/main.js --mode=scheduler",
-    "dev:worker": "tsx src/worker/main.ts --mode=sync",
+    "dev:worker": "tsx src/worker/main.ts --mode=publication",
     "dev:scheduler": "tsx src/worker/main.ts --mode=scheduler"
   },
   "dependencies": {
@@ -27,7 +27,6 @@
     "@nestjs/platform-fastify": "11.1.28",
     "@nestjs/swagger": "11.4.6",
     "@nestjs/throttler": "6.5.0",
-    "@portfolio/content-store": "workspace:*",
     "@portfolio/contracts": "workspace:*",
     "@portfolio/database": "workspace:*",
     "@portfolio/markdown": "workspace:*",

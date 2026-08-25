@@ -1,49 +1,26 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 import {
-  createFetchGitContentTransport,
-  createGitHubContentStoreFromRuntime,
-  reconcileContentHead,
-} from "@portfolio/content-store";
-import {
   ADVISORY_LOCKS,
-  createContentIndexStore,
   createContentJobStore,
   createDatabaseClient,
   createInvalidationOutboxStore,
   createPrismaSqlExecutor,
+  enqueueDuePublications,
+  publishDueTranslation,
   withAdvisoryLock,
 } from "@portfolio/database";
 
-import { loadContentRuntime } from "../modules/content/content.runtime.js";
-import {
-  runContentScheduler,
-  runContentWorker,
-  type ContentJobHandler,
-} from "./content-worker.js";
+import { runContentScheduler, runContentWorker } from "./content-worker.js";
 import { runInvalidationDrain } from "./invalidation-drain.js";
 import { createSignedInvalidationSender } from "./invalidation-sender.js";
 
-/**
- * The background process from ADR-013.
- *
- * Two modes, one binary, built from the API workspace so it shares the same
- * domain modules rather than reimplementing them:
- *
- *   sync       claims and runs content jobs
- *   scheduler  enqueues the periodic reconciliation
- *
- * Both take a PostgreSQL advisory lock and exit the loop if they cannot get it,
- * so running two copies is harmless: the second one idles instead of doubling
- * the work. HTTP API replicas run neither.
- */
-
-type Mode = "sync" | "scheduler";
+type Mode = "publication" | "scheduler";
 
 const DEFAULTS = {
   leaseSeconds: 300,
   idleDelayMs: 2_000,
-  reconcileIntervalMs: 15 * 60 * 1_000,
+  schedulerIntervalMs: 60_000,
   lockRetryMs: 30_000,
   invalidationMaxAttempts: 8,
   invalidationVisibilitySeconds: 120,
@@ -53,17 +30,16 @@ const DEFAULTS = {
 
 async function main(): Promise<void> {
   const mode = parseMode(process.argv.slice(2), process.env.WORKER_MODE);
-  const connectionString = required("DATABASE_URL");
-  const database = createDatabaseClient({ connectionString });
+  const database = createDatabaseClient({
+    connectionString: required("DATABASE_URL"),
+  });
   const jobs = createContentJobStore(createPrismaSqlExecutor(database));
-
   let running = true;
   const stop = (): void => {
     running = false;
   };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
-
   const workerName = `${mode}@${process.pid}`;
   log({ event: "starting", mode, worker: workerName });
 
@@ -74,117 +50,71 @@ async function main(): Promise<void> {
         ADVISORY_LOCKS.scheduler,
         () => running,
         async () => {
-          const summary = await runContentScheduler({
-            jobs,
-            intervalMs: number(
-              process.env.CONTENT_RECONCILE_INTERVAL_MS,
-              DEFAULTS.reconcileIntervalMs
-            ),
+          await runContentScheduler({
+            enqueueDue: () => enqueueDuePublications(database, jobs),
+            intervalMs: number(process.env.SCHEDULER_POLL_SECONDS, 60) * 1_000,
             sleep: (ms) => delay(ms),
             running: () => running,
-            log: (event) => log({ event: event.type, mode }),
+            log: (event) => log({ ...event, mode }),
           });
-          log({ event: "stopped", mode, ...summary });
         }
       );
       return;
     }
 
-    const runtime = await loadContentRuntime();
-    if (runtime.state !== "configured") {
-      // Unlike the HTTP API, this process has nothing else to do. Exiting
-      // non-zero is deliberate: a supervisor restarting it is correct once the
-      // GitHub App exists, and a worker that idles quietly looks healthy while
-      // the queue silently grows.
-      log({
-        event: "unconfigured",
-        mode,
-        reason:
-          runtime.state === "invalid" ? runtime.reason : "not provisioned",
-      });
-      process.exitCode = 1;
-      return;
-    }
-
-    // Invalidation delivery is configured independently of the content store.
-    // A deployment can have publishable content and no web app to notify, and
-    // that must degrade to "nothing to deliver" rather than to a crash.
     const invalidationEndpoint = process.env.CACHE_INVALIDATION_URL?.trim();
     const invalidationSecret = process.env.CACHE_INVALIDATION_SECRET?.trim();
-    const drainInvalidations = async (
-      isRunning: () => boolean
-    ): Promise<unknown> => {
-      if (!invalidationEndpoint || !invalidationSecret) {
-        log({ event: "invalidation-unconfigured", mode });
-        return null;
-      }
-      return runInvalidationDrain({
-        outbox: createInvalidationOutboxStore(
-          createPrismaSqlExecutor(database)
-        ),
-        sender: createSignedInvalidationSender({
-          endpoint: invalidationEndpoint,
-          secret: invalidationSecret,
-        }),
-        maxAttempts: DEFAULTS.invalidationMaxAttempts,
-        visibilitySeconds: DEFAULTS.invalidationVisibilitySeconds,
-        batchSize: DEFAULTS.invalidationBatchSize,
-        idleDelayMs: DEFAULTS.invalidationIdleMs,
-        sleep: (ms) => delay(ms),
-        running: isRunning,
-        log: (event) => log({ ...event, mode }),
-      });
-    };
-
-    const store = await createGitHubContentStoreFromRuntime(
-      runtime.config,
-      createFetchGitContentTransport()
-    );
-    const index = createContentIndexStore(database);
-
-    // The payload is not read. Both kinds reconcile the branch head, because
-    // the webhook body is a trigger and the scheduled pass is a full sweep, and
-    // reconciling from Git is the only path that validates content from scratch.
-    const reconcile: ContentJobHandler = async () => {
-      const summary = await reconcileContentHead({ store, index });
-      log({ event: "reconciled", mode, ...summary });
-    };
-
     await withLockOrIdle(
       database,
-      ADVISORY_LOCKS.contentSync,
+      ADVISORY_LOCKS.publication,
       () => running,
       async () => {
-        // Two independent loops under one lock. They fail for unrelated
-        // reasons — one talks to GitHub, the other to the web app — so
-        // sequencing them would put every pending purge behind whatever slow
-        // reconciliation happens to be running.
-        const [jobSummary, invalidationSummary] = await Promise.all([
+        const tasks: Promise<unknown>[] = [
           runContentWorker({
             jobs,
             handlers: {
-              WEBHOOK_RECONCILE: reconcile,
-              SCHEDULED_RECONCILE: reconcile,
-              // PUBLISH_DUE has no handler yet; M8 owns scheduled publication.
-              // Nothing enqueues it, and if something does it dead-letters
-              // visibly rather than being silently dropped.
+              PUBLISH_DUE: async (job) => {
+                const translationId = readTranslationId(job.payload);
+                await publishDueTranslation(database, translationId);
+              },
             },
             worker: workerName,
             leaseSeconds: number(
-              process.env.CONTENT_WORKER_LEASE_SECONDS,
+              process.env.PUBLICATION_WORKER_LEASE_SECONDS,
               DEFAULTS.leaseSeconds
             ),
             idleDelayMs: number(
-              process.env.CONTENT_WORKER_IDLE_MS,
+              process.env.PUBLICATION_WORKER_IDLE_MS,
               DEFAULTS.idleDelayMs
             ),
             sleep: (ms) => delay(ms),
             running: () => running,
             log: (event) => log({ ...event, mode }),
           }),
-          drainInvalidations(() => running),
-        ]);
-        log({ event: "stopped", mode, ...jobSummary, invalidationSummary });
+        ];
+        if (invalidationEndpoint && invalidationSecret) {
+          tasks.push(
+            runInvalidationDrain({
+              outbox: createInvalidationOutboxStore(
+                createPrismaSqlExecutor(database)
+              ),
+              sender: createSignedInvalidationSender({
+                endpoint: invalidationEndpoint,
+                secret: invalidationSecret,
+              }),
+              maxAttempts: DEFAULTS.invalidationMaxAttempts,
+              visibilitySeconds: DEFAULTS.invalidationVisibilitySeconds,
+              batchSize: DEFAULTS.invalidationBatchSize,
+              idleDelayMs: DEFAULTS.invalidationIdleMs,
+              sleep: (ms) => delay(ms),
+              running: () => running,
+              log: (event) => log({ ...event, mode }),
+            })
+          );
+        } else {
+          log({ event: "invalidation-unconfigured", mode });
+        }
+        await Promise.all(tasks);
       }
     );
   } finally {
@@ -192,14 +122,21 @@ async function main(): Promise<void> {
   }
 }
 
-/**
- * Runs the loop while holding the lock, and waits rather than exiting if
- * another process holds it.
- *
- * Exiting would make a supervisor restart it immediately, producing a crash
- * loop for what is a completely normal state during a rolling deploy: the old
- * process still holds the lock while the new one starts.
- */
+function readTranslationId(payload: unknown): string {
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("translationId" in payload)
+  ) {
+    throw new Error("Publication job payload is invalid.");
+  }
+  const value = (payload as { translationId?: unknown }).translationId;
+  if (typeof value !== "string" || value.length === 0 || value.length > 128) {
+    throw new Error("Publication job translation id is invalid.");
+  }
+  return value;
+}
+
 async function withLockOrIdle(
   database: Parameters<typeof withAdvisoryLock>[0],
   key: bigint,
@@ -218,8 +155,8 @@ function parseMode(argv: readonly string[], fallback?: string): Mode {
   const flag = argv
     .find((value) => value.startsWith("--mode="))
     ?.slice("--mode=".length);
-  const value = flag ?? fallback ?? "sync";
-  if (value !== "sync" && value !== "scheduler") {
+  const value = flag ?? fallback ?? "publication";
+  if (value !== "publication" && value !== "scheduler") {
     throw new Error(`Unknown worker mode ${JSON.stringify(value)}.`);
   }
   return value;
@@ -236,7 +173,6 @@ function number(raw: string | undefined, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-/** Structured single-line output; the process logger belongs to M9. */
 function log(fields: Readonly<Record<string, unknown>>): void {
   process.stdout.write(
     `${JSON.stringify({ ts: new Date().toISOString(), ...fields })}\n`

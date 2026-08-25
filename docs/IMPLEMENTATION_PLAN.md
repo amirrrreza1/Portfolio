@@ -28,22 +28,22 @@ Small corrections that are cheap now and expensive later. Status as of 2026-08-1
 
 1. Encode shared Zod schemas for IDs, locales, pagination, errors, portfolio resources, frontmatter, auth flows, appearance preferences, and admin mutations.
    - **Done:** IDs, locales, ADR-010 slug normalization, scalar value objects, pagination, the error contract, and the full appearance surface (registry, `portfolio_prefs` cookie resolution, `AppearanceSettings` validation), plus a boundary test that fails if the package ever imports the database client or a Node-only module.
-   - **Done after step 3, as planned:** auth flows (password policy, login, WebAuthn, sessions, CSRF, recovery), article frontmatter, content-store sync state, and the blog lifecycle commands. Nine suites in total.
+   - **Done after step 3, as planned:** auth flows (password policy, login, WebAuthn, sessions, CSRF, recovery), article frontmatter, source-integrity/version contracts, and blog lifecycle commands. Nine suites in total.
    - **Done alongside Phase 3:** the contact submission schema, so the browser form and the API validate against one definition rather than two.
    - **Remaining:** the portfolio resource DTOs, which belong with their M7 admin slices rather than ahead of them — writing a projects DTO now would anticipate a UI that does not exist.
 2. Build `packages/markdown`: frontmatter schema, deterministic serializer, directive allowlist with attribute schemas, and the full render pipeline from [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8. Test it against the XSS, unsafe-link, and malformed-YAML corpora before anything depends on it.
-3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, and `ContentSyncLog`.
+3. Implement the Prisma models/constraints from [DATA_MODEL.md](DATA_MODEL.md), including `PostTranslation`, `PostDraft`, the translation sidecar tables, `AppearanceSettings`, `NavItem`, immutable article revisions, publication jobs, and the invalidation outbox.
    - **Done:** 41 models, 19 enums, 64 relation fields, plus 52 `CHECK` constraints and 6 partial indexes in `prisma/sql/integrity_constraints.sql` for what Prisma's schema language cannot express.
 4. Add migrations, generated-client wrapper, connection pooling, transaction helpers, and test database setup.
    - **Done:** pooled client through the `pg` driver adapter, optimistic-concurrency helper that puts the version predicate in the `WHERE` clause so a stale write is impossible rather than merely detected, advisory-lock helpers for ADR-013, and a constraint suite that runs against PostgreSQL-in-WebAssembly with no server.
    - **Outstanding:** the migrations themselves. They are generated on a machine with a database; see `packages/database/prisma/migrations/README.md`.
-5. Validate all environment configuration at process startup, including the content-store credentials.
+5. Validate all environment configuration at process startup, including database, object-store, authentication, and invalidation credentials.
 6. Add unit tests for normalization, per-translation publishing state, per-locale slugs, safe URLs, optimistic concurrency, and frontmatter round-trip determinism.
 7. Implement the chosen MinIO adapter and verified media identity/ingestion foundation needed by legacy migration. Admin upload/quarantine UX remains in its later vertical slice.
 
 Exit: a clean database can migrate from zero, seed deterministic fixtures, and pass contract/schema tests. The render pipeline passes its security corpora. No browser receives database access.
 
-Building the markdown package before the content store is deliberate: the pipeline is the thing every other phase trusts, so it is proven in isolation first.
+Building the Markdown renderer before article persistence is deliberate: the pipeline is the thing every other phase trusts, so it is proven in isolation first.
 
 ## Phase 2 — Deterministic legacy migration (in progress)
 
@@ -86,31 +86,28 @@ Before the first public cutover, wrap the preserved JSON reads in an isolated se
 
 **Current proof:** projects, skills, certificates, quotes, all six PDFs, the active resume, site/appearance settings, exact Hero/About inline Markdown, private UTC age derivation, and the six-section enabled/order plan have been applied and replayed against PostgreSQL/MinIO. Database and API-independent legacy renders match, including a temporary section disable/restore. Only the three owner-selected accessible colour replacements and their reviewed migration version keep Phase 2 open.
 
-## Phase 2.5 — Content store (in progress)
+## Phase 2.5 — PostgreSQL-native article foundation (in progress)
 
-Stand up the Git content store before any blog UI, so the blog phase builds on a proven store rather than growing one underneath itself.
+Establish PostgreSQL as the sole authority for complete bilingual Markdown articles before authenticated editor UI is introduced.
 
-`packages/content-store` implements the module boundary — GitHub App token exchange, `content/`-prefix enforcement, webhook verification and deduplication, reconciliation through the production renderer — and the PostgreSQL apply-ledger and outbox adapters exist. Nothing has run against a real repository: there is no API worker wiring it up, no protected `content` branch, and no `content/` directory in the repository yet.
+1. Add a reviewed forward Prisma migration for authoritative Markdown, SHA-256 source integrity, integer draft base versions, and removal of obsolete Git synchronization tables/columns. Preserve historical migrations and fail closed on old rows that lack recoverable Markdown.
+2. Implement a transactional article repository: strict editorial/reference validation, production Markdown rendering, optimistic version checks, immutable revision snapshots, and invalidation-outbox creation.
+3. Retain bounded PostgreSQL publication jobs, advisory-lock scheduling, and signed invalidation delivery; remove GitHub App credentials, content branches, webhooks, sync workers, reconciliation, and split-brain recovery machinery.
+4. Exercise valid bilingual saves, stale-version conflicts, unsafe Markdown rejection, missing taxonomy/media, render/source integrity, publication scheduling, rollback, and outbox retry.
+5. Seed and verify one published English/Persian article directly through the PostgreSQL-native repository, then prove public reads and signed invalidation in Phase 3.
 
-1. Implement the `content-store` module: GitHub App authentication, read-by-SHA, commit with `If-Match`, path-prefix enforcement, and per-post queuing with backoff.
-2. Implement the signed webhook, the sync worker, and the scheduled reconciliation job. Sync validates from scratch and never deletes.
-3. Implement sync-state tracking, drift detection, the `ContentSyncLog`, and idempotent recovery when Git succeeds but the database transaction or invalidation fails.
-4. Add the failure-mode tests that matter: Git unreachable, invalid file in the repository, deleted file, stale blob SHA, forged and replayed webhooks, commit attempted outside `content/`, and forced database failure after a successful commit.
-5. Enable secret scanning on the content branch before automated or direct content commits are accepted.
-6. Seed one real article in both locales through a direct push and confirm it reconciles into the indexed render cache. End-to-end web route invalidation is proven in Phase 3.
-
-Exit: a file pushed to the repository appears correctly in the indexed render cache with no deployment; an invalid file changes nothing and is reported; Git being unavailable blocks saves and nothing else. Phase 3 proves the corresponding public route and end-to-end invalidation.
+Exit: complete bilingual Markdown, metadata, current sanitized renders, versions, revisions, and publication state are authoritative in PostgreSQL; no article Git credential or webhook remains; transactional rollback and stale-version conflicts preserve existing public content.
 
 ## Phase 3 — Public API and frontend read migration (in progress)
 
-Steps 1–6 and 8 are partly or fully delivered. The strict article read/API/client/route/SEO slice is now implemented and automated-verification complete; real M3 content, publication invalidation, and the live article HTTP matrix remain. Step 7 remains open.
+Steps 1–6 and 8 are partly or fully delivered. The strict article read/API/client/route/SEO slice is now implemented and automated-verification complete; real PostgreSQL-native M3 article content, publication invalidation, and the live article HTTP matrix remain. Step 7 remains open.
 
 1. Implement public DTO allowlists and repository predicates that expose only published/enabled data, with locale as an explicit parameter.
 2. Introduce locale-prefixed routing: `app/[locale]/`, middleware resolution, `308` redirects from every current URL, dynamic `lang`/`dir`, and the UI message catalogs.
    - **Done for current public routes:** `app/[locale]/` uses the contracts allowlist and returns `404` for any other segment; the proxy resolves locale once into `x-portfolio-locale`; `lang`/`dir` are emitted from the resolved locale; `/projects` redirects directly to `/en/projects`; and canonical English/Persian project list/detail routes preserve locale.
    - **Done for root negotiation and active UI:** `/` resolves a validated locale cookie, then quality-weighted `Accept-Language`, then English, while explicit prefixed routes never negotiate. Typed versioned English/Persian catalogs drive the active shell, settings, projects, articles, certificates, resume, contact, errors, and footer. The generic language control preserves equivalent portfolio paths; article detail replaces it with only API-confirmed published alternate slugs. Localized dates/counts retain machine-readable ISO values.
-3. Add site/appearance/projects/resume/blog-read endpoints with ETags, exclude non-`SYNCED` translations from public discovery, and test draft/cross-locale leakage plus the deliberate portfolio-fallback/article-no-fallback asymmetry.
-   - **Partly done:** strict site, appearance, project list/detail, homepage collection, and cursor-paginated article list/detail endpoints have ETags and locale-scoped queries. Article discovery is published/`SYNCED` only; detail has no locale fallback, exposes only published alternates, and refuses invalid render provenance. Opaque project-image, certificate, and active-resume routes mediate verified private-MinIO objects without exposing internal keys. Signed publication invalidation and full article media/discovery behavior remain open.
+3. Add site/appearance/projects/resume/blog-read endpoints with ETags, exclude translations with incomplete source/render integrity from public discovery, and test draft/cross-locale leakage plus the deliberate portfolio-fallback/article-no-fallback asymmetry.
+   - **Partly done:** strict site, appearance, project list/detail, homepage collection, and cursor-paginated article list/detail endpoints have ETags and locale-scoped queries. Article discovery is published with current source/render integrity only; detail has no locale fallback, exposes only published alternates, and refuses invalid render provenance. Opaque project-image, certificate, and active-resume routes mediate verified private-MinIO objects without exposing internal keys. Signed publication invalidation and full article media/discovery behavior remain open.
 4. Add a typed server-side API client in Next.js with timeouts and controlled errors.
    - **Done for current public resources:** one generic validated client now isolates projects, each project slug, site, appearance, home, article cursors, and locale-specific article slugs; it bounds timeouts/last-known-good age and fails closed on malformed, cross-resource, or cross-locale data. Article reads use a 15-minute ceiling and never use stale data for exact `404`. A route-scoped pre-stream gate applies the same policy: healthy and in-window stale routes remain `200`, cold/expired database reads return localized `503`, explicit legacy rollback bypasses the API, and missing project/article content retains `404`.
 5. Make the header render server-side so navigation exists in the HTML, then migrate one public section at a time behind a server feature flag, comparing rendered output before removing JSON imports.
@@ -165,7 +162,7 @@ Implement the admin shell and resources in small vertical slices:
 3. projects, certificates, quotes
 4. secure media library and atomic resume activation, including streaming limits, MIME/decode verification, image re-encoding, PDF policy/quarantine, safe object keys, and abuse tests
 5. per-locale translation editing for every portfolio resource, with untranslated-field indicators
-6. revisions, restore, audit viewer, content-store health panel, sessions/users
+6. revisions, restore, audit viewer, publication/invalidation health panel, sessions/users
 
 Each slice includes shared contracts, API transaction/revision/audit behavior, accessible UI states, optimistic conflict handling, tests, and cache invalidation before moving to the next.
 
@@ -173,14 +170,14 @@ Exit: every non-blog row of [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) is edit
 
 ## Phase 6 — Blog and SEO
 
-1. Implement the Markdown editor with the directive palette, database autosave that never commits, preview through the production pipeline, and blob-SHA conflict handling with a diff.
+1. Implement the Markdown editor with the directive palette, isolated database autosave, preview through the production pipeline, and integer-version conflict handling.
 2. Implement the `.md`/`.mdx` import flow: dry-run report, normalization, confirm-and-commit, and quarantine of the original.
-3. Implement post/translation/category/tag CRUD, per-translation lifecycle transitions, scheduled publishing with bot reconciliation, revisions, and per-locale slug redirect history.
+3. Implement post/translation/category/tag CRUD, per-translation lifecycle transitions, scheduled publishing with transactional publication and signed invalidation, revisions, and per-locale slug redirect history.
 4. Build per-locale `/blog`, post, category/tag, preview, and related-content pages with accessible code and heading rendering.
 5. Add dynamic metadata, canonicals, `hreflang`, JSON-LD, per-locale RSS and sitemaps, robots, redirects, and `noindex` enforcement.
 6. Add the editorial checklist and the automated validations from [SEO.md](SEO.md) §10.
 
-Exit: a translation can move draft → preview → scheduled/published → revised/redirected/archived through the panel, through a file upload, and through a direct push, all producing identical output, with no private leakage, invalid cache, or broken canonical history. A scheduled article publishes on time with the Git host down, and the resulting drift is reported. Together with Phase 5, the full PRODUCT_SPEC `ADMIN-004` scope is editable.
+Exit: a translation can move draft → preview → scheduled/published → revised/redirected/archived through the panel and validated Markdown import, all producing identical output, with no private leakage, invalid cache, or broken canonical history. A scheduled article publishes exactly once and produces durable signed cache invalidation. Together with Phase 5, the full PRODUCT_SPEC `ADMIN-004` scope is editable.
 
 ## Phase 7 — Contact, uploads, and operational adapters
 
@@ -193,16 +190,16 @@ Exit: public source maps/bundles contain no provider credentials; malicious uplo
 ## Phase 8 — Docker, CI, and deployment hardening
 
 1. Create multi-stage web/API images, the scheduler entrypoint, and local dependency/full/test Compose profiles.
-2. Add separate migration job, health/readiness probes that exclude Git reachability, least-privilege container controls, and runtime secrets including the Git App key.
+2. Add a separate migration job, publication/outbox health probes, least-privilege container controls, and server-only runtime secrets.
 3. CI: frozen install, format, lint, typecheck, unit/integration/e2e, builds, migration validation, OpenAPI drift check, audit, secret scanning on the content branch as well as code, SBOM, and image scan.
-4. Add backup/restore automation, a content-repository mirror, and deployment/incident runbooks including Git-credential compromise response.
+4. Add PostgreSQL/MinIO backup and restore automation plus deployment/incident runbooks covering article integrity and signing-secret rotation.
 
 Exit: a clean checkout starts locally; staging deploys reproducibly; production database is not publicly exposed; the image contains no `content/` copy; restore drill from database backup plus repository clone succeeds.
 
 ## Phase 9 — Launch and cleanup
 
 - Freeze content briefly, run final migration/reconciliation, smoke test public/admin paths in both locales, and verify headers, robots, per-locale sitemaps, RSS, canonicals, and `hreflang`.
-- Redirect old URLs to their locale-prefixed equivalents and monitor errors, cache invalidations, authentication events, content-sync failures, index coverage per locale, and Core Web Vitals.
+- Redirect old URLs to their locale-prefixed equivalents and monitor errors, cache invalidations, authentication events, publication/integrity failures, index coverage per locale, and Core Web Vitals.
 - Remove the legacy JSON adapter and remaining obsolete packages only after the rollback window closes. The EmailJS browser integration and provider keys are removed/revoked during Phase 0 stabilization and do not wait for launch.
 - Verify in webmaster tools that both locales are indexed and that `hreflang` is recognized without reciprocity errors.
 - Keep old files/backups under retention; do not silently delete them during deployment.
@@ -215,19 +212,19 @@ Exit: a clean checkout starts locally; staging deploys reproducibly; production 
 | Unit             | schemas, per-translation state transitions, policies, per-locale slug/URL normalization, frontmatter round-trip determinism, Markdown and directive safety, DTO mapping |
 | Content pipeline | the full test list in [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §13                                                                                                    |
 | Database         | constraints, transactions, optimistic concurrency, revisions/audit, public predicates, translation cascades                                                             |
-| API integration  | auth/CSRF/roles, CRUD, locale parameters, upload and import limits, publishing, webhook signatures, error contract, caching                                             |
+| API integration  | auth/CSRF/roles, CRUD, locale parameters, upload/import limits, publication jobs, invalidation signatures, error contract, caching                                      |
 | Web component    | admin forms/conflicts, accessible editor/preview, settings modal, public rendering states in both directions                                                            |
 | i18n             | the test list in [I18N.md](I18N.md) §8                                                                                                                                  |
 | Appearance       | the test list in [THEMING.md](THEMING.md) §9                                                                                                                            |
 | End-to-end       | owner login/passkey, edit/publish in both locales, file import, resume replace, contact, redirects, draft privacy, language switching                                   |
 | Security         | abuse corpus and release gates from [SECURITY.md](SECURITY.md) §15                                                                                                      |
-| Operations       | migrate from zero, upgrade migration, backup/restore plus repository clone reconciliation, single-scheduler behavior, container health/shutdown                         |
+| Operations       | migrate from zero, upgrade migration, PostgreSQL/MinIO backup and integrity-verified restore, single-scheduler behavior, container health/shutdown                      |
 
 ## Pull-request slicing
 
-Keep changes reviewable and reversible. A recommended sequence is contracts/markdown package → schema → migration → content store → public reads and i18n routing → appearance → auth → each admin resource → blog lifecycle → SEO surfaces → contact/media → Docker/CI. Avoid combining a schema migration, auth rewrite, and large UI redesign in one change.
+Keep changes reviewable and reversible. A recommended sequence is contracts/markdown package → schema → migration → PostgreSQL article foundation → public reads and i18n routing → appearance → auth → each admin resource → blog lifecycle → SEO surfaces → contact/media → Docker/CI. Avoid combining a schema migration, auth rewrite, and large UI redesign in one change.
 
-Two ordering constraints are not negotiable: the markdown render pipeline is proven before anything renders content, and the content store is proven before the blog UI is built on top of it.
+Two ordering constraints are not negotiable: the Markdown render pipeline is proven before anything renders content, and the PostgreSQL article foundation is proven before authenticated blog UI is built on top of it.
 
 ## Definition of done for any feature
 

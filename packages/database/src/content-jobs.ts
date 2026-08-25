@@ -32,8 +32,7 @@ export function createPrismaSqlExecutor(db: TransactionCapable): SqlExecutor {
   };
 }
 
-export type ContentJobKind =
-  "WEBHOOK_RECONCILE" | "SCHEDULED_RECONCILE" | "PUBLISH_DUE";
+export type ContentJobKind = "PUBLISH_DUE";
 
 export interface ClaimedContentJob {
   readonly id: string;

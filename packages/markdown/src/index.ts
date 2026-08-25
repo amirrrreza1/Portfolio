@@ -204,6 +204,13 @@ export async function renderMarkdownBody(
   return renderMarkdownBodyInternal(source, false);
 }
 
+/** Render authoritative article Markdown stored separately from its metadata. */
+export async function renderArticleBody(
+  source: string
+): Promise<RenderedMarkdownBody> {
+  return renderMarkdownBodyInternal(source, true);
+}
+
 async function renderMarkdownBodyInternal(
   source: string,
   allowDirectives: boolean
@@ -514,12 +521,11 @@ async function highlightChildren(parent: Node): Promise<void> {
           // and the other into `--shiki-dark`, so the rendered block is stuck
           // on whichever theme was named as the default unless CSS overrides
           // an inline style — which needs `!important` and still leaves the
-          // wrong colour in the markup for anything that reads it. Current
-          // Shiki 4 output serializes its light values inline, so globals.css
-          // leaves those as the light output and narrowly overrides them with
-          // the dark custom properties for the selected dark `data-theme`
-          // (rather than from `prefers-color-scheme`). The surface itself is
-          // painted by
+          // wrong colour in the markup for anything that reads it. With the
+          // default disabled, Shiki emits only `--shiki-light`/`--shiki-dark`
+          // custom properties. globals.css explicitly selects the matching
+          // property for the chosen `data-theme` rather than following
+          // `prefers-color-scheme`. The surface itself is painted by
           // `--color-code-bg`/`--color-code-text`, which is what the
           // THEMING.md §9 contrast matrix actually measures.
           defaultColor: false,

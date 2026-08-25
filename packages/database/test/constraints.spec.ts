@@ -108,24 +108,29 @@ describe("publication state invariants", () => {
   it("rejects PUBLISHED without publishedAt", async () => {
     expect(
       await accepts(
-        translation("a", { status: "'PUBLISHED'", sourceBlobSha: "'abc'" })
+        translation("a", {
+          status: "'PUBLISHED'",
+          bodyMarkdown: "'## Body'",
+          bodySha256: "repeat('a', 64)",
+        })
       )
     ).toBe(false);
   });
 
-  it("accepts PUBLISHED with publishedAt and a source blob", async () => {
+  it("accepts PUBLISHED with publishedAt and a authoritative Markdown source", async () => {
     expect(
       await accepts(
         translation("b", {
           status: "'PUBLISHED'",
           publishedAt: "now()",
-          sourceBlobSha: "'abc'",
+          bodyMarkdown: "'## Body'",
+          bodySha256: "repeat('a', 64)",
         })
       )
     ).toBe(true);
   });
 
-  it("rejects PUBLISHED with no body in Git", async () => {
+  it("rejects PUBLISHED with no authoritative Markdown", async () => {
     // The split-brain state M3 exists to prevent: an index row claiming to be
     // published with no file behind it.
     expect(
@@ -158,17 +163,22 @@ describe("publication state invariants", () => {
   it("rejects a render cache with no provenance", async () => {
     expect(
       await accepts(
-        translation("g", { renderedHtml: "'<p>x</p>'", sourceBlobSha: "'abc'" })
+        translation("g", {
+          renderedHtml: "'<p>x</p>'",
+          bodyMarkdown: "'## Body'",
+          bodySha256: "repeat('a', 64)",
+        })
       )
     ).toBe(false);
   });
 
-  it("accepts a render cache with both blob sha and renderer version", async () => {
+  it("accepts a render cache with both source digest and renderer version", async () => {
     expect(
       await accepts(
         translation("h", {
           renderedHtml: "'<p>x</p>'",
-          sourceBlobSha: "'abc'",
+          bodyMarkdown: "'## Body'",
+          bodySha256: "repeat('a', 64)",
           rendererVersion: "'1'",
         })
       )

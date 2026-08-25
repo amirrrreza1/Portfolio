@@ -6,10 +6,8 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import {
-  CONTENT_HEAD_LOCK_KEY,
   runContentScheduler,
   runContentWorker,
-  SCHEDULED_RECONCILE_DEDUPE_KEY,
 } from "../src/worker/content-worker.js";
 
 /**
@@ -70,8 +68,8 @@ function fakeJobs(
 function job(overrides: Partial<ClaimedContentJob> = {}): ClaimedContentJob {
   return {
     id: "job-1",
-    kind: "WEBHOOK_RECONCILE",
-    lockKey: CONTENT_HEAD_LOCK_KEY,
+    kind: "PUBLISH_DUE",
+    lockKey: "article:translation-1",
     payload: {},
     attempts: 1,
     maxAttempts: 5,
@@ -93,7 +91,7 @@ describe("runContentWorker", () => {
     const summary = await runContentWorker({
       jobs: store,
       handlers: {
-        WEBHOOK_RECONCILE: async (claimed) => {
+        PUBLISH_DUE: async (claimed) => {
           handled.push(claimed.id);
         },
       },
@@ -120,8 +118,8 @@ describe("runContentWorker", () => {
     const summary = await runContentWorker({
       jobs: store,
       handlers: {
-        WEBHOOK_RECONCILE: async (claimed) => {
-          if (claimed.id === "job-1") throw new Error("GitHub returned 502");
+        PUBLISH_DUE: async (claimed) => {
+          if (claimed.id === "job-1") throw new Error("database timeout");
           handled.push(claimed.id);
         },
       },
@@ -132,7 +130,7 @@ describe("runContentWorker", () => {
       running: untilDrained(queue),
     });
 
-    expect(recorded.failures[0]?.error).toBe("GitHub returned 502");
+    expect(recorded.failures[0]?.error).toBe("database timeout");
     expect(handled).toEqual(["job-2"]);
     expect(summary.failed).toBe(1);
     expect(summary.succeeded).toBe(1);
@@ -145,7 +143,7 @@ describe("runContentWorker", () => {
     await runContentWorker({
       jobs: store,
       handlers: {
-        WEBHOOK_RECONCILE: async () => {
+        PUBLISH_DUE: async () => {
           throw new Error("still failing");
         },
       },
@@ -228,36 +226,15 @@ describe("runContentWorker", () => {
 });
 
 describe("runContentScheduler", () => {
-  it("enqueues a deduplicated reconciliation each tick", async () => {
-    const { store, recorded } = fakeJobs([]);
-
-    let ticks = 0;
-    await runContentScheduler({
-      jobs: store,
-      intervalMs: 1_000,
-      sleep: async () => undefined,
-      running: () => ticks++ < 2,
-    });
-
-    expect(recorded.enqueued).toHaveLength(2);
-    expect(recorded.enqueued[0]).toMatchObject({
-      kind: "SCHEDULED_RECONCILE",
-      lockKey: CONTENT_HEAD_LOCK_KEY,
-      dedupeKey: SCHEDULED_RECONCILE_DEDUPE_KEY,
-    });
-  });
-
-  it("counts a folded duplicate as skipped rather than as work", async () => {
-    const { store } = fakeJobs([], { enqueue: async () => "deduplicated" });
-
+  it("counts due publications returned by each scan", async () => {
+    const scans = [2, 0];
     let ticks = 0;
     const summary = await runContentScheduler({
-      jobs: store,
+      enqueueDue: async () => scans.shift() ?? 0,
       intervalMs: 1_000,
       sleep: async () => undefined,
       running: () => ticks++ < 2,
     });
-
-    expect(summary).toEqual({ enqueued: 0, skipped: 2 });
+    expect(summary).toEqual({ enqueued: 2, skipped: 1 });
   });
 });

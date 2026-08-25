@@ -1,5 +1,7 @@
 # M4 public article slice
 
+> Historical evidence only: the Git-backed article architecture documented below was superseded by ADR-015 on 2026-08-25. Preserve this record for audit history; it does not describe the active article storage design.
+
 Date: **2026-08-14**  
 Scope: strict published article reads, bilingual routes, bounded outage behavior,
 and article-specific metadata

@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-24**
 
-Active milestones: **M3, M4, and M6**. M2 is complete: its real PostgreSQL/MinIO apply/replay, public content/media, exact Hero/About, private age, ordered/disabled sections, and three reviewed accessible skill-colour replacements are all evidenced. M3/M6 have secure implementation foundations but remain open until their real Git/database/API exit gates are demonstrated. M4 has five live-proven portfolio read boundaries and now also has an automated-verification-complete public article boundary: strict published-only APIs, bilingual routes, no-fallback locale behavior, current-render provenance, 15-minute bounded stale reads, article-route `503`, and published-only metadata. M5 is complete: its database-backed appearance allowlist, full THEMING §9 browser matrix, and owner-approved light-theme and screen-reader review are evidenced. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestones: **M3, M4, and M6**. M2 is complete: its real PostgreSQL/MinIO apply/replay, public content/media, exact Hero/About, private age, ordered/disabled sections, and three reviewed accessible skill-colour replacements are all evidenced. M3 is being rebuilt around ADR-015 and M6 remains open until its API security boundary is demonstrated. M4 has five live-proven portfolio read boundaries and now also has an automated-verification-complete public article boundary: strict published-only APIs, bilingual routes, no-fallback locale behavior, current-render provenance, 15-minute bounded stale reads, article-route `503`, and published-only metadata. M5 is complete: its database-backed appearance allowlist, full THEMING §9 browser matrix, and owner-approved light-theme and screen-reader review are evidenced. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -15,8 +15,8 @@ Calendar dates are intentionally not assigned yet. They depend on delivery capac
 The first production release provides:
 
 - a server-rendered portfolio backed by PostgreSQL and editable through the admin panel;
-- an English and Persian blog whose canonical article bodies are Markdown files in Git;
-- equivalent panel, upload, and direct-push authoring paths through one safe render pipeline;
+- an English and Persian blog whose canonical Markdown bodies, publication state, and revisions live in PostgreSQL;
+- equivalent authenticated-editor and Markdown-import authoring paths through one safe render pipeline;
 - site-wide visitor theme selection and blog-only font family and text-size selection;
 - secure owner authentication, revisions, audit history, media/resume management, and recovery;
 - locale-correct SEO surfaces, reproducible containers, CI security gates, backups, and a proven restore path.
@@ -27,17 +27,17 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 Phase 0 stabilization is complete in the repository, and M1 is complete. Its migrations and supplemental constraints applied from zero to PostgreSQL 17, consecutive deterministic seed runs produced stable counts, browser/server package boundaries are enforced, and API startup configuration is validated. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing else.
 
-M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close because the root layout, locale shell, and colour usage are touched by every later surface. M5 is now complete. M4 adds an automated-verification-complete article read/route/SEO slice to its five live-proven portfolio boundaries, root negotiation, public catalogs, and server-side GitHub statistics; it cannot close until M3 supplies a real reconciled bilingual article and signed publication invalidation is proven through the route.
+M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close because the root layout, locale shell, and colour usage are touched by every later surface. M5 is now complete. M4 adds an automated-verification-complete article read/route/SEO slice to its five live-proven portfolio boundaries, root negotiation, public catalogs, and server-side GitHub statistics; it cannot close until M3 supplies a real PostgreSQL-native bilingual article and signed publication invalidation is proven through the route.
 
 | Area                         | Current state                                                                                                                                                                                                                                                                                                                                                        | Roadmap implication                                                                                                                                                                                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                                                                                                                                                                                                                                | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                                                                    |
-| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Prove a real M3-reconciled bilingual article and signed publication invalidation; complete discovery/social-image behavior                                                                         |
-| API                          | NestJS/Fastify exposes health/contact plus strict public project, site, appearance, home, and cursor-paginated article list/detail endpoints with ETag/conditional-cache behavior. Article discovery is published/`SYNCED` only and detail requires current valid render provenance.                                                                                 | Connect the real content worker/invalidation outbox; the auth/admin boundary remains later work                                                                                                    |
+| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Prove a real PostgreSQL-native M3 bilingual article and signed publication invalidation; complete discovery/social-image behavior                                                                  |
+| API                          | NestJS/Fastify exposes health/contact plus strict public project, site, appearance, home, and cursor-paginated article list/detail endpoints with ETag/conditional-cache behavior. Article discovery is published and integrity-valid only; detail requires current render provenance.                                                                               | Connect the PostgreSQL-native article repository/invalidation outbox; the auth/admin boundary remains later work                                                                                   |
 | Contracts                    | `packages/contracts` exports strict portfolio and public article DTOs, including canonical locale slugs, sanitized render payloads, headings, published alternates, cursor envelopes, and bounded translation-missing errors; tests reject internal fields and cross-locale shapes.                                                                                  | Public read shapes are delivered; admin command DTOs remain M7/M8 work                                                                                                                             |
 | Database                     | `packages/database` has a 41-model/19-enum Prisma schema, three schema migrations, separately ledgered content, page-section, and GitHub-statistics settings migrations, supplemental constraints, a pooled client, concurrency helpers, and deterministic seed                                                                                                      | M1/M2 apply/replay passed; content, media, exact Hero/About, private age, ordering, rollback, the GitHub repository allowlist, and the three reviewed colour replacements are proven.              |
-| Markdown and Git content     | Renderer is delivered; `packages/content-store` provides GitHub App auth, secure writes, webhook trigger handling, reconciliation primitives, and live recovery for invalid/missing files. A real bilingual article is reconciled from the `content` branch.                                                                                                         | Apply owner-level branch protection and secret scanning, then prove a public webhook and the remaining Git/database-outage recovery drills before M3 exits.                                        |
-| Blog and admin               | Public bilingual blog list/detail routes now exist over strict API DTOs; authoring/publishing/admin routes do not. `packages/auth-core` supplies password/session/CSRF/recovery/WebAuthn challenge primitives.                                                                                                                                                       | Real Git-backed content, invalidation, full passkey verification, authorization, and the admin shell remain                                                                                        |
+| Markdown and article content | The production renderer, strict contracts, PostgreSQL publication-job primitives, and signed invalidation are delivered; ADR-015 replaces historical Git-backed article synchronization with one PostgreSQL article authority.                                                                                                                                       | Apply the forward article migration and prove real bilingual Markdown persistence, source/render integrity, immutable revisions, stale-version protection, and atomic outbox writes.               |
+| Blog and admin               | Public bilingual blog list/detail routes now exist over strict API DTOs; authenticated authoring/publishing/admin routes do not. `packages/auth-core` supplies password/session/CSRF/recovery/WebAuthn challenge primitives.                                                                                                                                         | Real PostgreSQL-native article content, end-to-end invalidation, full passkey verification, authorization, and the admin shell remain.                                                             |
 | Appearance                   | The root layout resolves `portfolio_prefs` against a strict locale-scoped database/legacy owner allowlist and emits the result in the first byte; the dialog consumes that allowlist, and live database/rollback plus localized HTTP `503` outage proof exists                                                                                                       | Token names are still the legacy `--color-primary`/`--color-secondary` set; subsetting, `unicode-range`, route-scoped preload, and the complete [THEMING.md](THEMING.md) §9 matrix are outstanding |
 | Operations and quality       | CI runs frozen install, format, lint, typecheck, real tests, builds, and full-history secret scanning; `--passWithNoTests` is gone from every package                                                                                                                                                                                                                | Expand continuously; container, audit, SBOM, and image scanning complete in M9                                                                                                                     |
 | Legacy baseline              | [BASELINE_M0.md](BASELINE_M0.md) records the routes, content counts, and SHA-256 hashes of all 137 legacy source and asset files at the pre-stabilization commit                                                                                                                                                                                                     | Frozen. It is the comparison input for the M2 reconciliation and must not be regenerated                                                                                                           |
@@ -47,7 +47,7 @@ Findings from the verification passes that carry forward:
 - `prettier --check` failed on 48 files before M0, so the CI format step could not have passed on any commit. The repository is now formatted, and `.gitattributes` pins LF endings — the CRLF drift in a Windows checkout was both the cause of that failure and the reason `git diff` reported every line of 86 files as changed.
 - The legacy content reconciles against the figures already stated in the plan: 14 projects, 6 skill categories, 26 skills, 5 certificates, 35 quotes, and no orphan skill references. M2 inherits a clean starting point plus a test that keeps it that way.
 - **Three** skill colours are `#000000`, not two: `Next.js (App Router)` (202), `shad CN` (306), and `Vercel` (801). The migration preflight reports all three; earlier revisions of this roadmap, the plan, and the inventory said two. The source-preserving proof applied them unchanged; the owner picks accessible replacements before M2's final accepted migration version.
-- M4 now has route-helper and locale/resource-isolation coverage plus live projects, site-shell/section, appearance, homepage, private-document, rollback, root-negotiation, catalog, equivalent-page switching, server-side GitHub statistics, and real HTTP `503` outage proof. The article contract/API/client/routes/no-fallback/SEO/outage boundary is automated-verification complete, but live M3 reconciliation, signed publication invalidation, full discovery/social-image behavior, and milestone-wide cross-locale HTTP evidence remain. M5's [THEMING.md](THEMING.md) §9 matrix is complete as of 2026-08-24: the contrast half runs in the contracts suite, and the rest runs in a browser as its own CI job.
+- M4 now has route-helper and locale/resource-isolation coverage plus live projects, site-shell/section, appearance, homepage, private-document, rollback, root-negotiation, catalog, equivalent-page switching, server-side GitHub statistics, and real HTTP `503` outage proof. The article contract/API/client/routes/no-fallback/SEO/outage boundary is automated-verification complete, but live PostgreSQL-native M3 article persistence, signed publication invalidation, full discovery/social-image behavior, and milestone-wide cross-locale HTTP evidence remain. M5's [THEMING.md](THEMING.md) §9 matrix is complete as of 2026-08-24: the contrast half runs in the contracts suite, and the rest runs in a browser as its own CI job.
 
 The root quality commands now prepare generated workspace-package artifacts themselves. The current workspace has 505 passing tests across 51 files in all nine tested apps/packages; every workspace typecheck, declared API/full web lint, all seven library emits, the API build, and the Next.js production build pass. The Windows build-path defect was traced to `outputFileTracingRoot` using a URL pathname rather than a native path; it now uses `fileURLToPath` so standalone tracing remains inside the intended workspace. This run used the installed binaries directly because pnpm's non-interactive dependency-store guard stopped the root wrapper before its scripts; M0's clean-checkout gate therefore remains separate and open.
 
@@ -59,11 +59,11 @@ Each decision below requires an ADR or an explicit amendment to an existing ADR 
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Per-visitor appearance delivery                                                                    | **Accepted: ADR-009**; prove in M4/M5                                                             | Dynamic HTML shell emits cookie-specific attributes while public data/render caches stay shared and appearance-free                                                                                                                   |
 | Persian slug policy                                                                                | **Accepted: ADR-010**; implement in M1                                                            | Unicode Persian is canonical; normalized ASCII transliterations may be redirect aliases                                                                                                                                               |
-| Git write branch and protection model                                                              | **Accepted: ADR-011**; prove in M3                                                                | Protected dedicated `content` branch is not merged into the deployment branch during normal publishing                                                                                                                                |
-| Recovery after Git succeeds but PostgreSQL or invalidation fails                                   | **Accepted: ADR-012**; prove in M3/M4                                                             | Durable operation log, idempotent apply ledger, reconciliation, and invalidation outbox                                                                                                                                               |
+| Article storage and publication authority                                                          | **Accepted: ADR-015**; prove in M3                                                                | PostgreSQL owns complete Markdown articles, publication state, source/render integrity, immutable revisions, and transactional invalidation                                                                                           |
+| Transactional article save and invalidation recovery                                               | **Accepted: ADR-015**; prove in M3/M4                                                             | One PostgreSQL transaction for article, revision, and outbox; bounded idempotent signed delivery                                                                                                                                      |
 | MinIO deployment and verified ingestion boundary                                                   | Before M2                                                                                         | Certificate/resume migration and later admin media depend on stable media IDs and checksums                                                                                                                                           |
 | Public API outage strategy                                                                         | **Accepted: ADR-014**; prove in M4                                                                | Bounded last-known-good published DTOs with per-surface maximum stale windows; cold/expired routes fail with controlled `503`                                                                                                         |
-| Scheduler and sync-worker topology                                                                 | **Accepted: ADR-013**; prove in M3/M8                                                             | Dedicated PostgreSQL-backed worker and advisory-lock scheduler; API replicas run no timers                                                                                                                                            |
+| Scheduler and publication-worker topology                                                          | **Accepted: ADR-013/015**; prove in M3/M8                                                         | Dedicated PostgreSQL-backed publication/invalidation worker and advisory-lock scheduler; API replicas run no timers                                                                                                                   |
 | Hosting/reverse proxy, monitoring, retention defaults, analytics choice, and v1 editor permissions | Deadlines assigned in `DECISIONS.md`; **the hosting and editor-permission deadlines are overdue** | These choices affect adapters, privacy, authorization, runbooks, and final deployment. M4 and M6 opened without them; see the note under the deadline table in [DECISIONS.md](DECISIONS.md#decision-deadlines-for-remaining-adapters) |
 
 ## 4. Delivery map
@@ -72,7 +72,7 @@ Each decision below requires an ADR or an explicit amendment to an existing ADR 
 flowchart LR
     M0["M0 Baseline and decisions"] --> M1["M1 Domain and media foundation"]
     M1 --> M2["M2 Deterministic migration"]
-    M2 --> M3["M3 Git content store"]
+    M2 --> M3["M3 PostgreSQL articles"]
     M3 --> M4["M4 Public bilingual cutover"]
     M4 --> M5["M5 Appearance and accessibility"]
     M1 --> M6["M6 Authentication foundation"]
@@ -86,31 +86,31 @@ flowchart LR
     M8 --> M9
 ```
 
-M6 may run alongside M2–M5 once M1 is stable. M7 API/domain work may begin after M2 and M6, but its UI uses the M5 design-system boundary, its content-store-health slice needs M3, and its end-to-end invalidation gate needs M4. For a single developer, follow the numbered order unless switching tracks removes a genuine external blocker.
+M6 may run alongside M2–M5 once M1 is stable. M7 API/domain work may begin after M2 and M6, but its UI uses the M5 design-system boundary, its publication-health slice needs M3, and its end-to-end invalidation gate needs M4. For a single developer, follow the numbered order unless switching tracks removes a genuine external blocker.
 
 Two dependencies are non-negotiable:
 
-1. The Markdown parser, sanitizer, and security corpus pass before the Git content store accepts content.
-2. The Git content store is proven before blog authoring and lifecycle UI are built on it.
+1. The Markdown parser, sanitizer, and security corpus pass before the article repository accepts content.
+2. The PostgreSQL-native article foundation is proven before blog authoring and lifecycle UI are built on it.
 
 ## 5. Milestone summary
 
-| Milestone                                | Status      | Relative size | Outcome                                                                                                              | Depends on         |
-| ---------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| M0 — Baseline, guardrails, and decisions | Blocked     | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
-| M1 — Trusted domain and media foundation | Complete    | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
-| M2 — Deterministic legacy migration      | Complete    | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
-| M3 — Git content-store proof             | In progress | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
-| M4 — Public bilingual cutover            | In progress | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
-| M5 — Appearance and accessibility        | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
-| M6 — Authentication foundation           | In progress | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
-| M7 — Portfolio CMS                       | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
-| M8 — Blog authoring, publishing, and SEO | Not started | XL            | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO                                | M3, M4, M6, M7     |
-| M9 — Operations, release, and cleanup    | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
+| Milestone                                 | Status      | Relative size | Outcome                                                                                                              | Depends on         |
+| ----------------------------------------- | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| M0 — Baseline, guardrails, and decisions  | Blocked     | S             | Verified scaffold, urgent risk cleanup, starter CI, and closed architectural blockers                                | —                  |
+| M1 — Trusted domain and media foundation  | Complete    | XL            | Shared contracts, Prisma schema/migrations, safe Markdown pipeline, and verified media identity/ingestion primitives | M0                 |
+| M2 — Deterministic legacy migration       | Complete    | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
+| M3 — PostgreSQL-native article foundation | In progress | L             | Transactional Markdown persistence, revisions, source integrity, publication jobs, and cache outbox                  | M1, M2             |
+| M4 — Public bilingual cutover             | In progress | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
+| M5 — Appearance and accessibility         | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
+| M6 — Authentication foundation            | In progress | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
+| M7 — Portfolio CMS                        | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
+| M8 — Blog authoring, publishing, and SEO  | Not started | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
+| M9 — Operations, release, and cleanup     | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
 
 M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing downstream, so work continues in parallel.
 
-M4 is `In progress` even though its stated M3 dependency has not exited. That is a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4 that genuinely need a proven content store — real reconciled article reads and end-to-end invalidation — are exactly the parts still outstanding. Three milestones remain open; no new milestone should open until the proof backlog contracts.
+M4 is `In progress` even though its stated M3 dependency has not exited. That is a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4 that genuinely need a proven PostgreSQL-native article foundation — real PostgreSQL-native article reads and end-to-end invalidation — are exactly the parts still outstanding. Three milestones remain open; no new milestone should open until the proof backlog contracts.
 
 The detailed plan maps to these milestones as follows: M0 pulls forward the Phase 0 cleanup and starter CI; M1 is Phase 1 plus the media foundation needed by migration; M2 is Phase 2; M3 is Phase 2.5; M4 is Phase 3 plus the public contact replacement; M5 is Phase 3.5; M6 is Phase 4; M7 is Phase 5 plus upload hardening; M8 is Phase 6; and M9 completes Phases 7–9. This mapping is authoritative when the older phase grouping would defer a prerequisite until after its consumer.
 
@@ -159,13 +159,13 @@ Deliverables:
 
 Slice status:
 
-| Slice                                             | Status                    | Notes                                                                                                                                                                                                                                                  |
-| ------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Contracts — common and appearance                 | **Delivered**             | `packages/contracts`: branded IDs, locale allowlist, ADR-010 slug normalization, scalar value objects, cursor pagination, the error contract, the appearance registry, and the `portfolio_prefs` cookie with allowlist resolution                      |
-| Database — schema and constraints                 | **Delivered and applied** | `packages/database`: 41 models, 19 enums, 64 relation fields, 52 `CHECK` constraints and 6 partial indexes, pooled client, optimistic-concurrency and advisory-lock helpers, deterministic seed, and two migrations applied from zero to PostgreSQL 17 |
-| Contracts — auth, content, contact, blog commands | **Delivered**             | Password policy, login, WebAuthn, sessions and CSRF; the contact submission schema the API and the form now share; the frontmatter contract every authoring path converges on; sync state; and the article lifecycle commands. Nine suites in total    |
-| Markdown pipeline                                 | **Delivered**             | packages/markdown now provides bounded safe YAML/frontmatter parsing, byte-stable serialization, GFM/directive validation, server-only Shiki output, sanitize-last rendering, heading/reading-time derivation, and an XSS/YAML/URL corpus              |
-| Media foundation                                  | **Delivered**             | packages/media provides private S3/MinIO and local/test object-store adapters, magic-byte MIME verification, SHA-256 identity, safe public names, and traversal-proof object-key handling                                                              |
+| Slice                                             | Status                    | Notes                                                                                                                                                                                                                                                             |
+| ------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts — common and appearance                 | **Delivered**             | `packages/contracts`: branded IDs, locale allowlist, ADR-010 slug normalization, scalar value objects, cursor pagination, the error contract, the appearance registry, and the `portfolio_prefs` cookie with allowlist resolution                                 |
+| Database — schema and constraints                 | **Delivered and applied** | `packages/database`: 41 models, 19 enums, 64 relation fields, 52 `CHECK` constraints and 6 partial indexes, pooled client, optimistic-concurrency and advisory-lock helpers, deterministic seed, and two migrations applied from zero to PostgreSQL 17            |
+| Contracts — auth, content, contact, blog commands | **Delivered**             | Password policy, login, WebAuthn, sessions and CSRF; the contact submission schema the API and the form now share; the frontmatter contract every authoring path shares; article source-integrity/version contracts; and lifecycle commands. Nine suites in total |
+| Markdown pipeline                                 | **Delivered**             | packages/markdown now provides bounded safe YAML/frontmatter parsing, byte-stable serialization, GFM/directive validation, server-only Shiki output, sanitize-last rendering, heading/reading-time derivation, and an XSS/YAML/URL corpus                         |
+| Media foundation                                  | **Delivered**             | packages/media provides private S3/MinIO and local/test object-store adapters, magic-byte MIME verification, SHA-256 identity, safe public names, and traversal-proof object-key handling                                                                         |
 
 Exit gate:
 
@@ -231,46 +231,26 @@ Exit gate:
 - rerunning the same migration produces no unintended changes;
 - switching back to legacy reads remains possible.
 
-### M3 — Git content-store proof
+### M3 — PostgreSQL-native article foundation
 
-Objective: prove Git-backed article integrity and recovery before any editor depends on it.
-
-Current slice: **the worker and its queue are built.** `packages/content-store`
-confines writes to `content/` on the dedicated branch, exchanges GitHub App
-installation tokens, verifies and deduplicates raw webhook deliveries, and
-reconciles Git trees through the production Markdown renderer. The PostgreSQL
-apply ledger/outbox schema and adapter are present.
-
-ADR-013's durable queue now exists as a `content_jobs` table claimed with
-`FOR UPDATE SKIP LOCKED`, with leases, capped exponential backoff, and
-dead-letter visibility; per-post ordering and burst collapsing are enforced by
-partial unique indexes rather than by application code, and the claim semantics
-are proven against real PostgreSQL under PGlite. A dedicated worker process
-built from the API workspace runs in `sync` or `scheduler` mode behind an
-advisory lock, the webhook endpoint authenticates a delivery and enqueues
-without ever reading the payload as data, and `/health` now separates liveness
-from readiness — a degraded content pipeline reports itself at `200` and stays
-in rotation, because public reads never touched Git.
-
-A real protected content branch, the first real bilingual article, and the
-forced cross-system failure drills remain required exit evidence. None of them
-can be produced without the GitHub App.
+Objective: prove that complete bilingual Markdown articles, editorial metadata, render integrity, revisions, publication state, and cache-delivery intent have one authoritative PostgreSQL transaction boundary.
 
 Deliverables:
 
-- GitHub App authentication with least privilege, content-prefix enforcement, safe commit metadata, branch protection, and blob-SHA `If-Match` writes;
-- signed/replay-protected webhook, per-post serialization, sync worker, reconciliation job, sync log, and drift visibility;
-- explicit idempotent recovery for Git-success/database-failure and invalidation-failure cases;
-- failure tests for forged webhooks, stale SHA, invalid/deleted files, path escape, Git outage, and forced database failure after a successful commit;
-- secret scanning on the content branch before automated or direct content commits are accepted;
-- one real article in both locales added by direct push and reconciled into the read index.
+- A reviewed forward migration adds authoritative translation Markdown, SHA-256 source integrity, integer draft base versions, and removes obsolete Git synchronization state/tables without rewriting historical migrations. Previously indexed rows without recoverable Markdown fail closed until explicitly reimported.
+- A server-only article repository validates editorial metadata, existing taxonomy/media references, locale identity, safe Markdown, and current renderer output before writing.
+- Explicit save checks the integer optimistic version and atomically persists body, render cache, translation metadata, immutable content revision, and durable invalidation outbox. Conflicts or transaction failures change nothing.
+- Dedicated PostgreSQL-backed publication jobs, an advisory-lock scheduler, bounded retries, dead-letter visibility, and the existing signed cache-invalidation outbox remain available.
+- GitHub App content credentials, protected-content-branch requirements, inbound content webhooks, reconciliation/drift states, sync logs, apply ledgers, and cross-system operation records are removed.
+- One real English/Persian article is saved and published through the PostgreSQL-native repository; public route and end-to-end invalidation proof close in M4.
 
 Exit gate:
 
-- a valid push appears in the indexed render cache without deployment; end-to-end route invalidation is proven in M4;
-- invalid or deleted repository content does not change live output or silently unpublish;
-- a forced partial failure converges through retry/reconciliation without duplicate state;
-- Git unavailability blocks authoring only, not public reads or database-driven publication state.
+- PostgreSQL contains the complete bilingual Markdown source, valid SHA-256 digests, current safe renders, editorial metadata, versions, and immutable revisions.
+- A stale version or invalid body/reference changes neither the existing article nor its revision/outbox history.
+- A forced transaction failure leaves source, render, revision, and invalidation state unchanged.
+- Due publication is idempotent and requires neither Git access nor deployment.
+- No Git content credential, webhook, synchronization model, or split-brain recovery worker remains in the active runtime.
 
 ### M4 — Public bilingual cutover
 
@@ -372,12 +352,12 @@ results are recorded in
 The strict article public path, bilingual catalogs/routes, no-fallback behavior,
 current-render checks, shorter stale boundary, and published-only metadata are
 now implemented and automated-verification complete. The gate remains open for
-a real M3-reconciled bilingual article, end-to-end signed publication
+a real PostgreSQL-native M3 bilingual article, end-to-end signed publication
 invalidation, full discovery/social-image behavior, and live article HTTP proof.
 
 Deliverables:
 
-- published/enabled-only public DTOs and API endpoints with ETags, locale-scoped cache tags, and exclusion of every non-`SYNCED` article translation from public discovery;
+- published/enabled-only public DTOs and API endpoints with ETags, locale-scoped cache tags, and exclusion of every translation with incomplete source/render integrity from public discovery;
 - typed server-side Next.js API client with bounded timeouts and the chosen outage behavior;
 - `/[locale]/` routing, one-hop legacy `308` redirects, dynamic `lang`/`dir`, message catalogs, and bidi-safe shared components;
 - server-rendered navigation, metadata/canonical foundations, and a minimal read-only route proving the seeded bilingual article; complete blog discovery surfaces remain in M8;
@@ -391,7 +371,7 @@ Exit gate:
 - English and Persian routes render with correct direction; missing Persian portfolio fields deliberately fall back to English, while a missing article translation returns `404` without fallback;
 - every legacy URL redirects exactly once;
 - navigation is present in initial HTML and the tested outage behavior is consistent;
-- public caches/listings never contain draft, preview, scheduled, archived, non-`SYNCED`, or cross-locale content;
+- public caches/listings never contain draft, preview, scheduled, archived, source-invalid, or cross-locale content;
 - content publication/invalidation reaches the rendered route end to end;
 - contact submission works without browser credentials and passes its baseline abuse tests.
 
@@ -516,7 +496,7 @@ Deliver slices in this order:
 3. projects, certificates, and quotes;
 4. media/resume upload with streaming limits, magic-byte and decode verification, safe object keys, image re-encoding, PDF policy/quarantine, reference authorization, atomic activation, and abuse tests;
 5. per-locale translations and untranslated-field indicators;
-6. revisions/restore, audit viewer, content-store health, sessions, and permitted user management.
+6. revisions/restore, audit viewer, publication and invalidation health, sessions, and permitted user management.
 
 Every slice includes contracts, transaction behavior, optimistic concurrency, revision/audit records, authorization, cache invalidation, accessible loading/empty/error/conflict UI, and tests.
 
@@ -533,24 +513,24 @@ The Owner beta checkpoint is private or access-restricted. It is not exposed to 
 
 ### M8 — Blog authoring, publishing, and SEO
 
-Objective: deliver one coherent article lifecycle across panel, upload, and Git.
+Objective: deliver one coherent article lifecycle across authenticated editing, validated upload, and PostgreSQL.
 
 Deliverables:
 
-- Markdown editor, directive palette, database-only autosave, production-pipeline preview, and blob-SHA conflict diff;
+- Markdown editor, directive palette, database-only autosave, production-pipeline preview, and optimistic integer-version conflict handling;
 - `.md`/`.mdx` dry-run import, normalization report, confirmation, original-file quarantine, and rejection of executable MDX constructs;
-- post/translation/taxonomy CRUD, per-locale state transitions, revisions, slug history, redirects, and scheduled publishing with bot reconciliation;
+- post/translation/taxonomy CRUD, per-locale state transitions, revisions, slug history, redirects, and transactional scheduled publishing and durable invalidation;
 - locale blog index/detail/category/tag/preview pages with accessible headings and code blocks;
-- dynamic metadata, canonicals, reciprocal `hreflang`, JSON-LD, per-locale RSS/sitemaps, robots, related content, and editorial checks; every discovery surface excludes non-`SYNCED` translations;
-- single-scheduler and Git-outage publication tests.
+- dynamic metadata, canonicals, reciprocal `hreflang`, JSON-LD, per-locale RSS/sitemaps, robots, related content, and editorial checks; every discovery surface excludes translations with incomplete source/render integrity;
+- single-scheduler, retry-idempotency, and transactional-rollback publication tests.
 
 Exit gate:
 
-- panel authoring, file import, and direct push produce identical sanitized output;
+- authenticated panel authoring and validated Markdown import produce identical sanitized output;
 - draft → preview → scheduled/published → revised/redirected/archived works independently per locale;
 - conflicts write nothing until explicitly resolved;
-- scheduled publication succeeds with Git unavailable and reports frontmatter drift;
-- automated SEO, redirect, disclosure, sync-state, and cross-locale tests pass;
+- scheduled publication commits exactly once and creates a durable signed invalidation;
+- automated SEO, redirect, disclosure, source-integrity, and cross-locale tests pass;
 - the blog portion of PRODUCT_SPEC `ADMIN-004` is complete, closing the requirement together with M7.
 
 ### M9 — Operations, release, and cleanup
@@ -573,7 +553,7 @@ Exit gate:
 - all quality targets in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §7, all eleven release conditions in §10, and all applicable gates in [SECURITY.md](SECURITY.md) §15 pass;
 - staging and production start reproducibly from a clean checkout and migrations run once;
 - runtime images contain no article-source copy or embedded secrets;
-- an isolated restore from database backup, Git mirror, and object backup reconciles with zero unexplained differences;
+- an isolated restore from database backup and MinIO object backup reconciles with zero unexplained differences;
 - launch monitoring is stable through the agreed rollback window.
 
 ## 7. Release checkpoints
@@ -581,7 +561,7 @@ Exit gate:
 | Checkpoint         | Required milestones | What may be demonstrated                                                      |
 | ------------------ | ------------------- | ----------------------------------------------------------------------------- |
 | Foundation ready   | M0–M1               | Trusted schemas, database, render pipeline, and CI baseline                   |
-| Data/content proof | M2–M3               | Reconciled portfolio data and direct-push bilingual article                   |
+| Data/content proof | M2–M3               | Verified portfolio data and PostgreSQL-native bilingual article               |
 | Public preview     | M4–M5               | API-backed bilingual portfolio/blog reads and final appearance behavior       |
 | Owner beta         | M5–M7               | Private/access-restricted secure admin and full non-blog portfolio management |
 | Release candidate  | M8                  | Complete blog lifecycle and SEO surfaces                                      |
@@ -591,7 +571,7 @@ No public preview may expose `/admin`. Owner beta remains private/access-restric
 
 ## 8. Cross-cutting rules
 
-- **Security is delivered with each surface.** M6 establishes authentication; Markdown, Git, upload, DTO, cache, and secret controls belong to the milestones that introduce them.
+- **Security is delivered with each surface.** M6 establishes authentication; Markdown, database, upload, DTO, cache, and secret controls belong to the milestones that introduce them.
 - **CI grows from M0 onward.** Container/image hardening finishes in M9, but format, lint, typecheck, real tests, migration checks, and secret scanning do not wait until then.
 - **SEO and i18n are vertical concerns.** Route metadata, locale isolation, direction, and canonical behavior ship with each public page rather than as a late retrofit.
 - **Migration remains reversible.** Legacy reads are removed only after reconciliation, production observation, and rollback-window acceptance.
@@ -604,15 +584,15 @@ The feature-level definition of done in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_
 
 | Risk                                                | Earliest trigger | Required mitigation / proof                                                                                                   |
 | --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Git/PostgreSQL split-brain                          | M3               | Idempotent retry/reconciliation; force a database failure after commit and prove convergence                                  |
-| Content credential can modify code/workflows        | M3               | GitHub App with minimal permission, protected branch/path checks, short-lived token, audited refusal tests                    |
+| Partial article-save transaction                    | M3               | Single atomic PostgreSQL transaction; force rollback and verify unchanged article, revision, and outbox                       |
+| Unauthenticated article mutation                    | M3               | No admin mutation routes before M6; strict service authorization, optimistic versions, audit, and CSRF                        |
 | Appearance preference conflicts with shared caching | M0/M4            | Choose one delivery architecture and test first-byte correctness plus cache sharing before M5 exits                           |
 | Migration loses or silently changes content         | M2               | Deterministic counts, checksums, byte comparisons, collision reports, and retained rollback reads                             |
 | Passkey/session recovery locks out the owner        | M6               | Recovery codes, recent-auth policy, revocation procedure, and manual recovery drill                                           |
 | Draft or wrong-locale content leaks through caches  | M4/M8            | Published-only predicates, explicit locale keys, disclosure tests, and targeted invalidation                                  |
 | Malicious uploads or contact abuse                  | M4/M7/M9         | Server-side contact controls in M4; complete upload verification/quarantine in M7; operational retention and regression in M9 |
 | Duplicate scheduler publishes twice                 | M8               | Exactly one logical scheduler, database lock/idempotency, duplicate-trigger tests, observable retries                         |
-| Restore omits one authoritative store               | M9               | Restore drill always combines PostgreSQL, Git, and MinIO, then runs reconciliation                                            |
+| Restore omits article bodies or media               | M9               | Restore drill always combines PostgreSQL and MinIO, then verifies source digests, rendered articles, and media references     |
 | Scope exceeds sustainable throughput                | Every milestone  | Keep v1 non-goals closed, ship vertical slices, measure cycle time, and reforecast only at milestone reviews                  |
 
 ## 10. Immediate implementation queue
@@ -634,7 +614,7 @@ The queue's remaining items are environment work rather than code, and they are 
 
 9. ~~**Environment, not a PR:** keep a real PostgreSQL available and stand up a private object store.~~ Done for the milestone proof — PostgreSQL 17 and a private MinIO bucket accepted M2's applied migration, exact media reconciliation, and no-write replay.
 10. **Owner decision, not a PR:** pick accessible replacements for the three `#000000` skill colours (202, 306, 801) so M2's reconciliation has no unexplained warnings.
-11. **Environment, not a PR:** create the protected `content` branch and the repository-scoped GitHub App installation, then run the forced-failure drill M3's gate requires.
+11. **M3 implementation:** apply the PostgreSQL-native article migration, persist bilingual Markdown, and prove stale-version rollback, revision/outbox atomicity, and scheduled publication.
 12. **M4 remaining public reads:** projects including detail/optional image mediation, site shell/sections, appearance, homepage collections, certificates, active resume, exact Hero/About, root negotiation/catalogs, and GitHub statistics have contract/client/render/rollback proof. Extend the public-data boundary to articles before M4 can close.
 13. ~~**M5 verification PR:** complete the [THEMING.md](THEMING.md) §9 test list, fonts/tokens, and the CI check for hard-coded colours.~~ Done 2026-08-24. The §9 automated list passes in a browser as its own CI job, fonts are reduced and range-scoped, and the raw-colour check has been in CI since 2026-08-16. ~~Complete the manual review.~~ Done 2026-08-25.
 

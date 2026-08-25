@@ -102,7 +102,7 @@ describe("enqueue", () => {
   it("queues work and hands back a claimable job", async () => {
     expect(
       await jobs.enqueue({
-        kind: "WEBHOOK_RECONCILE",
+        kind: "PUBLISH_DUE",
         lockKey: "content-head",
         payload: { reason: "push" },
       })
@@ -110,7 +110,7 @@ describe("enqueue", () => {
 
     const claimed = await jobs.claim({ worker: "w1", leaseSeconds: 60 });
 
-    expect(claimed?.kind).toBe("WEBHOOK_RECONCILE");
+    expect(claimed?.kind).toBe("PUBLISH_DUE");
     expect(claimed?.payload).toEqual({ reason: "push" });
     expect(claimed?.attempts).toBe(1);
   });
@@ -118,7 +118,7 @@ describe("enqueue", () => {
   it("collapses a burst into a single pending job", async () => {
     const enqueue = () =>
       jobs.enqueue({
-        kind: "WEBHOOK_RECONCILE",
+        kind: "PUBLISH_DUE",
         lockKey: "content-head",
         dedupeKey: "reconcile:content-head",
       });
@@ -135,7 +135,7 @@ describe("enqueue", () => {
     // Otherwise a push arriving while a reconciliation is mid-flight would be
     // swallowed, and the tree it changed would never be re-read.
     await jobs.enqueue({
-      kind: "WEBHOOK_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
       dedupeKey: "reconcile:content-head",
     });
@@ -143,7 +143,7 @@ describe("enqueue", () => {
 
     expect(
       await jobs.enqueue({
-        kind: "WEBHOOK_RECONCILE",
+        kind: "PUBLISH_DUE",
         lockKey: "content-head",
         dedupeKey: "reconcile:content-head",
       })
@@ -176,7 +176,7 @@ describe("claim", () => {
 
   it("never gives two workers the same job", async () => {
     await jobs.enqueue({
-      kind: "SCHEDULED_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
     });
 
@@ -221,7 +221,7 @@ describe("claim", () => {
   });
 
   it("recovers a job whose worker died, counting the lost attempt", async () => {
-    await jobs.enqueue({ kind: "WEBHOOK_RECONCILE", lockKey: "content-head" });
+    await jobs.enqueue({ kind: "PUBLISH_DUE", lockKey: "content-head" });
     await jobs.claim({ worker: "dead-worker", leaseSeconds: 60 });
     await db.exec(
       `UPDATE "content_jobs" SET "leaseExpiresAt" = now() - interval '1 second';`
@@ -247,7 +247,7 @@ describe("completion", () => {
   });
 
   it("retries with backoff before the budget is spent", async () => {
-    await jobs.enqueue({ kind: "WEBHOOK_RECONCILE", lockKey: "content-head" });
+    await jobs.enqueue({ kind: "PUBLISH_DUE", lockKey: "content-head" });
     const claimed = await jobs.claim({ worker: "w1", leaseSeconds: 60 });
 
     expect(
@@ -264,7 +264,7 @@ describe("completion", () => {
 
   it("dead-letters once attempts are exhausted", async () => {
     await jobs.enqueue({
-      kind: "WEBHOOK_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
       maxAttempts: 2,
     });
@@ -285,7 +285,7 @@ describe("completion", () => {
 
   it("keeps a dead job rather than deleting the evidence", async () => {
     await jobs.enqueue({
-      kind: "WEBHOOK_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
       maxAttempts: 1,
     });
@@ -303,7 +303,7 @@ describe("completion", () => {
   });
 
   it("truncates a runaway error rather than storing it whole", async () => {
-    await jobs.enqueue({ kind: "WEBHOOK_RECONCILE", lockKey: "content-head" });
+    await jobs.enqueue({ kind: "PUBLISH_DUE", lockKey: "content-head" });
     const claimed = await jobs.claim({ worker: "w1", leaseSeconds: 60 });
 
     await jobs.fail({
@@ -325,7 +325,7 @@ describe("completion", () => {
 describe("heartbeat", () => {
   it("extends a live claim", async () => {
     await jobs.enqueue({
-      kind: "SCHEDULED_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
     });
     const claimed = await jobs.claim({ worker: "w1", leaseSeconds: 1 });
@@ -339,7 +339,7 @@ describe("heartbeat", () => {
 
   it("refuses to extend a claim another worker now holds", async () => {
     await jobs.enqueue({
-      kind: "SCHEDULED_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
     });
     const claimed = await jobs.claim({ worker: "w1", leaseSeconds: 60 });
@@ -355,7 +355,7 @@ describe("reapExhaustedLeases", () => {
     // Unreachable by claim(), which requires attempts < maxAttempts, so
     // without the sweep it stays CLAIMED forever and never reports as failed.
     await jobs.enqueue({
-      kind: "WEBHOOK_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
       maxAttempts: 1,
     });
@@ -370,7 +370,7 @@ describe("reapExhaustedLeases", () => {
 
   it("leaves a lapsed claim that still has attempts for claim() to recover", async () => {
     await jobs.enqueue({
-      kind: "WEBHOOK_RECONCILE",
+      kind: "PUBLISH_DUE",
       lockKey: "content-head",
       maxAttempts: 3,
     });

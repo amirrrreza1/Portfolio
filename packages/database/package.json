@@ -31,8 +31,8 @@
   },
   "dependencies": {
     "@portfolio/auth-core": "workspace:*",
-    "@portfolio/content-store": "workspace:*",
     "@portfolio/contracts": "workspace:*",
+    "@portfolio/markdown": "workspace:*",
     "@portfolio/media": "workspace:*",
     "@portfolio/migration": "workspace:*",
     "@prisma/adapter-pg": "7.9.1",
