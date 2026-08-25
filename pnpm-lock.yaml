@@ -171,7 +171,7 @@ importers:
         version: 0.563.0(react@19.2.4)
       next:
         specifier: 16.3.0
-        version: 16.3.0(@babel/core@7.29.7)(@types/node@25.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 16.3.0(@babel/core@7.29.7)(@playwright/test@1.62.1)(@types/node@25.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -206,6 +206,12 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@playwright/test':
+        specifier: 1.62.1
+        version: 1.62.1
+      '@portfolio/markdown':
+        specifier: workspace:*
+        version: link:../../packages/markdown
       '@tailwindcss/postcss':
         specifier: 4.1.18
         version: 4.1.18
@@ -1562,6 +1568,11 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@playwright/test@1.62.1':
+    resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@prisma/adapter-pg@7.9.1':
     resolution: {integrity: sha512-Ho2RK1KanQxLNSC0sR5bpiiVep10sWPLXCcxK+KXfI/Q69TMRbiafSvLPv3V9snimX72rMCqGlyJ4sBO4lKTAw==}
@@ -3421,6 +3432,11 @@ packages:
   fs-monkey@1.1.0:
     resolution: {integrity: sha512-QMUezzXWII9EV5aTFXW1UBVUO77wYPpjqIF8/AviUCThNeSYZykpoTixUeaNNBwmCev0AMDWMAni+f8Hxb1IFw==}
 
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -4491,6 +4507,16 @@ packages:
 
   pkg-types@2.3.1:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
+
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.62.1:
+    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   pluralize@8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
@@ -6800,6 +6826,10 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
+  '@playwright/test@1.62.1':
+    dependencies:
+      playwright: 1.62.1
+
   '@prisma/adapter-pg@7.9.1':
     dependencies:
       '@prisma/driver-adapter-utils': 7.9.1
@@ -8547,7 +8577,7 @@ snapshots:
       '@next/eslint-plugin-next': 16.3.0(eslint@9.39.5(jiti@2.6.1))
       eslint: 9.39.5(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.6.1))
       eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.5(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.39.5(jiti@2.6.1))
@@ -8570,7 +8600,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.6.1)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -8585,13 +8615,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1)):
+  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.6.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       eslint: 9.39.5(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -8606,7 +8636,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.5(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1)))(eslint@9.39.5(jiti@2.6.1))
+      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.6.1))
       hasown: 2.0.4
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -9008,6 +9038,9 @@ snapshots:
       universalify: 2.0.1
 
   fs-monkey@1.1.0: {}
+
+  fsevents@2.3.2:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -10038,7 +10071,7 @@ snapshots:
       pino-http: 11.0.0
       rxjs: 7.8.2
 
-  next@16.3.0(@babel/core@7.29.7)(@types/node@25.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  next@16.3.0(@babel/core@7.29.7)(@playwright/test@1.62.1)(@types/node@25.2.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@next/env': 16.3.0
       '@swc/helpers': 0.5.15
@@ -10057,6 +10090,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.3.0
       '@next/swc-win32-arm64-msvc': 16.3.0
       '@next/swc-win32-x64-msvc': 16.3.0
+      '@playwright/test': 1.62.1
       sharp: 0.35.3(@types/node@25.2.2)
     transitivePeerDependencies:
       - '@babel/core'
@@ -10291,6 +10325,14 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.1.1
       pathe: 2.0.3
+
+  playwright-core@1.62.1: {}
+
+  playwright@1.62.1:
+    dependencies:
+      playwright-core: 1.62.1
+    optionalDependencies:
+      fsevents: 2.3.2
 
   pluralize@8.0.0: {}
 

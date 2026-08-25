@@ -514,11 +514,12 @@ async function highlightChildren(parent: Node): Promise<void> {
           // and the other into `--shiki-dark`, so the rendered block is stuck
           // on whichever theme was named as the default unless CSS overrides
           // an inline style — which needs `!important` and still leaves the
-          // wrong colour in the markup for anything that reads it. With it
-          // off, Shiki emits only `--shiki-light`/`--shiki-dark` custom
-          // properties and no `color` at all, and globals.css picks between
-          // them from the SELECTED `data-theme` rather than from
-          // `prefers-color-scheme`. The surface itself is painted by
+          // wrong colour in the markup for anything that reads it. Current
+          // Shiki 4 output serializes its light values inline, so globals.css
+          // leaves those as the light output and narrowly overrides them with
+          // the dark custom properties for the selected dark `data-theme`
+          // (rather than from `prefers-color-scheme`). The surface itself is
+          // painted by
           // `--color-code-bg`/`--color-code-text`, which is what the
           // THEMING.md §9 contrast matrix actually measures.
           defaultColor: false,

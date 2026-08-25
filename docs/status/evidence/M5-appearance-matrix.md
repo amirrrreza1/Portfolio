@@ -1,6 +1,6 @@
 # M5 — appearance and accessibility matrix run
 
-Run: **2026-08-24**  
+Run: **2026-08-25**
 Milestone: [M5](../M5.md) · Specification: [THEMING.md §9](../../THEMING.md#9-tests)
 
 The browser half of the THEMING.md §9 test list, run against a production build.
@@ -14,6 +14,9 @@ apps/web $ pnpm test:e2e                 # playwright test
 ```
 
 - Playwright 1.62.1, Chromium, one worker (appearance is per-visitor state).
+  The 2026-08-25 rerun used the installed Google Chrome executable through
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE`, because the pinned Playwright download is
+  geo-blocked in this environment. CI continues to use its pinned browser.
 - `PORTFOLIO_DATA_SOURCE=database`, so the routes under test are the real
   database-backed read paths. The legacy source has no articles at all and
   cannot exercise §4 or §9.
@@ -31,7 +34,7 @@ apps/web $ pnpm test:e2e                 # playwright test
 ```
 Running 35 tests using 1 worker
 ...
-  35 passed (50.4s)
+  35 passed (29.2s)
 ```
 
 | §9 requirement                                                                                                                  | Covered by                                                                                                                             | Result            |
@@ -67,13 +70,13 @@ No `Cookie` in `Vary`, on either a portfolio route or an article route. The
 localized outage response returns `503` with `content-language: fa`,
 `retry-after: 60`, `noindex,nofollow`, `dir="rtl"`, and the same header set.
 
-Shiki now emits no `color` at all, only the two custom properties that
-`globals.css` selects between:
+Shiki 4 emits its light colours inline and exposes the dark alternatives as
+custom properties:
 
 ```html
 <pre
-  style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;
-            --shiki-light-bg:#fff;--shiki-dark-bg:#24292e"
+  style="background-color:#fff;--shiki-dark-bg:#24292e;
+            color:#24292e;--shiki-dark:#e1e4e8"
   class="code-block language-known"
 ></pre>
 ```
@@ -98,7 +101,14 @@ Vazir-Code.woff2                49648
 
 ## Defects this run found
 
-1. **Every Persian article route answered 404.** Next.js hands a dynamic segment
+1. **The dark code surface was never actually selected.** Shiki 4 kept GitHub
+   Light's `background-color` and token `color` as inline declarations despite
+   `defaultColor: false`; the prior stylesheet was therefore unable to override
+   them for the dark theme. The stylesheet now narrowly uses `!important` only
+   for the code surface and selected dark token values; light output stays as
+   Shiki serializes it. All three code-theme checks pass after the change.
+
+2. **Every Persian article route answered 404.** Next.js hands a dynamic segment
    through percent-encoded when it contains non-ASCII characters, so
    `slugSchemaFor("fa")` was validating `%D9%85%D8%A7...` rather than
    `ماتریس-تم` and the route called `notFound()` — including for the links the
@@ -108,19 +118,22 @@ Vazir-Code.woff2                49648
    `generateMetadata`; the middleware's route gate and the article `not-found`
    boundary already decoded. Regression coverage is in
    `test/routing.spec.ts`, which round-trips the link `articlePath` produces.
-2. **`pnpm lint` failed on `dev`.** The 2026-08-24 `localStorage` migration calls
+3. **`pnpm lint` failed on `dev`.** The 2026-08-24 `localStorage` migration calls
    `setState` synchronously inside an effect, which `react-hooks/set-state-in-effect`
    rejects. The shape is correct for this case — the server cannot read
    `localStorage`, so it cannot seed `useState` and reading it during render
    would break hydration — so the rule is disabled on that line with the reason
    recorded next to it.
 
-## Not covered here
+## Manual verification
 
-- Manual screen-reader verification. The dialog's roles, labelling, focus trap,
-  and keyboard operation are asserted, and a native modal `<dialog>` supplies
-  the trap, but no assistive technology has read the page.
-- Nobody has looked at the light theme. The contrast fixes, the Skills card
-  change, and now the light code surface are all measured, not seen.
+- On 2026-08-25, the owner reviewed the light theme in the live production
+  preview and approved the visual result.
+- On 2026-08-25, the owner confirmed that the screen-reader experience works.
+  The dialog's roles, labelling, focus trap, and keyboard operation remain
+  covered by the browser matrix.
+
+## Remaining coverage limit
+
 - One browser. Chromium only; the `unicode-range` and `@font-face` behaviour in
   Firefox and Safari is assumed, not observed.

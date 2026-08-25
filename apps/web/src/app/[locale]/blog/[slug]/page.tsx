@@ -91,7 +91,7 @@ export default async function LocaleArticlePage({
   const fontPreloadHref = blogFontPreloadHref(appearance.blogFont);
 
   return (
-    <article className="Container my-16 space-y-8 border p-5 md:p-8">
+    <article className="blog-article-shell Container my-16 space-y-8 border border-border p-5 md:p-8">
       {fontPreloadHref === null ? null : (
         <link
           rel="preload"

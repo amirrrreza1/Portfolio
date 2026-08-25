@@ -296,6 +296,25 @@
   font-size: 1.25rem;
 }
 
+/*
+ * The article is a reading room, not part of the page's ambient motion. Keep
+ * its words on a stable raised surface while letting the chosen theme remain
+ * perceptible as a quiet layer beyond the text.
+ */
+.blog-article-shell {
+  background-color: var(--color-surface);
+}
+
+@supports (
+  background-color: color-mix(in srgb, var(--color-surface), transparent)
+) {
+  .blog-article-shell {
+    background-color: color-mix(in srgb, var(--color-surface) 88%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%);
+  }
+}
+
 .blog-reading-surface :where(pre, code) {
   direction: ltr;
   unicode-bidi: isolate;
@@ -325,31 +344,20 @@
  * or as dark (dark) as ours, so no token loses contrast against it.
  */
 .code-block {
-  background-color: var(--color-code-bg);
-  color: var(--color-code-text);
+  /* Shiki 4 serializes its light colours as inline declarations. */
+  background-color: var(--color-code-bg) !important;
+  color: var(--color-code-text) !important;
   overflow-x: auto;
 }
 
-:root .code-block span,
 :root[data-theme="dark"] .code-block span,
 :root[data-theme="system"][data-system-theme="dark"] .code-block span {
-  color: var(--shiki-dark);
-}
-
-:root[data-theme="light"] .code-block span,
-:root[data-theme="system"][data-system-theme="light"] .code-block span {
-  color: var(--shiki-light);
-}
-
-@media (prefers-color-scheme: light) {
-  :root[data-theme="system"]:not([data-system-theme]) .code-block span {
-    color: var(--shiki-light);
-  }
+  color: var(--shiki-dark) !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"]:not([data-system-theme]) .code-block span {
-    color: var(--shiki-dark);
+    color: var(--shiki-dark) !important;
   }
 }
 

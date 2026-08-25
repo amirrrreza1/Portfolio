@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-24**
 
-Active milestones: **M3, M4, M5, and M6**. M2 is complete: its real PostgreSQL/MinIO apply/replay, public content/media, exact Hero/About, private age, ordered/disabled sections, and three reviewed accessible skill-colour replacements are all evidenced. M3/M6 have secure implementation foundations but remain open until their real Git/database/API exit gates are demonstrated. M4 has five live-proven portfolio read boundaries and now also has an automated-verification-complete public article boundary: strict published-only APIs, bilingual routes, no-fallback locale behavior, current-render provenance, 15-minute bounded stale reads, article-route `503`, and published-only metadata. M5's database-backed appearance allowlist is also proven, and its full THEMING §9 matrix now passes in a browser; M4 retains broader exit-gate work and M5 is held open only by manual light-theme and screen-reader review. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestones: **M3, M4, and M6**. M2 is complete: its real PostgreSQL/MinIO apply/replay, public content/media, exact Hero/About, private age, ordered/disabled sections, and three reviewed accessible skill-colour replacements are all evidenced. M3/M6 have secure implementation foundations but remain open until their real Git/database/API exit gates are demonstrated. M4 has five live-proven portfolio read boundaries and now also has an automated-verification-complete public article boundary: strict published-only APIs, bilingual routes, no-fallback locale behavior, current-render provenance, 15-minute bounded stale reads, article-route `503`, and published-only metadata. M5 is complete: its database-backed appearance allowlist, full THEMING §9 browser matrix, and owner-approved light-theme and screen-reader review are evidenced. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -27,7 +27,7 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 Phase 0 stabilization is complete in the repository, and M1 is complete. Its migrations and supplemental constraints applied from zero to PostgreSQL 17, consecutive deterministic seed runs produced stable counts, browser/server package boundaries are enforced, and API startup configuration is validated. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing else.
 
-Since the previous snapshot, work moved into M4 and M5 without waiting for M2/M3 to close. That was a deliberate trade — the root layout, locale shell, and colour usage are touched by every later surface, so doing them late would mean revisiting all of it — but it means two milestones are now open before their dependencies have closed. M4 now adds an automated-verification-complete article read/route/SEO slice to its five live-proven portfolio boundaries, root negotiation, public catalogs, and server-side GitHub statistics. It cannot close until M3 supplies a real reconciled bilingual article and signed publication invalidation is proven through the route; M5's accessibility matrix now passes in a browser and the milestone is held open only by manual review.
+M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close because the root layout, locale shell, and colour usage are touched by every later surface. M5 is now complete. M4 adds an automated-verification-complete article read/route/SEO slice to its five live-proven portfolio boundaries, root negotiation, public catalogs, and server-side GitHub statistics; it cannot close until M3 supplies a real reconciled bilingual article and signed publication invalidation is proven through the route.
 
 | Area                         | Current state                                                                                                                                                                                                                                                                                                                                                        | Roadmap implication                                                                                                                                                                                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -102,7 +102,7 @@ Two dependencies are non-negotiable:
 | M2 — Deterministic legacy migration      | Complete    | M             | Repeatable legacy portfolio/media migration with reconciliation and rollback                                         | M1                 |
 | M3 — Git content-store proof             | In progress | L             | Secure Git writes, webhook sync, reconciliation, and drift recovery                                                  | M1, M2             |
 | M4 — Public bilingual cutover            | In progress | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
-| M5 — Appearance and accessibility        | In progress | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
+| M5 — Appearance and accessibility        | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
 | M6 — Authentication foundation           | In progress | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
 | M7 — Portfolio CMS                       | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
 | M8 — Blog authoring, publishing, and SEO | Not started | XL            | Editor/import/direct-push parity, lifecycle and scheduling, discovery, and locale SEO                                | M3, M4, M6, M7     |
@@ -110,7 +110,7 @@ Two dependencies are non-negotiable:
 
 M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing downstream, so work continues in parallel.
 
-M4 and M5 are `In progress` even though their stated dependencies (M2 and M3) have not exited. That is a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4/M5 that genuinely need migrated data or a proven content store — public DTO reads, blog surfaces, end-to-end invalidation — are exactly the parts still outstanding. Four milestones remain open; no new milestone should open until the proof backlog contracts.
+M4 is `In progress` even though its stated M3 dependency has not exited. That is a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4 that genuinely need a proven content store — real reconciled article reads and end-to-end invalidation — are exactly the parts still outstanding. Three milestones remain open; no new milestone should open until the proof backlog contracts.
 
 The detailed plan maps to these milestones as follows: M0 pulls forward the Phase 0 cleanup and starter CI; M1 is Phase 1 plus the media foundation needed by migration; M2 is Phase 2; M3 is Phase 2.5; M4 is Phase 3 plus the public contact replacement; M5 is Phase 3.5; M6 is Phase 4; M7 is Phase 5 plus upload hardening; M8 is Phase 6; and M9 completes Phases 7–9. This mapping is authoritative when the older phase grouping would defer a prerequisite until after its consumer.
 
@@ -425,12 +425,11 @@ variant with a measurable token. Every enabled theme passes a 26-pairing
 contrast matrix.
 
 On 2026-08-24 the remaining automated work closed. `@portfolio/markdown`
-highlights with `defaultColor: false`, so Shiki emits only `--shiki-light` and
-`--shiki-dark` and the stylesheet selects between them from the SELECTED
-`data-theme` — with the same `:not([data-system-theme])`-scoped
-`prefers-color-scheme` fallbacks the token declarations use — while
-`--color-code-bg`/`--color-code-text` paint the surface the contrast matrix
-measures. The 16 JetBrains Mono faces are reduced to the six the design can
+uses Shiki dual-theme output. Shiki 4 serializes light colours inline and
+exposes dark alternatives as custom properties, so the stylesheet leaves light
+output intact and narrowly selects dark values from the SELECTED `data-theme`
+rather than from `prefers-color-scheme`; `--color-code-bg`/`--color-code-text`
+paint the measured surface. The 16 JetBrains Mono faces are reduced to the six the design can
 select (7 files, 283 KB, from 17 and 712 KB), every face declares a
 `unicode-range`, the Latin family declares no Arabic block, and preloading is
 confined to two reviewed call sites reading a static key-indexed literal. The
@@ -443,11 +442,11 @@ through percent-encoded, and the route validated it undecoded, so even the links
 the blog index generates led nowhere. And `pnpm lint` was already failing on
 `dev` over the `localStorage` migration's `setState`-in-effect. Both are fixed.
 
-Outstanding: nobody has looked at the light theme or read the page with a screen
-reader. Two items are deliberately deferred — re-encoding the font binaries for
-true per-script subsetting, and removing `'unsafe-inline'` from `style-src`,
-which needs Shiki's per-token `style` attributes converted to generated classes.
-Both are recorded in [`docs/status/M5.md`](status/M5.md).
+On 2026-08-25, the owner approved the light theme and confirmed the
+screen-reader experience, closing M5. Two non-gating items remain deferred to
+M9: re-encoding the font binaries for true per-script subsetting, and removing
+`'unsafe-inline'` from `style-src`, which needs Shiki's per-token `style`
+attributes converted to generated classes.
 
 Deliverables:
 
@@ -477,9 +476,8 @@ Exit gate:
 
 All five automated gates are met; see
 [`docs/status/evidence/M5-appearance-matrix.md`](status/evidence/M5-appearance-matrix.md).
-The milestone stays open on the two manual items in
-[`docs/status/M5.md`](status/M5.md): a person has still not looked at the light
-theme, and no screen reader has read the page.
+The owner completed the light-theme and screen-reader verification on
+2026-08-25, so M5 is complete.
 
 ### M6 — Authentication foundation
 
@@ -638,7 +636,7 @@ The queue's remaining items are environment work rather than code, and they are 
 10. **Owner decision, not a PR:** pick accessible replacements for the three `#000000` skill colours (202, 306, 801) so M2's reconciliation has no unexplained warnings.
 11. **Environment, not a PR:** create the protected `content` branch and the repository-scoped GitHub App installation, then run the forced-failure drill M3's gate requires.
 12. **M4 remaining public reads:** projects including detail/optional image mediation, site shell/sections, appearance, homepage collections, certificates, active resume, exact Hero/About, root negotiation/catalogs, and GitHub statistics have contract/client/render/rollback proof. Extend the public-data boundary to articles before M4 can close.
-13. ~~**M5 verification PR:** complete the [THEMING.md](THEMING.md) §9 test list, fonts/tokens, and the CI check for hard-coded colours.~~ Done 2026-08-24. The §9 automated list passes in a browser as its own CI job, fonts are reduced and range-scoped, and the raw-colour check has been in CI since 2026-08-16. What is left of M5 is manual review, not code.
+13. ~~**M5 verification PR:** complete the [THEMING.md](THEMING.md) §9 test list, fonts/tokens, and the CI check for hard-coded colours.~~ Done 2026-08-24. The §9 automated list passes in a browser as its own CI job, fonts are reduced and range-scoped, and the raw-colour check has been in CI since 2026-08-16. ~~Complete the manual review.~~ Done 2026-08-25.
 
 Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished. The M4/M5 pull-forward already stretched that rule as far as it should go.
 

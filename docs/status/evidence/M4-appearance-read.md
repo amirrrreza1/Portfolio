@@ -2,7 +2,7 @@
 
 Run date: **2026-08-14**  
 Scope: locale-scoped public appearance settings, first-response preferences, rollback, and cold-outage behavior  
-Result: **Passed for this slice; M4 and M5 remain in progress**
+Result at the time: **Passed for this slice; M4 and M5 remained in progress**
 
 ## Environment
 

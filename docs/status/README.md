@@ -9,7 +9,7 @@ This directory contains evidence-backed snapshots for every milestone that has s
 | [M2.md](M2.md) | Deterministic legacy migration      | In progress    |
 | [M3.md](M3.md) | Git content-store proof             | In progress    |
 | [M4.md](M4.md) | Public bilingual cutover            | In progress    |
-| [M5.md](M5.md) | Appearance and accessibility        | In progress    |
+| [M5.md](M5.md) | Appearance and accessibility        | Complete       |
 | [M6.md](M6.md) | Authentication foundation           | In progress    |
 
 The summary is [STATUS.md](../STATUS.md); milestone definitions and exit gates are in [ROADMAP.md](../ROADMAP.md).

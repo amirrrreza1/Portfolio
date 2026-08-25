@@ -8,6 +8,7 @@ const sourceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../src/app/[locale]"
 );
+const webSourceRoot = path.resolve(sourceRoot, "../..");
 
 describe("blog typography boundary", () => {
   it("emits resolved preferences on article content only", async () => {
@@ -24,5 +25,16 @@ describe("blog typography boundary", () => {
     expect(article).toContain("{...blogSurfaceAttributes(appearance)}");
     expect(article).toContain("getPortfolioAppearance(locale)");
     expect(project).not.toContain("blog-reading-surface");
+  });
+
+  it("keeps the complete article in a token-backed blurred reading shell", async () => {
+    const css = await readFile(
+      path.join(webSourceRoot, "app/globals.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("blog-article-shell");
+    expect(css).toContain("background-color: var(--color-surface)");
+    expect(css).toContain("backdrop-filter: blur(18px) saturate(125%)");
   });
 });
