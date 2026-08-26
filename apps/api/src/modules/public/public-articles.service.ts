@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { postIdSchema, type Locale } from "@portfolio/contracts/common";
 import {
   publicArticleDetailSchema,
@@ -47,6 +48,13 @@ export type PublicArticleDetailRead =
 
 /** Published article reads from authoritative PostgreSQL source/render state. */
 export class PublicArticlesService {
+  /**
+   * Faults are recorded here and nowhere else. An operator needs to know a
+   * row went dark; a visitor must not be able to tell the difference between
+   * a corrupted article and one that was never written.
+   */
+  private static readonly logger = new Logger(PublicArticlesService.name);
+
   public constructor(private readonly database: Database) {}
 
   async list(
@@ -107,18 +115,29 @@ export class PublicArticlesService {
       },
     });
 
+    // Filtered after the page is sliced, never before: the cursor advances by
+    // the last *row* on the page, so dropping a faulty row shortens the page
+    // without skipping the next one.
     const pageRows = rows.slice(0, options.limit);
-    const posts = pageRows.map((row) => {
-      assertSourceIntegrity(row);
-      return toSummary({
-        ...row,
-        id: row.post.id,
-        tagKeys: row.post.tags
-          .filter(({ tag }) => tag.enabled)
-          .map(({ tag }) => tag.key)
-          .sort(),
+    const posts = pageRows
+      .filter((row) => {
+        const fault = renderFault(row);
+        if (fault === null) return true;
+        PublicArticlesService.logger.error(
+          `Excluding article translation ${row.post.id}/${locale} from public discovery: ${fault}.`
+        );
+        return false;
+      })
+      .map((row) => {
+        return toSummary({
+          ...row,
+          id: row.post.id,
+          tagKeys: row.post.tags
+            .filter(({ tag }) => tag.enabled)
+            .map(({ tag }) => tag.key)
+            .sort(),
+        });
       });
-    });
     const last = pageRows.at(-1);
     const nextCursor =
       rows.length > options.limit && last?.publishedAt
@@ -199,16 +218,12 @@ export class PublicArticlesService {
     ) {
       return { kind: "missing", availableTranslations };
     }
-    if (
-      row.excerpt === null ||
-      row.readingMinutes === null ||
-      row.renderedHtml === null ||
-      row.rendererVersion !== RENDERER_VERSION ||
-      !articleSourceSha256Schema.safeParse(row.bodySha256).success
-    ) {
-      throw new Error("A published article has an invalid render index.");
+    if (!isRenderable(row)) {
+      PublicArticlesService.logger.error(
+        `Refusing article translation ${row.post.id}/${locale} on the public detail path: ${renderFault(row)}.`
+      );
+      return { kind: "missing", availableTranslations };
     }
-    assertSourceIntegrity(row);
 
     const headings = z
       .array(publicArticleHeadingSchema)
@@ -323,16 +338,66 @@ function latestDate(values: readonly Date[]): Date {
   return new Date(Math.max(...values.map((value) => value.getTime())));
 }
 
-function assertSourceIntegrity(row: {
+/** The fields a translation must actually have before it can be rendered. */
+interface RenderableTranslation {
+  readonly excerpt: string;
+  readonly readingMinutes: number;
+  readonly renderedHtml: string;
+  readonly rendererVersion: string;
+  readonly bodyMarkdown: string;
+  readonly bodySha256: string;
+}
+
+interface MaybeRenderable {
+  readonly excerpt?: string | null;
+  readonly readingMinutes?: number | null;
+  readonly renderedHtml?: string | null;
+  readonly rendererVersion?: string | null;
   readonly bodyMarkdown: string | null;
   readonly bodySha256: string | null;
-}): void {
-  if (
-    row.bodyMarkdown === null ||
-    !articleSourceSha256Schema.safeParse(row.bodySha256).success ||
-    createHash("sha256").update(row.bodyMarkdown, "utf8").digest("hex") !==
-      row.bodySha256
-  ) {
-    throw new Error("A published article has invalid source integrity.");
+}
+
+/**
+ * Why a published row cannot be served publicly, or null when it can.
+ *
+ * This returns a reason instead of throwing one. Throwing meant a single
+ * corrupted row aborted the entire listing with a `500`, so one bad article
+ * became a locale-wide blog outage, and the failure told an unauthenticated
+ * caller that something was wrong with the data. Both are worse than the row
+ * simply not being there: the public contract for an article whose source
+ * cannot be trusted is that it does not exist.
+ *
+ * The reason is for the server log only. It never reaches a response.
+ *
+ * Fields absent from a projection are not faults. The listing selects fewer
+ * columns than the detail read, and a check that treated "not selected" as
+ * "missing" would empty every listing.
+ */
+function renderFault(row: MaybeRenderable): string | null {
+  if (row.bodyMarkdown === null) return "missing source";
+  if (!articleSourceSha256Schema.safeParse(row.bodySha256).success) {
+    return "malformed source digest";
   }
+  if (
+    createHash("sha256").update(row.bodyMarkdown, "utf8").digest("hex") !==
+    row.bodySha256
+  ) {
+    return "source digest does not match the stored source";
+  }
+  if (row.excerpt === null) return "missing excerpt";
+  if (row.readingMinutes === null) return "missing reading time";
+  if (row.renderedHtml === null) return "missing render";
+  if (
+    row.rendererVersion !== undefined &&
+    row.rendererVersion !== RENDERER_VERSION
+  ) {
+    return `stale renderer version ${String(row.rendererVersion)}`;
+  }
+  return null;
+}
+
+function isRenderable<Row extends MaybeRenderable>(
+  row: Row
+): row is Row & RenderableTranslation {
+  return renderFault(row) === null;
 }

@@ -28,6 +28,19 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   /**
+   * Trailing-slash normalization moves into the proxy.
+   *
+   * Next's own normalization runs before middleware, so `/projects/` became
+   * two redirects: `/projects/` → `/projects` → `/en/projects`. M4's exit gate
+   * requires every legacy URL to redirect exactly once, and
+   * `legacyLocaleRedirect` already knows about the trailing-slash forms — its
+   * branches for them were simply unreachable. With this set, the proxy strips
+   * the slash and applies the locale mapping in the same hop, and still
+   * canonicalizes `/en/blog/` to `/en/blog` for every other route.
+   */
+  skipTrailingSlashRedirect: true,
+
+  /**
    * Keep browser-facing API and document-download URLs same-origin. The API
    * origin is server-only, so MinIO/API topology never enters client bundles.
    */

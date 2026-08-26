@@ -101,6 +101,33 @@ describe("bare-root locale negotiation", () => {
     expect(prefixedResponse.headers.get("vary")).toBeNull();
   });
 
+  it("collapses a trailing slash and the locale prefix into one redirect", async () => {
+    // Next's own trailing-slash normalization used to run first, so
+    // `/projects/` cost two hops: `/projects/` -> `/projects` -> `/en/projects`.
+    // The exit gate is "exactly once", and `next.config.ts` now hands the raw
+    // path to the proxy so both steps happen together.
+    for (const [from, to] of [
+      ["/projects/", "/en/projects"],
+      ["/blog/", "/en/blog"],
+    ] as const) {
+      const response = await proxyWithDependencies(
+        new NextRequest(`https://example.test${from}`)
+      );
+      expect(response.status).toBe(308);
+      expect(new URL(response.headers.get("location")!).pathname).toBe(to);
+    }
+  });
+
+  it("canonicalizes a trailing slash on a locale-prefixed route in one hop", async () => {
+    const response = await proxyWithDependencies(
+      new NextRequest("https://example.test/en/blog/")
+    );
+    expect(response.status).toBe(308);
+    expect(new URL(response.headers.get("location")!).pathname).toBe(
+      "/en/blog"
+    );
+  });
+
   it("returns a secure localized 503 before rendering unavailable database routes", async () => {
     const response = await proxyWithDependencies(
       new NextRequest("https://example.test/fa/projects"),

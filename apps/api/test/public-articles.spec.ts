@@ -258,21 +258,54 @@ describe("PublicArticlesService", () => {
     });
   });
 
-  it("refuses a published body whose render provenance is stale or malformed", async () => {
-    const findUnique = vi
-      .fn()
-      .mockResolvedValueOnce(detailRow({ rendererVersion: "0" }))
-      .mockResolvedValueOnce(detailRow({ bodySha256: "not-a-sha256" }));
+  it("treats a stale, malformed, or mismatched render as an article that is not there", async () => {
+    // Not as an error. Throwing turned one corrupted row into a `500`, and a
+    // `500` tells an unauthenticated caller that something is wrong with the
+    // data. The public contract for an article whose source cannot be trusted
+    // is that it does not exist.
+    const faults = [
+      { rendererVersion: "0" },
+      { bodySha256: "not-a-sha256" },
+      { bodySha256: "f".repeat(64) },
+      { bodyMarkdown: null },
+      { renderedHtml: null },
+      { excerpt: null },
+      { readingMinutes: null },
+    ];
+    const findUnique = vi.fn();
+    for (const fault of faults) {
+      findUnique.mockResolvedValueOnce(detailRow(fault));
+    }
     const service = new PublicArticlesService({
       postTranslation: { findUnique },
     } as unknown as Database);
 
-    await expect(service.detail("en", "typed-public-reads")).rejects.toThrow(
-      "invalid render index"
-    );
-    await expect(service.detail("en", "typed-public-reads")).rejects.toThrow(
-      "invalid render index"
-    );
+    for (const fault of faults) {
+      const result = await service.detail("en", "typed-public-reads");
+      expect(result.kind, JSON.stringify(fault)).toBe("missing");
+      expect(JSON.stringify(result)).not.toContain("Safe body");
+      expect(JSON.stringify(result)).not.toContain("digest");
+    }
+  });
+
+  it("drops one corrupted row from a listing instead of failing the whole locale", async () => {
+    // The regression this exists for: `list` used to assert integrity inside
+    // its map, so a single bad row aborted discovery for every article in the
+    // locale. Blog listing is not allowed to be that fragile.
+    const healthy = listRow(translationId, "typed-public-reads", publishedAt);
+    const corrupted = listRow(secondTranslationId, "older-article", updatedAt);
+    corrupted.bodySha256 = "f".repeat(64);
+    const service = new PublicArticlesService({
+      postTranslation: {
+        findMany: vi.fn().mockResolvedValue([healthy, corrupted]),
+      },
+    } as unknown as Database);
+
+    const result = await service.list("en", { limit: 10 });
+
+    expect(result.data.posts.map(({ slug }) => slug)).toEqual([
+      "typed-public-reads",
+    ]);
   });
 
   it("never returns another locale's body for draft, archived, or absent translations", async () => {

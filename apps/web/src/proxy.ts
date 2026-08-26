@@ -66,29 +66,36 @@ export async function proxyWithDependencies(
   dependencies: ProxyDependencies = {}
 ): Promise<NextResponse> {
   const nonce = createNonce();
+  // `skipTrailingSlashRedirect` hands us the raw path, so canonicalizing it is
+  // this function's job now. Doing it here rather than letting Next do it is
+  // what keeps `/projects/` to a single hop instead of two.
+  const rawPath = request.nextUrl.pathname;
+  const pathname =
+    rawPath.length > 1 && rawPath.endsWith("/")
+      ? rawPath.replace(/\/+$/, "")
+      : rawPath;
   const rootLocale =
-    request.nextUrl.pathname === "/"
+    pathname === "/"
       ? negotiateRootLocale(
           request.cookies.get(LOCALE_COOKIE_NAME)?.value,
           request.headers.get("accept-language")
         )
       : undefined;
-  const redirectPath = legacyLocaleRedirect(
-    request.nextUrl.pathname,
-    rootLocale
-  );
+  const redirectPath =
+    legacyLocaleRedirect(pathname, rootLocale) ??
+    (pathname === rawPath ? null : pathname);
   if (redirectPath) {
     const response = secure(
       NextResponse.redirect(new URL(redirectPath, request.url), 308),
       nonce
     );
-    if (request.nextUrl.pathname === "/") {
+    if (pathname === "/") {
       response.headers.set("Vary", "Accept-Language, Cookie");
     }
     return response;
   }
 
-  const locale = request.nextUrl.pathname.split("/")[1];
+  const locale = pathname.split("/")[1];
   const dataSource =
     dependencies.dataSource ??
     parsePortfolioDataSource(process.env.PORTFOLIO_DATA_SOURCE);
@@ -96,7 +103,7 @@ export async function proxyWithDependencies(
   if (dataSource === "database" && isLocale(locale) && isDocumentRead) {
     const availability = await (
       dependencies.checkAvailability ?? checkDefaultPublicRouteAvailability
-    )(request.nextUrl.pathname);
+    )(pathname);
     if (availability === "unavailable") {
       return createUnavailableResponse(locale, nonce);
     }
@@ -105,7 +112,7 @@ export async function proxyWithDependencies(
   const headers = new Headers(request.headers);
   headers.set("x-portfolio-locale", locale === "fa" ? "fa" : "en");
   headers.set("x-portfolio-csp-nonce", nonce);
-  headers.set("x-portfolio-pathname", request.nextUrl.pathname);
+  headers.set("x-portfolio-pathname", pathname);
   const response = NextResponse.next({ request: { headers } });
   return secure(response, nonce);
 }

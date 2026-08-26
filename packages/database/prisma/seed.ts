@@ -163,9 +163,25 @@ async function seedPageSections(): Promise<void> {
       // The legacy About Me prose is migrated in M2 from the hard-coded
       // component, not invented here. Seeding placeholder prose would put text
       // in the database that the reconciliation would then have to explain.
-      content: { location: "Tehran, Iran", role: "frontend developer" },
+      //
+      // `location` and `role` are NOT prose and they are not optional: the
+      // public section DTO requires both, so a database that is migrated and
+      // seeded but has not yet had the M2 migration applied would otherwise
+      // fail validation and take the whole `/site` endpoint down with it.
+      // They live in the English translation because that is where
+      // PageSections.json puts them and where the API reads them; Persian
+      // deliberately omits them and falls back to English (ADR-005).
+      content: {},
       translations: [
-        { locale: "en" as const, title: "About Me", content: { body: [] } },
+        {
+          locale: "en" as const,
+          title: "About Me",
+          content: {
+            location: "Tehran, Iran",
+            role: "frontend developer",
+            body: [],
+          },
+        },
         { locale: "fa" as const, title: "درباره من", content: { body: [] } },
       ],
     },

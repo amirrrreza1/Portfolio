@@ -10,12 +10,13 @@ import {
 import type { InvalidationSender } from "./invalidation-sender.js";
 
 /**
- * Delivers queued invalidation events with bounded retries (ADR-012).
+ * Delivers queued invalidation events with bounded retries (ADR-012, as
+ * retained by ADR-015).
  *
  * Runs alongside the job loop rather than inside it. The two have unrelated
- * failure modes — one talks to GitHub, the other to the web app — and putting
- * them in one sequence means a slow Git reconciliation delays every pending
- * purge behind it.
+ * failure modes — one talks to PostgreSQL, the other to the web app over the
+ * network — and putting them in one sequence means a slow or retrying purge
+ * delays every pending publication behind it, and vice versa.
  *
  * Nothing here is allowed to fail loudly enough to stop the loop. The database
  * is authoritative (API_SPEC.md §8); an undelivered invalidation is a stale
