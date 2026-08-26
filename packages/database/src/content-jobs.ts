@@ -101,7 +101,8 @@ const DEFAULT_MAX_ATTEMPTS = 5;
  * Pure and exported because it is the one part of the retry policy worth
  * asserting directly: everything else needs a database, and a backoff that
  * silently becomes linear is the kind of bug that only shows up as a thundering
- * herd against the Git API during an outage.
+ * herd against the database, or against a cache-invalidation receiver, during
+ * an outage.
  *
  * No jitter. A single sync worker holds the advisory lock, so there is no fleet
  * to disperse, and a deterministic schedule is one an operator can predict.

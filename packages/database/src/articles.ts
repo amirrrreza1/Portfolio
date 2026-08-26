@@ -364,13 +364,28 @@ async function resolveTaxonomy(prisma: any, frontmatter: Frontmatter) {
   };
 }
 
+/**
+ * Rejects a save whose cover or social image is not something a public page
+ * may actually deliver.
+ *
+ * The predicate is the one the public read paths already use — verified,
+ * public, not archived — rather than merely "the row exists". A quarantined or
+ * private asset that passes here becomes a broken or leaking image on a
+ * published article, and the save is the last place to catch it cheaply.
+ */
 async function assertMedia(prisma: any, frontmatter: Frontmatter) {
   const ids = [frontmatter.coverImage, frontmatter.socialImage].filter(
     (id) => id !== null
   );
   if (ids.length === 0) return;
   const count = await prisma.mediaAsset.count({
-    where: { id: { in: [...new Set(ids)] }, status: "READY", archivedAt: null },
+    where: {
+      id: { in: [...new Set(ids)] },
+      kind: "IMAGE",
+      processingState: "VERIFIED",
+      visibility: "PUBLIC",
+      archivedAt: null,
+    },
   });
   if (count !== new Set(ids).size)
     throw new Error("Referenced media is missing or unavailable.");

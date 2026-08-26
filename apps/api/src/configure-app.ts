@@ -10,15 +10,15 @@ export function configureApplication(app: NestFastifyApplication): void {
 /**
  * Application options every entrypoint must use.
  *
- * `rawBody` is not optional here. The Git webhook's HMAC is computed over the
- * bytes GitHub sent, and re-serializing the parsed body produces a different
- * byte string — key order, whitespace, unicode escaping. A signature check
- * against re-serialized JSON fails on every legitimate delivery, and the
- * failure mode that matters is the fix someone reaches for next: skipping
- * verification because "the signature never matches".
+ * Deliberately empty. It held `rawBody: true`, which existed for exactly one
+ * reason: the inbound Git content webhook verified an HMAC over the bytes
+ * GitHub sent, and re-serializing a parsed body produces a different byte
+ * string. ADR-015 removed that webhook, and nothing in this application reads
+ * `req.rawBody` any more, so buffering every request body would be a cost paid
+ * for a caller that no longer exists.
  *
- * Nest's own option is used rather than a hand-registered content-type parser,
- * because Nest registers its JSON parser during `init()` and a second one for
- * the same type is a startup error.
+ * The export stays so that `main.ts` and the smoke test construct the
+ * application the same way, and so the next option that is genuinely required
+ * has one place to be added rather than two.
  */
-export const APPLICATION_OPTIONS = { rawBody: true } as const;
+export const APPLICATION_OPTIONS = {} as const;

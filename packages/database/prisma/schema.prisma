@@ -911,7 +911,7 @@ model SlugRedirect {
 ///     interleaving, and enforcing it in the database means two workers
 ///     racing produces a unique violation the loser retries, rather than two
 ///     handlers interleaving.
-///   - unique `dedupeKey` while PENDING, so ten webhooks in a burst collapse
+///   - unique `dedupeKey` while PENDING, so ten scheduler ticks in a burst collapse
 ///     into one queued reconciliation instead of ten identical passes.
 model ContentJob {
   id             String          @id @default(cuid(2))

@@ -1,7 +1,8 @@
 # Migrations
 
 Two migrations make up the initial schema, and they must be created in this
-order.
+order. Two further forward-only migrations follow them and are described at the
+bottom of this file.
 
 ## Why two
 
@@ -74,9 +75,10 @@ that produced duplicates would error rather than pass quietly.
 
 ## Migrations added without a database
 
-`20260816150000_content_jobs` was hand-written. Every migration before it came
-from `prisma migrate dev` against a live database; this one did not, because the
-change was authored where no PostgreSQL instance was reachable.
+`20260816150000_content_jobs` and `20260825120000_postgres_native_articles` were
+hand-written. Every migration before them came from `prisma migrate dev` against
+a live database; these did not, because the changes were authored where no
+PostgreSQL instance was reachable.
 
 Verify it before trusting it:
 
@@ -90,10 +92,36 @@ pnpm --filter @portfolio/database exec prisma migrate diff \
 An empty result means the migration and the schema agree. Any output means the
 hand-written file is wrong and the generated statements are right.
 
-It also differs from the initial pair in carrying its own `CHECK` constraints and
-partial indexes rather than deferring them to a second migration. That split
+They also differ from the initial pair in carrying their own `CHECK` constraints
+and partial indexes rather than deferring them to a second migration. That split
 existed so hand-written constraints could be staged into a _generated_ file, and
 there is nothing to stage when the whole file is hand-written. The annotated
 copy of those constraints still lives in
 [`../sql/integrity_constraints.sql`](../sql/integrity_constraints.sql), which is
 what a fresh database and `test/constraints.spec.ts` apply.
+
+## `20260825120000_postgres_native_articles`
+
+[ADR-015](../../../../docs/DECISIONS.md#adr-015--postgresql-native-article-authoring-and-publication)
+makes PostgreSQL the sole authority for article bodies. This migration adds
+`bodyMarkdown` and `bodySha256`, replaces the draft blob token with an integer
+`baseVersion`, and drops the Git synchronization columns, tables, and enum
+types.
+
+Two details are deliberate and should not be "tidied":
+
+- **`bodyMarkdown` is nullable.** Rows written by the Git-index era have no
+  recoverable Markdown, and inventing source for them would publish text nobody
+  wrote. The migration demotes every such row to `DRAFT` instead, the
+  `post_translations_published_has_source` constraint stops it from returning to
+  `PUBLISHED`, and the public partial indexes exclude it. Those rows stay
+  invisible until they are explicitly reimported.
+- **The historical migrations still create what this one drops.** They are
+  frozen history, not a description of the current schema. A database migrated
+  from zero passes through the Git-era shape and comes out the other side
+  without it; `verify:articles` asserts exactly that against a real server.
+
+Verify it the same way as `content_jobs`, with `prisma migrate diff`. The
+verification script `scripts/verify-article-authority.ts` covers the behaviour
+the diff cannot: constraints rejecting what they claim to, rollback leaving no
+partial state, and publication running with no network.

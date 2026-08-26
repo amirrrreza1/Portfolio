@@ -31,7 +31,6 @@ const HEALTHY_QUEUE = {
 
 async function createApp(overrides: {
   readonly probes?: unknown;
-  readonly webhook?: unknown;
 }): Promise<NestFastifyApplication> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(CONTACT_SUBMISSION_SERVICE)
