@@ -6,11 +6,16 @@ import {
 } from "@portfolio/database";
 import type {
   AdminAppearanceUpdate,
+  AdminProject,
+  AdminProjectTranslation,
   AdminNavItemCreate,
   AdminSectionTranslation,
   AdminSectionUpdate,
   AdminSiteSettingsTranslation,
   AdminSiteSettingsUpdate,
+  AdminSkill,
+  AdminSkillCategory,
+  AdminSkillCategoryTranslation,
   AdminSocialLinkCreate,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -201,6 +206,89 @@ export class AdminPortfolioService {
     return this.updateVersioned(tx => tx.socialLink, actorId, "SocialLink", id, version, { ...input, labelByLocale: input.labelByLocale });
   }
 
+  async listSkillCategories(): Promise<unknown> {
+    return this.database.skillCategory.findMany({ include: { translations: { orderBy: { locale: "asc" } }, skills: { orderBy: [{ sortOrder: "asc" }, { name: "asc" }] } }, orderBy: [{ sortOrder: "asc" }, { key: "asc" }] });
+  }
+
+  async createSkillCategory(actorId: string, input: AdminSkillCategory): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const category = await tx.skillCategory.create({ data: input });
+      await this.recordChange(tx, actorId, "SkillCategory", category.id, category.version, "CREATE", null, category);
+      return category;
+    });
+  }
+
+  async updateSkillCategory(actorId: string, id: string, version: number, input: AdminSkillCategory): Promise<unknown> {
+    return this.updateVersioned((tx) => tx.skillCategory, actorId, "SkillCategory", id, version, input);
+  }
+
+  async updateSkillCategoryTranslation(actorId: string, id: string, locale: "en" | "fa", version: number, input: AdminSkillCategoryTranslation): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const before = await tx.skillCategoryTranslation.findUnique({ where: { categoryId_locale: { categoryId: id, locale } } });
+      await requireVersion(tx.skillCategory, "SkillCategory", id, version, {});
+      const translation = await tx.skillCategoryTranslation.upsert({ where: { categoryId_locale: { categoryId: id, locale } }, create: { categoryId: id, locale, ...input }, update: input });
+      const category = await tx.skillCategory.findUniqueOrThrow({ where: { id } });
+      await this.recordChange(tx, actorId, "SkillCategoryTranslation", `${id}:${locale}`, category.version, "UPDATE", before, translation);
+      return { translation, version: category.version };
+    });
+  }
+
+  async createSkill(actorId: string, input: AdminSkill): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const skill = await tx.skill.create({ data: input });
+      await this.recordChange(tx, actorId, "Skill", skill.id, skill.version, "CREATE", null, skill);
+      return skill;
+    });
+  }
+
+  async updateSkill(actorId: string, id: string, version: number, input: AdminSkill): Promise<unknown> {
+    return this.updateVersioned((tx) => tx.skill, actorId, "Skill", id, version, input);
+  }
+
+  async listProjects(): Promise<unknown> {
+    return this.database.project.findMany({ where: { archivedAt: null }, include: { translations: { orderBy: { locale: "asc" } }, skills: { orderBy: { sortOrder: "asc" } } }, orderBy: [{ sortOrder: "asc" }, { slug: "asc" }] });
+  }
+
+  async createProject(actorId: string, input: AdminProject): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const project = await tx.project.create({ data: projectData(input) });
+      await tx.projectSkill.createMany({ data: input.skills.map((skill) => ({ projectId: project.id, ...skill })) });
+      const after = await tx.project.findUniqueOrThrow({
+        where: { id: project.id },
+        include: { skills: { orderBy: { sortOrder: "asc" } } },
+      });
+      await this.recordChange(tx, actorId, "Project", project.id, project.version, "CREATE", null, after);
+      return after;
+    });
+  }
+
+  async updateProject(actorId: string, id: string, version: number, input: AdminProject): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const before = await tx.project.findUnique({ where: { id }, include: { skills: { orderBy: { sortOrder: "asc" } } } });
+      if (before === null) throw new OptimisticConcurrencyError("Project", id, version, null);
+      await requireVersion(tx.project, "Project", id, version, projectData(input));
+      await tx.projectSkill.deleteMany({ where: { projectId: id } });
+      await tx.projectSkill.createMany({ data: input.skills.map((skill) => ({ projectId: id, ...skill })) });
+      const after = await tx.project.findUniqueOrThrow({
+        where: { id },
+        include: { skills: { orderBy: { sortOrder: "asc" } } },
+      });
+      await this.recordChange(tx, actorId, "Project", id, after.version, "UPDATE", before, after);
+      return after;
+    });
+  }
+
+  async updateProjectTranslation(actorId: string, id: string, locale: "en" | "fa", version: number, input: AdminProjectTranslation): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const before = await tx.projectTranslation.findUnique({ where: { projectId_locale: { projectId: id, locale } } });
+      await requireVersion(tx.project, "Project", id, version, {});
+      const translation = await tx.projectTranslation.upsert({ where: { projectId_locale: { projectId: id, locale } }, create: { projectId: id, locale, ...input }, update: input });
+      const project = await tx.project.findUniqueOrThrow({ where: { id } });
+      await this.recordChange(tx, actorId, "ProjectTranslation", `${id}:${locale}`, project.version, "UPDATE", before, translation);
+      return { translation, version: project.version };
+    });
+  }
+
   private async updateVersioned(
     delegateFor: (tx: any) => any,
     actorId: string,
@@ -241,7 +329,9 @@ export class AdminPortfolioService {
 function invalidationRows(tx: any, entityType: string): Promise<unknown>[] {
   const namespaces = entityType === "AppearanceSettings"
     ? ["appearance"]
-    : ["site", "home"];
+    : entityType.startsWith("Project") || entityType.startsWith("Skill")
+      ? ["projects", "home"]
+      : ["site", "home"];
   return (["en", "fa"] as const).map((locale) => {
     const tags = namespaces.map((namespace) => publicCacheTag(namespace, locale));
     const event = invalidationEventSchema.parse({
@@ -274,4 +364,14 @@ function redactSettings(value: Record<string, unknown>) {
   delete safe.searchConsoleTokens;
   delete safe.birthDate;
   return safe;
+}
+
+function projectData(input: AdminProject) {
+  return {
+    slug: input.slug, status: input.status, demoUrl: input.demoUrl,
+    repositoryUrl: input.repositoryUrl, imageId: input.imageId,
+    featured: input.featured, enabled: input.enabled, sortOrder: input.sortOrder,
+    startedAt: input.startedAt === null ? null : new Date(`${input.startedAt}T00:00:00.000Z`),
+    completedAt: input.completedAt === null ? null : new Date(`${input.completedAt}T00:00:00.000Z`),
+  };
 }

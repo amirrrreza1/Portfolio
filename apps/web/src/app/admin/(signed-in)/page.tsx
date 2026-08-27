@@ -6,6 +6,7 @@ import {
 
 import AdminEnrolPasskey from "@/features/admin/AdminEnrolPasskey";
 import AdminDashboard from "@/features/admin/AdminDashboard";
+import AdminSkillsEditor from "@/features/admin/AdminSkillsEditor";
 import AdminSessionList from "@/features/admin/AdminSessionList";
 import { formatUtc } from "@/features/admin/format";
 import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
@@ -61,6 +62,8 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
           </div>
         </dl>
       </section>
+
+      <AdminSkillsEditor />
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">

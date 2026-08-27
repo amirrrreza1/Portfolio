@@ -10,6 +10,7 @@ import {
   normalizedEmailSchema,
   recordVersionSchema,
   sortOrderSchema,
+  slugSchemaFor,
   stableKeySchema,
   trimmedTextSchema,
 } from "../common/index.js";
@@ -135,6 +136,39 @@ export const adminSocialLinkCreateSchema = z.discriminatedUnion("kind", [
 ]);
 export const adminSocialLinkUpdateSchema = adminSocialLinkCreateSchema;
 
+export const adminSkillCategorySchema = z.object({
+  key: stableKeySchema,
+  enabled: z.boolean(),
+  sortOrder: sortOrderSchema,
+}).strict();
+export const adminSkillCategoryTranslationSchema = z.object({ name: shortText }).strict();
+export const adminSkillSchema = z.object({
+  categoryId: z.string().trim().min(1).max(64),
+  name: trimmedTextSchema({ max: 120 }),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i).transform((value) => value.toLowerCase()),
+  iconMediaId: z.string().trim().min(1).max(64).nullable(),
+  enabled: z.boolean(),
+  sortOrder: sortOrderSchema,
+}).strict();
+export const adminProjectSchema = z.object({
+  slug: slugSchemaFor("en"),
+  status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED", "ARCHIVED"]),
+  demoUrl: httpsUrlSchema.nullable(),
+  repositoryUrl: httpsUrlSchema.nullable(),
+  imageId: z.string().trim().min(1).max(64).nullable(),
+  featured: z.boolean(),
+  enabled: z.boolean(),
+  sortOrder: sortOrderSchema,
+  startedAt: z.string().date().nullable(),
+  completedAt: z.string().date().nullable(),
+  skills: z.array(z.object({ skillId: z.string().trim().min(1).max(64), sortOrder: sortOrderSchema }).strict()).max(250).refine((items) => new Set(items.map((item) => item.skillId)).size === items.length, "Skills must be unique."),
+}).strict();
+export const adminProjectTranslationSchema = z.object({
+  title: shortText,
+  summary: prose.pipe(z.string().max(2_000)),
+  longDescription: multilineTextSchema({ max: 512 * 1024 }).nullable(),
+}).strict();
+
 export const versionedBodySchema = z.object({ version: recordVersionSchema }).strict();
 export const archiveConfirmationSchema = z.object({ confirm: z.literal(true), version: recordVersionSchema }).strict();
 
@@ -145,3 +179,8 @@ export type AdminSectionUpdate = z.infer<typeof adminSectionUpdateSchema>;
 export type AdminSectionTranslation = z.infer<typeof adminSectionTranslationSchema>;
 export type AdminNavItemCreate = z.infer<typeof adminNavItemCreateSchema>;
 export type AdminSocialLinkCreate = z.infer<typeof adminSocialLinkCreateSchema>;
+export type AdminSkillCategory = z.infer<typeof adminSkillCategorySchema>;
+export type AdminSkillCategoryTranslation = z.infer<typeof adminSkillCategoryTranslationSchema>;
+export type AdminSkill = z.infer<typeof adminSkillSchema>;
+export type AdminProject = z.infer<typeof adminProjectSchema>;
+export type AdminProjectTranslation = z.infer<typeof adminProjectTranslationSchema>;

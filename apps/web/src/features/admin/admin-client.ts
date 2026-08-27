@@ -71,8 +71,9 @@ function readCsrfToken(): string | null {
 }
 
 interface RequestOptions {
-  readonly method?: "GET" | "POST" | "DELETE";
+  readonly method?: "GET" | "POST" | "PATCH" | "DELETE";
   readonly body?: unknown;
+  readonly ifMatch?: number;
   /**
    * Whether this call is a state change that needs the CSRF header. Named
    * rather than inferred from the method, so that adding a mutating `GET` (an
@@ -89,6 +90,7 @@ export async function adminRequest<T = unknown>(
   if (options.body !== undefined) {
     headers["content-type"] = "application/json";
   }
+  if (options.ifMatch !== undefined) headers["if-match"] = String(options.ifMatch);
   if (options.mutation === true) {
     const token = readCsrfToken();
     // Send the request without it rather than failing here: the server's

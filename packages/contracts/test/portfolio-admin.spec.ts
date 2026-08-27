@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   adminAppearanceUpdateSchema,
   adminNavItemCreateSchema,
+  adminProjectSchema,
+  adminSkillSchema,
   adminSiteSettingsSchema,
   adminSocialLinkCreateSchema,
 } from "../src/portfolio/admin.js";
@@ -74,6 +76,15 @@ describe("portfolio admin contracts", () => {
         enabled: true,
         sortOrder: 1,
       }).success
+    ).toBe(false);
+  });
+
+  it("requires canonical project relationships and a valid skill colour", () => {
+    expect(
+      adminSkillSchema.safeParse({ categoryId: "category", name: "TypeScript", color: "#0070f3", iconMediaId: null, enabled: true, sortOrder: 1 }).success
+    ).toBe(true);
+    expect(
+      adminProjectSchema.safeParse({ slug: "portfolio", status: "COMPLETED", demoUrl: null, repositoryUrl: null, imageId: null, featured: false, enabled: true, sortOrder: 0, startedAt: null, completedAt: null, skills: [{ skillId: "skill", sortOrder: 0 }, { skillId: "skill", sortOrder: 1 }] }).success
     ).toBe(false);
   });
 });

@@ -16,11 +16,16 @@ import {
 } from "@portfolio/contracts/auth";
 import {
   adminAppearanceUpdateSchema,
+  adminProjectSchema,
+  adminProjectTranslationSchema,
   adminNavItemCreateSchema,
   adminSectionTranslationSchema,
   adminSectionUpdateSchema,
   adminSiteSettingsTranslationSchema,
   adminSiteSettingsUpdateSchema,
+  adminSkillCategorySchema,
+  adminSkillCategoryTranslationSchema,
+  adminSkillSchema,
   adminSocialLinkCreateSchema,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -183,6 +188,64 @@ export class AdminPortfolioController {
     const value = await this.portfolio.updateSocialLink(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSocialLinkCreateSchema, body, requestId));
     this.noStore(reply);
     return this.envelope(value, requestId);
+  }
+
+  @Get("skill-categories")
+  async skillCategories(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listSkillCategories());
+  }
+
+  @Post("skill-categories")
+  async createSkillCategory(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.createSkillCategory(actor.user.userId, this.parse(adminSkillCategorySchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Patch("skill-categories/:id")
+  async updateSkillCategory(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateSkillCategory(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSkillCategorySchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Patch("skill-categories/:id/translations/:locale")
+  async updateSkillCategoryTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateSkillCategoryTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminSkillCategoryTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Post("skills")
+  async createSkill(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.createSkill(actor.user.userId, this.parse(adminSkillSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Patch("skills/:id")
+  async updateSkill(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateSkill(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSkillSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Get("projects")
+  async projects(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listProjects());
+  }
+
+  @Post("projects")
+  async createProject(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.createProject(actor.user.userId, this.parse(adminProjectSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Patch("projects/:id")
+  async updateProject(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateProject(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminProjectSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Patch("projects/:id/translations/:locale")
+  async updateProjectTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateProjectTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminProjectTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
   }
 
   private envelope(data: unknown, requestId = randomUUID()) {
