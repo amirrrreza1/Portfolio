@@ -15,6 +15,8 @@ import {
   trimmedTextSchema,
 } from "../common/index.js";
 import { appearanceSettingsInputSchema } from "../appearance/settings.js";
+import { checkBadgeColorContrast } from "../appearance/contrast.js";
+import { passwordSchema } from "../auth/credentials.js";
 import {
   githubRepositoryNameSchema,
   githubUsernameSchema,
@@ -247,7 +249,18 @@ export const adminSkillSchema = z
     enabled: z.boolean(),
     sortOrder: sortOrderSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    const report = checkBadgeColorContrast(value.color);
+    if (!report.passes) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["color"],
+        message:
+          "The skill colour must keep its label and boundary visible in every theme.",
+      });
+    }
+  });
 export const adminProjectSchema = z
   .object({
     slug: slugSchemaFor("en"),
@@ -321,6 +334,59 @@ export const adminResumeSchema = z
   })
   .strict();
 
+export const adminMediaUpdateSchema = z
+  .object({
+    displayName: trimmedTextSchema({ max: 160 }),
+    altText: trimmedTextSchema({ max: 500 }).nullable(),
+    visibility: z.enum(["PUBLIC", "PRIVATE"]),
+  })
+  .strict();
+
+export const adminMediaUploadFieldsSchema = z
+  .object({
+    kind: z.enum(["IMAGE", "DOCUMENT"]),
+    visibility: z.enum(["PUBLIC", "PRIVATE"]),
+    altText: trimmedTextSchema({ max: 500 }).nullable(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.kind === "IMAGE" && value.altText === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["altText"],
+        message: "Images require alternative text before they can be used.",
+      });
+    }
+  });
+
+export const adminResumeUpdateSchema = z
+  .object({
+    label: shortText,
+    publicFilename: trimmedTextSchema({ max: 160 }).nullable(),
+  })
+  .strict();
+
+export const adminRevisionRestoreSchema = z
+  .object({ confirm: z.literal(true) })
+  .strict();
+
+export const adminUserUpdateSchema = z
+  .object({
+    displayName: shortText,
+    role: z.enum(["OWNER", "EDITOR"]),
+    status: z.enum(["ACTIVE", "LOCKED", "DISABLED"]),
+  })
+  .strict();
+
+export const adminUserCreateSchema = z
+  .object({
+    email: normalizedEmailSchema,
+    displayName: shortText,
+    role: z.enum(["OWNER", "EDITOR"]),
+    password: passwordSchema,
+  })
+  .strict();
+
 export const versionedBodySchema = z
   .object({ version: recordVersionSchema })
   .strict();
@@ -356,3 +422,13 @@ export type AdminCertificateTranslation = z.infer<
 >;
 export type AdminQuote = z.infer<typeof adminQuoteSchema>;
 export type AdminResume = z.infer<typeof adminResumeSchema>;
+export type AdminMediaUpdate = z.infer<typeof adminMediaUpdateSchema>;
+export type AdminMediaUploadFields = z.infer<
+  typeof adminMediaUploadFieldsSchema
+>;
+export type AdminResumeUpdate = z.infer<typeof adminResumeUpdateSchema>;
+export type AdminRevisionRestore = z.infer<
+  typeof adminRevisionRestoreSchema
+>;
+export type AdminUserUpdate = z.infer<typeof adminUserUpdateSchema>;
+export type AdminUserCreate = z.infer<typeof adminUserCreateSchema>;

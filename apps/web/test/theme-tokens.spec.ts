@@ -50,6 +50,10 @@ const RAW_COLOUR_ALLOWLIST = new Map<string, string>([
     "Utils/getTextColor.ts",
     "Returns the derived badge label for a stored skill colour. Black and white here are the output of the rule that `derivedLabelColor` in @portfolio/contracts reproduces, not a design choice.",
   ],
+  [
+    "features/admin/AdminCollectionsEditor.tsx",
+    "Supplies the initial default hex value for the HTML5 color picker input when authoring a new skill.",
+  ],
 ]);
 
 /** Legacy token names the M5 migration retired. */

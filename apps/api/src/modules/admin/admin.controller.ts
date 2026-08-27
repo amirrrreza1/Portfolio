@@ -1,14 +1,19 @@
 import {
   Body,
+  Catch,
   Controller,
+  ArgumentsHost,
+  type ExceptionFilter,
   Get,
   HttpException,
   Inject,
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
+  UseFilters,
 } from "@nestjs/common";
 import { authorizeCookieMutation } from "@portfolio/auth-core";
 import {
@@ -16,10 +21,13 @@ import {
 } from "@portfolio/contracts/auth";
 import {
   adminAppearanceUpdateSchema,
+  archiveConfirmationSchema,
   adminCertificateSchema,
   adminCertificateTranslationSchema,
   adminProjectSchema,
   adminProjectTranslationSchema,
+  adminMediaUpdateSchema,
+  adminMediaUploadFieldsSchema,
   adminNavItemCreateSchema,
   adminSectionTranslationSchema,
   adminSectionUpdateSchema,
@@ -30,8 +38,13 @@ import {
   adminSkillSchema,
   adminQuoteSchema,
   adminResumeSchema,
+  adminResumeUpdateSchema,
+  adminRevisionRestoreSchema,
   adminSocialLinkCreateSchema,
+  adminUserUpdateSchema,
+  adminUserCreateSchema,
 } from "@portfolio/contracts/portfolio";
+import { OptimisticConcurrencyError } from "@portfolio/database";
 import {
   buildErrorBody,
   ERROR_STATUS,
@@ -51,12 +64,98 @@ import {
 } from "../auth/auth.controller.js";
 import { authorize, type Permission } from "../auth/authorization.js";
 import type { AuthenticatedRequest, AuthService } from "../auth/auth.service.js";
-import { AdminPortfolioService } from "./admin.service.js";
+import {
+  AdminInvariantError,
+  AdminMediaRejectedError,
+  AdminPortfolioService,
+  AdminResourceNotFoundError,
+  AdminResourceReferencedError,
+  type ArchivableResource,
+} from "./admin.service.js";
 
 export const ADMIN_PORTFOLIO_SERVICE = Symbol("ADMIN_PORTFOLIO_SERVICE");
 
+const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
+
+@Catch()
+class AdminPortfolioExceptionFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost): void {
+    const reply = host.switchToHttp().getResponse<FastifyReply>();
+    if (exception instanceof HttpException) {
+      void reply.status(exception.getStatus()).send(exception.getResponse());
+      return;
+    }
+
+    const requestId = randomUUID();
+    if (exception instanceof OptimisticConcurrencyError) {
+      void reply.status(ERROR_STATUS.CONFLICT).send(
+        buildErrorBody("CONFLICT", requestId, {
+          expectedVersion: [String(exception.expectedVersion)],
+          currentVersion: [
+            exception.currentVersion === null
+              ? "missing"
+              : String(exception.currentVersion),
+          ],
+        })
+      );
+      return;
+    }
+    if (exception instanceof AdminResourceNotFoundError) {
+      void reply
+        .status(ERROR_STATUS.NOT_FOUND)
+        .send(buildErrorBody("NOT_FOUND", requestId));
+      return;
+    }
+    if (exception instanceof AdminMediaRejectedError) {
+      void reply.status(ERROR_STATUS.UNSUPPORTED_MEDIA).send(
+        buildErrorBody("UNSUPPORTED_MEDIA", requestId, {
+          ...(exception.mediaId === null
+            ? {}
+            : { quarantinedMediaId: [exception.mediaId] }),
+        })
+      );
+      return;
+    }
+    if (
+      exception instanceof AdminResourceReferencedError ||
+      exception instanceof AdminInvariantError
+    ) {
+      void reply
+        .status(ERROR_STATUS.VALIDATION_FAILED)
+        .send(
+          buildErrorBody(
+            "VALIDATION_FAILED",
+            requestId,
+            mutableFields(exception.fields)
+          )
+        );
+      return;
+    }
+    const databaseCode =
+      typeof exception === "object" && exception !== null && "code" in exception
+        ? String((exception as { readonly code: unknown }).code)
+        : null;
+    if (databaseCode === "P2002" || databaseCode === "P2003") {
+      void reply.status(ERROR_STATUS.VALIDATION_FAILED).send(
+        buildErrorBody("VALIDATION_FAILED", requestId, {
+          resource: [
+            databaseCode === "P2002"
+              ? "A record with that unique value already exists."
+              : "The selected related record is not available.",
+          ],
+        })
+      );
+      return;
+    }
+    void reply
+      .status(ERROR_STATUS.INTERNAL_ERROR)
+      .send(buildErrorBody("INTERNAL_ERROR", requestId));
+  }
+}
+
 /** The authenticated M7 portfolio CMS boundary. */
 @Controller("admin")
+@UseFilters(AdminPortfolioExceptionFilter)
 export class AdminPortfolioController {
   public constructor(
     @Inject(ADMIN_PORTFOLIO_SERVICE)
@@ -74,14 +173,14 @@ export class AdminPortfolioController {
 
   @Get("settings")
   async settings(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    await this.require(request, "content.draft.read");
+    await this.require(request, "settings.manage");
     this.noStore(reply);
     return this.envelope(await this.portfolio.readSettings());
   }
 
   @Patch("settings")
   async updateSettings(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write");
+    const actor = await this.requireMutation(request, "settings.manage");
     const requestId = randomUUID();
     const input = this.parse(adminSiteSettingsUpdateSchema, body, requestId);
     const value = await this.portfolio.updateSettings(actor.user.userId, this.ifMatch(request, requestId), input);
@@ -91,7 +190,7 @@ export class AdminPortfolioController {
 
   @Patch("settings/translations/:locale")
   async updateSettingsTranslation(@Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write");
+    const actor = await this.requireMutation(request, "settings.manage");
     const requestId = randomUUID();
     const parsedLocale = this.locale(locale, requestId);
     const input = this.parse(adminSiteSettingsTranslationSchema, body, requestId);
@@ -279,13 +378,98 @@ export class AdminPortfolioController {
   async updateQuote(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.updateQuote(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
 
   @Get("media")
-  async media(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listMedia()); }
+  async media(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.read"); this.noStore(reply); return this.envelope(await this.portfolio.listMedia()); }
+
+  @Post("media")
+  async uploadMedia(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "media.upload");
+    const requestId = randomUUID();
+    const part = await request.file({
+      limits: { fileSize: MAX_MEDIA_BYTES, files: 1, fields: 4, parts: 5 },
+    });
+    if (part === undefined) {
+      throw this.fail("VALIDATION_FAILED", requestId, { file: ["Choose one file."] });
+    }
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for await (const chunk of part.file) {
+      total += chunk.length;
+      if (total > MAX_MEDIA_BYTES) {
+        throw this.fail("PAYLOAD_TOO_LARGE", requestId);
+      }
+      chunks.push(chunk);
+    }
+    if (part.file.truncated) throw this.fail("PAYLOAD_TOO_LARGE", requestId);
+    const kind = multipartField(part.fields, "kind");
+    const visibility = multipartField(part.fields, "visibility");
+    const altTextValue = multipartField(part.fields, "altText");
+    const fields = this.parse(
+      adminMediaUploadFieldsSchema,
+      {
+        kind,
+        visibility,
+        altText: altTextValue.trim().length === 0 ? null : altTextValue,
+      },
+      requestId
+    );
+    const value = await this.portfolio.uploadMedia(actor.user.userId, {
+      ...fields,
+      filename: part.filename,
+      bytes: Buffer.concat(chunks),
+    });
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
+
+  @Patch("media/:id")
+  async updateMedia(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID();
+    const value = await this.portfolio.updateMedia(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminMediaUpdateSchema, body, requestId));
+    this.noStore(reply); return this.envelope(value, requestId);
+  }
+
   @Get("resumes")
-  async resumes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listResumes()); }
+  async resumes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.read"); this.noStore(reply); return this.envelope(await this.portfolio.listResumes()); }
   @Post("resumes")
   async createResume(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.createResume(actor.user.userId, this.parse(adminResumeSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  @Patch("resumes/:id")
+  async updateResume(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.updateResume(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminResumeUpdateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
   @Post("resumes/:id/activate")
-  async activateResume(@Param("id") id: string, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.activateResume(actor.user.userId, this.id(id, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async activateResume(@Param("id") id: string, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.activateResume(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+
+  @Post("resources/:resource/:id/archive")
+  async archive(@Param("resource") resource: string, @Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, resource === "media" ? "media.manage" : "content.draft.write");
+    const requestId = randomUUID(); const parsed = this.parseArchiveResource(resource, requestId); const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
+    const value = parsed === "media" ? await this.portfolio.archiveMedia(actor.user.userId, this.id(id, requestId), confirmation.version) : await this.portfolio.archiveResource(actor.user.userId, parsed, this.id(id, requestId), confirmation.version);
+    this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Post("resources/:resource/:id/restore")
+  async restore(@Param("resource") resource: string, @Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, resource === "media" ? "media.manage" : "revision.restore");
+    const requestId = randomUUID(); const parsed = this.parseArchiveResource(resource, requestId); const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
+    const value = parsed === "media" ? await this.portfolio.restoreMedia(actor.user.userId, this.id(id, requestId), confirmation.version) : await this.portfolio.restoreResource(actor.user.userId, parsed, this.id(id, requestId), confirmation.version);
+    this.noStore(reply); return this.envelope(value, requestId);
+  }
+
+  @Get("revisions")
+  async revisions(@Query("entityType") entityType: string | undefined, @Query("entityId") entityId: string | undefined, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listRevisions(entityType, entityId)); }
+
+  @Post("revisions/:id/restore")
+  async restoreRevision(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "revision.restore"); const requestId = randomUUID(); this.parse(adminRevisionRestoreSchema, body, requestId); const value = await this.portfolio.restoreRevision(actor.user.userId, this.id(id, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+
+  @Get("audit-events")
+  async auditEvents(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "audit.read"); this.noStore(reply); return this.envelope(await this.portfolio.listAuditEvents()); }
+
+  @Get("users")
+  async users(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "users.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listUsers()); }
+
+  @Post("users")
+  async createUser(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "users.manage"); const requestId = randomUUID(); const value = await this.portfolio.createUser(actor.user.userId, this.parse(adminUserCreateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+
+  @Patch("users/:id")
+  async updateUser(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "users.manage"); const requestId = randomUUID(); const value = await this.portfolio.updateUser(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminUserUpdateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
 
   private envelope(data: unknown, requestId = randomUUID()) {
     return { data, meta: { requestId } };
@@ -308,6 +492,28 @@ export class AdminPortfolioController {
   private locale(value: string, requestId: string): "en" | "fa" {
     if (value !== "en" && value !== "fa") throw this.fail("VALIDATION_FAILED", requestId, { locale: ["Locale must be en or fa."] });
     return value;
+  }
+
+  private parseArchiveResource(
+    value: string,
+    requestId: string
+  ): ArchivableResource | "media" {
+    const resources = new Set<string>([
+      "projects",
+      "certificates",
+      "skill-categories",
+      "skills",
+      "quotes",
+      "nav-items",
+      "social-links",
+      "media",
+    ]);
+    if (!resources.has(value)) {
+      throw this.fail("VALIDATION_FAILED", requestId, {
+        resource: ["That resource family cannot be archived."],
+      });
+    }
+    return value as ArchivableResource | "media";
   }
 
   private ifMatch(request: FastifyRequest, requestId: string): number {
@@ -363,4 +569,21 @@ export class AdminPortfolioController {
 function header(request: FastifyRequest, name: string): string | undefined {
   const value = request.headers[name];
   return typeof value === "string" ? value : undefined;
+}
+
+function multipartField(fields: unknown, name: string): string {
+  if (typeof fields !== "object" || fields === null) return "";
+  const raw = (fields as Record<string, unknown>)[name];
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof item !== "object" || item === null) return "";
+  const value = (item as { readonly value?: unknown }).value;
+  return typeof value === "string" ? value : "";
+}
+
+function mutableFields(
+  fields: Record<string, readonly string[]>
+): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, messages]) => [key, [...messages]])
+  );
 }

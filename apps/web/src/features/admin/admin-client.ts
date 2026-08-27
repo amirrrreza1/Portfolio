@@ -131,6 +131,36 @@ export async function adminRequest<T = unknown>(
   return (payload as { data: T }).data;
 }
 
+export async function adminUpload<T = unknown>(
+  path: string,
+  body: FormData
+): Promise<T> {
+  const headers: Record<string, string> = { accept: "application/json" };
+  const token = readCsrfToken();
+  if (token !== null) headers[CSRF_HEADER_NAME] = token;
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers,
+      body,
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+  } catch {
+    throw new AdminRequestError("NETWORK_ERROR", 0);
+  }
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new AdminRequestError(
+      errorCodeOf(payload) ?? "INTERNAL_ERROR",
+      response.status,
+      fieldsOf(payload)
+    );
+  }
+  return (payload as { data: T }).data;
+}
+
 function errorCodeOf(payload: unknown): AdminErrorCode | null {
   if (typeof payload !== "object" || payload === null) return null;
   const error = (payload as { error?: { code?: unknown } }).error;
@@ -179,6 +209,18 @@ export function describeAdminError(error: unknown): string {
       return "That request could not be verified. Reload and try again.";
     case "VALIDATION_FAILED":
       return "Check the values you entered.";
+    case "CONFLICT":
+      return error.fields.currentVersion?.[0] === "missing"
+        ? "This item was removed in another session. Reload the list."
+        : `This item changed in another session. The current version is ${error.fields.currentVersion?.[0] ?? "newer"}; reload before saving.`;
+    case "NOT_FOUND":
+      return "That item no longer exists. Reload the list.";
+    case "PAYLOAD_TOO_LARGE":
+      return "That file is larger than the allowed upload limit.";
+    case "UNSUPPORTED_MEDIA":
+      return error.fields.quarantinedMediaId?.[0] === undefined
+        ? "That file did not pass media verification."
+        : `That file was quarantined for review as ${error.fields.quarantinedMediaId[0]}.`;
     case "NETWORK_ERROR":
       return "The admin API could not be reached.";
     default:

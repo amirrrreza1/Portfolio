@@ -6,7 +6,7 @@ import {
 
 import AdminEnrolPasskey from "@/features/admin/AdminEnrolPasskey";
 import AdminDashboard from "@/features/admin/AdminDashboard";
-import AdminSkillsEditor from "@/features/admin/AdminSkillsEditor";
+import AdminContentWorkspace from "@/features/admin/AdminContentWorkspace";
 import AdminSessionList from "@/features/admin/AdminSessionList";
 import { formatUtc } from "@/features/admin/format";
 import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
@@ -14,16 +14,9 @@ import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
 /**
  * The admin shell.
  *
- * It manages **security state and nothing else**: identity, sessions, and the
- * policy those sessions run under. That is the whole surface M6 is allowed to
- * ship — the exit gate requires an authenticated shell "with no content
- * mutation capability until the gate passes" (ROADMAP.md §6), and there are no
- * `/admin` resource endpoints to mutate content with in any case. Content
- * management arrives in M7 against the endpoints M7 builds.
- *
- * ADMIN-003's dashboard — drafts, scheduled content, recent edits, contact
- * counts, failed-login events — is deferred with it, for the same reason:
- * every figure on it would have to be invented today.
+ * M6 established the authenticated boundary; M7 fills that boundary with the
+ * complete non-blog portfolio workspace while security and content controls
+ * continue to share the same owner shell.
  */
 export default async function AdminHomePage(): Promise<React.JSX.Element> {
   // Asked again here, not inherited from the layout. See admin-session.ts.
@@ -63,7 +56,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         </dl>
       </section>
 
-      <AdminSkillsEditor />
+      <AdminContentWorkspace />
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">

@@ -320,6 +320,7 @@ model SiteSettingsTranslation {
   metaDescription String
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+  version         Int      @default(0)
 
   siteSettings SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
 
@@ -386,6 +387,7 @@ model PageSectionTranslation {
   content   Json
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  version   Int      @default(0)
 
   section PageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
@@ -408,6 +410,7 @@ model NavItem {
   sortOrder     Int           @default(0)
   createdAt     DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+  archivedAt    DateTime?     @db.Timestamptz(6)
   version       Int           @default(0)
 
   @@index([enabled, sortOrder])
@@ -427,6 +430,7 @@ model SocialLink {
   sortOrder     Int            @default(0)
   createdAt     DateTime       @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @db.Timestamptz(6)
+  archivedAt    DateTime?      @db.Timestamptz(6)
   version       Int            @default(0)
 
   @@index([enabled, sortOrder])
@@ -478,6 +482,7 @@ model ProjectTranslation {
   longDescription String?
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+  version         Int      @default(0)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -492,9 +497,10 @@ model SkillCategory {
   sortOrder Int       @default(0)
   enabled   Boolean   @default(true)
   legacyId  Int?      @unique
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(6)
-  version   Int       @default(0)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+  version    Int       @default(0)
 
   translations SkillCategoryTranslation[]
   skills       Skill[]
@@ -510,6 +516,7 @@ model SkillCategoryTranslation {
   name       String
   createdAt  DateTime @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+  version    Int      @default(0)
 
   category SkillCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -534,9 +541,10 @@ model Skill {
   sortOrder  Int      @default(0)
   enabled    Boolean  @default(true)
   legacyId   Int?     @unique
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
-  version    Int      @default(0)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+  version    Int       @default(0)
 
   category  SkillCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   iconMedia MediaAsset?    @relation(fields: [iconMediaId], references: [id], onDelete: Restrict)
@@ -598,6 +606,7 @@ model CertificateTranslation {
   description   String?
   createdAt     DateTime @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+  version       Int      @default(0)
 
   certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
 
@@ -619,9 +628,10 @@ model Quote {
   pinned       Boolean  @default(false)
   sortOrder    Int      @default(0)
   legacyId     Int?     @unique
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
-  version      Int      @default(0)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt   DateTime? @db.Timestamptz(6)
+  version      Int       @default(0)
 
   @@index([enabled, sortOrder])
   @@index([pinned])
@@ -654,6 +664,7 @@ model MediaAsset {
   createdAt       DateTime             @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime             @updatedAt @db.Timestamptz(6)
   archivedAt      DateTime?            @db.Timestamptz(6)
+  version         Int                  @default(0)
 
   uploadedBy     User?          @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   projects       Project[]
@@ -684,6 +695,7 @@ model ResumeVersion {
   retiredAt      DateTime? @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+  version        Int       @default(0)
 
   mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
   uploadedBy User?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)

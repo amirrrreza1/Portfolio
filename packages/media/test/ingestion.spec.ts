@@ -11,7 +11,10 @@ import {
   safeDisplayName,
 } from "../src/index.js";
 
-const PDF = Buffer.from("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n", "utf8");
+const PDF = Buffer.from(
+  "%PDF-1.7\n1 0 obj\n<< /Type /Page >>\nendobj\n%%EOF\n",
+  "utf8"
+);
 const PNG = Buffer.from(
   "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489",
   "hex"

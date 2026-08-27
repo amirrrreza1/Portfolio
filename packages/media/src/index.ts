@@ -8,6 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { fileTypeFromBuffer } from "file-type";
+import sharp from "sharp";
 
 export type MediaKind = "DOCUMENT" | "IMAGE";
 export type MediaVisibility = "PUBLIC" | "PRIVATE";
@@ -37,6 +38,9 @@ export interface MediaIngestionInput {
   readonly kind: MediaKind;
   readonly visibility: MediaVisibility;
   readonly maxBytes: number;
+  readonly maxWidth?: number;
+  readonly maxHeight?: number;
+  readonly maxPdfPages?: number;
 }
 
 export interface VerifiedMedia {
@@ -50,8 +54,25 @@ export interface VerifiedMedia {
     "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
   readonly byteSize: bigint;
   readonly checksumSha256: string;
+  readonly width: number | null;
+  readonly height: number | null;
   readonly visibility: MediaVisibility;
   readonly processingState: "VERIFIED";
+}
+
+export interface QuarantinedMedia {
+  readonly id: string;
+  readonly storageKey: string;
+  readonly displayName: string;
+  readonly kind: MediaKind;
+  readonly mimeType: string;
+  readonly byteSize: bigint;
+  readonly checksumSha256: string;
+  readonly width: null;
+  readonly height: null;
+  readonly visibility: MediaVisibility;
+  readonly processingState: "QUARANTINED";
+  readonly rejectionReason: string;
 }
 
 const MIME_BY_EXTENSION = {
@@ -84,32 +105,74 @@ export async function ingestMedia(
   const bytes = Buffer.from(input.bytes);
   const detected = await fileTypeFromBuffer(bytes);
   const mimeType = detected?.mime as VerifiedMime | undefined;
-  if (mimeType === undefined || !isAllowedMime(mimeType)) {
-    throw new MediaValidationError("Unsupported or unrecognized media type.");
-  }
-  if (kindForMime(mimeType) !== input.kind) {
-    throw new MediaValidationError(
-      "Detected media type does not match the requested media kind."
-    );
-  }
 
-  const id = randomUUID();
-  const extension = extensionForMime(mimeType);
-  const storageKey = "media/" + id + "." + extension;
-  const verified: VerifiedMedia = {
-    id,
-    storageKey,
-    displayName: safeDisplayName(input.filename, extension),
-    kind: input.kind,
-    mimeType,
-    byteSize: BigInt(bytes.byteLength),
-    checksumSha256: createHash("sha256").update(bytes).digest("hex"),
-    visibility: input.visibility,
-    processingState: "VERIFIED",
-  };
+  try {
+    if (mimeType === undefined || !isAllowedMime(mimeType)) {
+      throw new MediaValidationError("Unsupported or unrecognized media type.");
+    }
+    if (kindForMime(mimeType) !== input.kind) {
+      throw new MediaValidationError(
+        "Detected media type does not match the requested media kind."
+      );
+    }
 
-  await store.put(storageKey, bytes, { contentType: mimeType });
-  return verified;
+    const transformed =
+      mimeType === "application/pdf"
+        ? verifyPdf(bytes, input.maxPdfPages ?? 100)
+        : await reencodeImage(
+            bytes,
+            mimeType,
+            input.maxWidth ?? 8_192,
+            input.maxHeight ?? 8_192
+          );
+    const id = randomUUID();
+    const extension = extensionForMime(mimeType);
+    const storageKey = "media/" + id + "." + extension;
+    const verified: VerifiedMedia = {
+      id,
+      storageKey,
+      displayName: safeDisplayName(input.filename, extension),
+      kind: input.kind,
+      mimeType,
+      byteSize: BigInt(transformed.bytes.byteLength),
+      checksumSha256: createHash("sha256")
+        .update(transformed.bytes)
+        .digest("hex"),
+      width: transformed.width,
+      height: transformed.height,
+      visibility: input.visibility,
+      processingState: "VERIFIED",
+    };
+
+    await store.put(storageKey, transformed.bytes, { contentType: mimeType });
+    return verified;
+  } catch (error) {
+    if (!(error instanceof MediaValidationError)) throw error;
+    const id = randomUUID();
+    const extension =
+      mimeType !== undefined && isAllowedMime(mimeType)
+        ? extensionForMime(mimeType)
+        : "bin";
+    const storageKey = `quarantine/${id}.${extension}`;
+    const quarantined: QuarantinedMedia = {
+      id,
+      storageKey,
+      displayName: safeDisplayName(input.filename, extension),
+      kind: input.kind,
+      mimeType: mimeType ?? "application/octet-stream",
+      byteSize: BigInt(bytes.byteLength),
+      checksumSha256: createHash("sha256").update(bytes).digest("hex"),
+      width: null,
+      height: null,
+      visibility: "PRIVATE",
+      processingState: "QUARANTINED",
+      rejectionReason: error.message,
+    };
+    await store.put(storageKey, bytes, {
+      contentType: "application/octet-stream",
+    });
+    throw new MediaQuarantinedError(error.message, quarantined);
+  }
 }
 
 /**
@@ -153,6 +216,7 @@ export class S3MediaObjectStore implements MediaObjectStore {
     bytes: Uint8Array,
     options: { readonly contentType: string }
   ): Promise<void> {
+    assertObjectKey(key);
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -210,6 +274,16 @@ export class MediaValidationError extends Error {
   }
 }
 
+export class MediaQuarantinedError extends MediaValidationError {
+  constructor(
+    message: string,
+    public readonly media: QuarantinedMedia
+  ) {
+    super(message);
+    this.name = "MediaQuarantinedError";
+  }
+}
+
 export function safeDisplayName(
   filename: string,
   requiredExtension: string
@@ -234,10 +308,89 @@ function safeObjectPath(root: string, key: string): string {
 }
 
 function assertObjectKey(key: string): void {
-  if (!/^media\/[0-9a-f-]{36}\.(?:pdf|jpg|png|webp)$/i.test(key)) {
+  if (
+    !/^(?:media|quarantine)\/[0-9a-f-]{36}\.(?:pdf|jpg|png|webp|bin)$/i.test(
+      key
+    )
+  ) {
     throw new MediaValidationError(
       "Storage key is not an application media key."
     );
+  }
+}
+
+function verifyPdf(
+  bytes: Buffer,
+  maxPages: number
+): { readonly bytes: Buffer; readonly width: null; readonly height: null } {
+  if (!Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 1_000) {
+    throw new MediaValidationError("PDF page limit is invalid.");
+  }
+  const source = bytes.toString("latin1");
+  if (!/^%PDF-1\.[0-7]/.test(source) || !/%%EOF[\s\0]*$/.test(source)) {
+    throw new MediaValidationError("PDF structure is incomplete or malformed.");
+  }
+  if (
+    /\/(?:JavaScript|JS|Launch|EmbeddedFile|XFA|RichMedia|OpenAction|AA)\b/i.test(
+      source
+    )
+  ) {
+    throw new MediaValidationError("Active or embedded PDF content is not allowed.");
+  }
+  const pages = source.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+  if (pages < 1 || pages > maxPages) {
+    throw new MediaValidationError(
+      `PDF page count must be between 1 and ${maxPages}.`
+    );
+  }
+  return { bytes, width: null, height: null };
+}
+
+async function reencodeImage(
+  bytes: Buffer,
+  mimeType: Exclude<VerifiedMime, "application/pdf">,
+  maxWidth: number,
+  maxHeight: number
+): Promise<{ readonly bytes: Buffer; readonly width: number; readonly height: number }> {
+  if (
+    !Number.isSafeInteger(maxWidth) ||
+    !Number.isSafeInteger(maxHeight) ||
+    maxWidth < 1 ||
+    maxHeight < 1
+  ) {
+    throw new MediaValidationError("Image dimension limits are invalid.");
+  }
+  try {
+    const source = sharp(bytes, {
+      failOn: "error",
+      limitInputPixels: maxWidth * maxHeight,
+    });
+    const metadata = await source.metadata();
+    if (
+      metadata.width === undefined ||
+      metadata.height === undefined ||
+      metadata.width > maxWidth ||
+      metadata.height > maxHeight
+    ) {
+      throw new MediaValidationError(
+        `Image dimensions must not exceed ${maxWidth} by ${maxHeight}.`
+      );
+    }
+    const pipeline = source.rotate();
+    const output =
+      mimeType === "image/jpeg"
+        ? pipeline.jpeg({ quality: 88, mozjpeg: true })
+        : mimeType === "image/png"
+          ? pipeline.png({ compressionLevel: 9, palette: false })
+          : pipeline.webp({ quality: 88 });
+    return {
+      bytes: await output.toBuffer(),
+      width: metadata.width,
+      height: metadata.height,
+    };
+  } catch (error) {
+    if (error instanceof MediaValidationError) throw error;
+    throw new MediaValidationError("Image decoding or re-encoding failed.");
   }
 }
 

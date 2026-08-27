@@ -26,7 +26,10 @@ export const PERMISSIONS = [
   "content.draft.write",
   "content.publish",
   "content.import",
+  "settings.manage",
   "appearance.write",
+  "media.read",
+  "media.upload",
   "media.manage",
   "contact.read",
   "revision.restore",
@@ -61,7 +64,12 @@ export const RECENT_AUTH_PERMISSIONS: ReadonlySet<Permission> = new Set([
  */
 const GRANTS: { readonly [K in Role]: ReadonlySet<Permission> } = {
   OWNER: new Set(PERMISSIONS),
-  EDITOR: new Set<Permission>(["content.draft.read", "content.draft.write"]),
+  EDITOR: new Set<Permission>([
+    "content.draft.read",
+    "content.draft.write",
+    "media.read",
+    "media.upload",
+  ]),
 };
 
 export type AuthorizationOutcome =
@@ -108,7 +116,7 @@ export function can(
  * lands.
  */
 export function isRoleAssignable(role: Role): boolean {
-  return role === "OWNER";
+  return role === "OWNER" || role === "EDITOR";
 }
 
 /**

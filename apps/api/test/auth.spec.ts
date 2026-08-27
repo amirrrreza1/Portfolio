@@ -714,9 +714,9 @@ describe("authorization", () => {
     expect(can(locked, "content.draft.read")).toBe(false);
   });
 
-  it("keeps EDITOR unassignable until the permissions ADR lands", () => {
+  it("allows the reviewed M7 editor role to be assigned", () => {
     expect(isRoleAssignable("OWNER")).toBe(true);
-    expect(isRoleAssignable("EDITOR")).toBe(false);
+    expect(isRoleAssignable("EDITOR")).toBe(true);
   });
 
   it("scopes object access to the owning actor", () => {

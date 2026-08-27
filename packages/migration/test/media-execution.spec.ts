@@ -8,7 +8,10 @@ import {
   type LegacySnapshot,
 } from "../src/index.js";
 
-const PDF = Buffer.from("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n", "utf8");
+const PDF = Buffer.from(
+  "%PDF-1.7\n1 0 obj\n<< /Type /Page >>\nendobj\n%%EOF\n",
+  "utf8"
+);
 
 const snapshot: LegacySnapshot = {
   skills: [

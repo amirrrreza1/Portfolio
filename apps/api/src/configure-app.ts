@@ -1,7 +1,18 @@
 import { VersioningType } from "@nestjs/common";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import multipart from "@fastify/multipart";
 
 export function configureApplication(app: NestFastifyApplication): void {
+  // @fastify/multipart and Nest's adapter resolve structurally identical
+  // Fastify instances through separate declaration paths in this workspace.
+  void app.register(multipart as never, {
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 1,
+      fields: 4,
+      parts: 5,
+    },
+  });
   app.setGlobalPrefix("api");
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
   app.enableShutdownHooks();
