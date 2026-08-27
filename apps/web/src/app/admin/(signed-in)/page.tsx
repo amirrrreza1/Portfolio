@@ -5,6 +5,7 @@ import {
 } from "@portfolio/contracts/auth";
 
 import AdminEnrolPasskey from "@/features/admin/AdminEnrolPasskey";
+import AdminDashboard from "@/features/admin/AdminDashboard";
 import AdminSessionList from "@/features/admin/AdminSessionList";
 import { formatUtc } from "@/features/admin/format";
 import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
@@ -83,13 +84,9 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         <AdminEnrolPasskey />
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Content management</h2>
-        <p className="text-text-muted text-sm">
-          Not available yet. The admin boundary ships in M6 with no content
-          mutation capability; the portfolio and blog surfaces arrive in M7 and
-          M8.
-        </p>
+      <section className="flex flex-col gap-4">
+        <div><h2 className="text-lg font-semibold">Content health</h2><p className="text-text-muted text-sm">Drafts, delivery state, recent edits, and failed security events. Content bodies and credentials are never shown here.</p></div>
+        <AdminDashboard />
       </section>
     </div>
   );

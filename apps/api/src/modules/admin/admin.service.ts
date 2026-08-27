@@ -36,6 +36,30 @@ export class AdminPortfolioService {
     });
   }
 
+  /** Safe ADMIN-003 summary: counts and event categories only, never bodies or credentials. */
+  async dashboard(): Promise<unknown> {
+    const [drafts, scheduled, contacts, recentEdits, securityEvents, outbox, jobs] = await Promise.all([
+      this.database.postTranslation.count({ where: { status: "DRAFT", archivedAt: null } }),
+      this.database.postTranslation.count({ where: { status: "SCHEDULED", archivedAt: null } }),
+      this.database.contactMessage.count({ where: { deletionDueAt: { gt: new Date() } } }),
+      this.database.contentRevision.findMany({ orderBy: { createdAt: "desc" }, take: 10, select: { id: true, entityType: true, entityId: true, action: true, createdAt: true, actor: { select: { displayName: true } } } }),
+      this.database.auditEvent.findMany({ where: { outcome: "FAILURE" }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, eventType: true, targetType: true, outcome: true, createdAt: true } }),
+      this.database.contentInvalidationOutbox.groupBy({ by: ["state"], _count: { _all: true } }),
+      this.database.contentJob.groupBy({ by: ["state"], _count: { _all: true } }),
+    ]);
+    return {
+      drafts,
+      scheduled,
+      contactMessages: contacts,
+      recentEdits,
+      securityEvents,
+      delivery: {
+        invalidations: Object.fromEntries(outbox.map((row) => [row.state, row._count._all])),
+        publicationJobs: Object.fromEntries(jobs.map((row) => [row.state, row._count._all])),
+      },
+    };
+  }
+
   async updateSettings(
     actorId: string,
     version: number,

@@ -56,6 +56,13 @@ export class AdminPortfolioController {
     @Inject(AUTH_RUNTIME_CONFIG) private readonly config: AuthRuntimeConfig
   ) {}
 
+  @Get("dashboard")
+  async dashboard(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    await this.require(request, "audit.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.dashboard());
+  }
+
   @Get("settings")
   async settings(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     await this.require(request, "content.draft.read");
