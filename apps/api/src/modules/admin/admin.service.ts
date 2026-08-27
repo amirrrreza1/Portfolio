@@ -19,6 +19,7 @@ import type {
   AdminSkillCategory,
   AdminSkillCategoryTranslation,
   AdminQuote,
+  AdminResume,
   AdminSocialLinkCreate,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -325,6 +326,19 @@ export class AdminPortfolioService {
   }
   async updateQuote(actorId: string, id: string, version: number, input: AdminQuote): Promise<unknown> {
     return this.updateVersioned((tx) => tx.quote, actorId, "Quote", id, version, { ...input, textByLocale: input.textByLocale });
+  }
+
+  async listMedia(): Promise<unknown> {
+    return this.database.mediaAsset.findMany({ where: { archivedAt: null }, select: { id: true, displayName: true, kind: true, mimeType: true, byteSize: true, checksumSha256: true, width: true, height: true, altText: true, processingState: true, visibility: true, createdAt: true, updatedAt: true, uploadedBy: { select: { displayName: true } } }, orderBy: { createdAt: "desc" }, take: 200 });
+  }
+  async listResumes(): Promise<unknown> {
+    return this.database.resumeVersion.findMany({ include: { mediaAsset: { select: { id: true, displayName: true, mimeType: true, processingState: true } }, uploadedBy: { select: { displayName: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
+  }
+  async createResume(actorId: string, input: AdminResume): Promise<unknown> {
+    return this.database.$transaction(async (tx) => { const media = await tx.mediaAsset.findUnique({ where: { id: input.mediaAssetId } }); if (media === null || media.archivedAt !== null || media.processingState !== "VERIFIED" || media.mimeType !== "application/pdf") throw new Error("Only verified PDF media may become a resume."); const resume = await tx.resumeVersion.create({ data: { ...input, uploadedById: actorId } }); await this.recordChange(tx, actorId, "ResumeVersion", resume.id, 0, "CREATE", null, resume); return resume; });
+  }
+  async activateResume(actorId: string, id: string): Promise<unknown> {
+    return this.database.$transaction(async (tx) => { const target = await tx.resumeVersion.findUnique({ where: { id }, include: { mediaAsset: true } }); if (target === null || target.retiredAt !== null || target.mediaAsset.processingState !== "VERIFIED") throw new Error("The selected resume is not available for activation."); const now = new Date(); await tx.resumeVersion.updateMany({ where: { activatedAt: { not: null }, retiredAt: null, id: { not: id } }, data: { retiredAt: now } }); const active = await tx.resumeVersion.update({ where: { id }, data: { activatedAt: now, retiredAt: null } }); await this.recordChange(tx, actorId, "ResumeVersion", id, 0, "UPDATE", target, active); return active; });
   }
 
   private async updateVersioned(

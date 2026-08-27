@@ -29,6 +29,7 @@ import {
   adminSkillCategoryTranslationSchema,
   adminSkillSchema,
   adminQuoteSchema,
+  adminResumeSchema,
   adminSocialLinkCreateSchema,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -276,6 +277,15 @@ export class AdminPortfolioController {
   async createQuote(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.createQuote(actor.user.userId, this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
   @Patch("quotes/:id")
   async updateQuote(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.updateQuote(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+
+  @Get("media")
+  async media(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listMedia()); }
+  @Get("resumes")
+  async resumes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listResumes()); }
+  @Post("resumes")
+  async createResume(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.createResume(actor.user.userId, this.parse(adminResumeSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  @Post("resumes/:id/activate")
+  async activateResume(@Param("id") id: string, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.activateResume(actor.user.userId, this.id(id, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
 
   private envelope(data: unknown, requestId = randomUUID()) {
     return { data, meta: { requestId } };

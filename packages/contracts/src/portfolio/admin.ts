@@ -313,6 +313,13 @@ export const adminQuoteSchema = z
     sortOrder: sortOrderSchema,
   })
   .strict();
+export const adminResumeSchema = z
+  .object({
+    mediaAssetId: z.string().trim().min(1).max(64),
+    label: shortText,
+    publicFilename: trimmedTextSchema({ max: 160 }).nullable(),
+  })
+  .strict();
 
 export const versionedBodySchema = z
   .object({ version: recordVersionSchema })
@@ -348,3 +355,4 @@ export type AdminCertificateTranslation = z.infer<
   typeof adminCertificateTranslationSchema
 >;
 export type AdminQuote = z.infer<typeof adminQuoteSchema>;
+export type AdminResume = z.infer<typeof adminResumeSchema>;
