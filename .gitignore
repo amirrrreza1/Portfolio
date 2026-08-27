@@ -20,6 +20,8 @@ next-env.d.ts
 test-results/
 playwright-report/
 blob-report/
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
 
 # local runtime data
 infrastructure/docker/data/
