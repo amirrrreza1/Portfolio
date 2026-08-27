@@ -6,6 +6,8 @@ import {
 } from "@portfolio/database";
 import type {
   AdminAppearanceUpdate,
+  AdminCertificate,
+  AdminCertificateTranslation,
   AdminProject,
   AdminProjectTranslation,
   AdminNavItemCreate,
@@ -16,6 +18,7 @@ import type {
   AdminSkill,
   AdminSkillCategory,
   AdminSkillCategoryTranslation,
+  AdminQuote,
   AdminSocialLinkCreate,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -289,6 +292,41 @@ export class AdminPortfolioService {
     });
   }
 
+  async listCertificates(): Promise<unknown> {
+    return this.database.certificate.findMany({ where: { archivedAt: null }, include: { translations: { orderBy: { locale: "asc" } } }, orderBy: [{ sortOrder: "asc" }, { issuedAt: "desc" }] });
+  }
+
+  async createCertificate(actorId: string, input: AdminCertificate): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const certificate = await tx.certificate.create({ data: certificateData(input) });
+      await this.recordChange(tx, actorId, "Certificate", certificate.id, certificate.version, "CREATE", null, certificate);
+      return certificate;
+    });
+  }
+
+  async updateCertificate(actorId: string, id: string, version: number, input: AdminCertificate): Promise<unknown> {
+    return this.updateVersioned((tx) => tx.certificate, actorId, "Certificate", id, version, certificateData(input));
+  }
+
+  async updateCertificateTranslation(actorId: string, id: string, locale: "en" | "fa", version: number, input: AdminCertificateTranslation): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const before = await tx.certificateTranslation.findUnique({ where: { certificateId_locale: { certificateId: id, locale } } });
+      await requireVersion(tx.certificate, "Certificate", id, version, {});
+      const translation = await tx.certificateTranslation.upsert({ where: { certificateId_locale: { certificateId: id, locale } }, create: { certificateId: id, locale, ...input }, update: input });
+      const certificate = await tx.certificate.findUniqueOrThrow({ where: { id } });
+      await this.recordChange(tx, actorId, "CertificateTranslation", `${id}:${locale}`, certificate.version, "UPDATE", before, translation);
+      return { translation, version: certificate.version };
+    });
+  }
+
+  async listQuotes(): Promise<unknown> { return this.database.quote.findMany({ orderBy: [{ pinned: "desc" }, { sortOrder: "asc" }, { id: "asc" }] }); }
+  async createQuote(actorId: string, input: AdminQuote): Promise<unknown> {
+    return this.database.$transaction(async (tx) => { const quote = await tx.quote.create({ data: { ...input, textByLocale: input.textByLocale as never } }); await this.recordChange(tx, actorId, "Quote", quote.id, quote.version, "CREATE", null, quote); return quote; });
+  }
+  async updateQuote(actorId: string, id: string, version: number, input: AdminQuote): Promise<unknown> {
+    return this.updateVersioned((tx) => tx.quote, actorId, "Quote", id, version, { ...input, textByLocale: input.textByLocale });
+  }
+
   private async updateVersioned(
     delegateFor: (tx: any) => any,
     actorId: string,
@@ -374,4 +412,8 @@ function projectData(input: AdminProject) {
     startedAt: input.startedAt === null ? null : new Date(`${input.startedAt}T00:00:00.000Z`),
     completedAt: input.completedAt === null ? null : new Date(`${input.completedAt}T00:00:00.000Z`),
   };
+}
+
+function certificateData(input: AdminCertificate) {
+  return { ...input, issuedAt: new Date(`${input.issuedAt}T00:00:00.000Z`) };
 }

@@ -4,6 +4,8 @@ import {
   adminAppearanceUpdateSchema,
   adminNavItemCreateSchema,
   adminProjectSchema,
+  adminCertificateSchema,
+  adminQuoteSchema,
   adminSkillSchema,
   adminSiteSettingsSchema,
   adminSocialLinkCreateSchema,
@@ -86,5 +88,10 @@ describe("portfolio admin contracts", () => {
     expect(
       adminProjectSchema.safeParse({ slug: "portfolio", status: "COMPLETED", demoUrl: null, repositoryUrl: null, imageId: null, featured: false, enabled: true, sortOrder: 0, startedAt: null, completedAt: null, skills: [{ skillId: "skill", sortOrder: 0 }, { skillId: "skill", sortOrder: 1 }] }).success
     ).toBe(false);
+  });
+
+  it("keeps certificates and daily quote data within their safe public shapes", () => {
+    expect(adminCertificateSchema.safeParse({ issuerName: "Institute", issuerUrl: null, instructorName: null, instructorUrl: null, scoreText: "98/100", issuedAt: "2026-08-27", credentialUrl: null, mediaId: null, enabled: true, sortOrder: 0 }).success).toBe(true);
+    expect(adminQuoteSchema.safeParse({ textByLocale: { en: "A durable quote." }, author: "Anonymous", sourceUrl: null, enabled: true, pinned: false, sortOrder: 0 }).success).toBe(true);
   });
 });

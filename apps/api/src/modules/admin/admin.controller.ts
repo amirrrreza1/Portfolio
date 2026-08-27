@@ -16,6 +16,8 @@ import {
 } from "@portfolio/contracts/auth";
 import {
   adminAppearanceUpdateSchema,
+  adminCertificateSchema,
+  adminCertificateTranslationSchema,
   adminProjectSchema,
   adminProjectTranslationSchema,
   adminNavItemCreateSchema,
@@ -26,6 +28,7 @@ import {
   adminSkillCategorySchema,
   adminSkillCategoryTranslationSchema,
   adminSkillSchema,
+  adminQuoteSchema,
   adminSocialLinkCreateSchema,
 } from "@portfolio/contracts/portfolio";
 import {
@@ -247,6 +250,32 @@ export class AdminPortfolioController {
     const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
     const value = await this.portfolio.updateProjectTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminProjectTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
   }
+
+  @Get("certificates")
+  async certificates(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listCertificates());
+  }
+  @Post("certificates")
+  async createCertificate(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.createCertificate(actor.user.userId, this.parse(adminCertificateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+  @Patch("certificates/:id")
+  async updateCertificate(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateCertificate(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminCertificateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+  @Patch("certificates/:id/translations/:locale")
+  async updateCertificateTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
+    const value = await this.portfolio.updateCertificateTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminCertificateTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  }
+  @Get("quotes")
+  async quotes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listQuotes()); }
+  @Post("quotes")
+  async createQuote(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.createQuote(actor.user.userId, this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  @Patch("quotes/:id")
+  async updateQuote(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.updateQuote(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
 
   private envelope(data: unknown, requestId = randomUUID()) {
     return { data, meta: { requestId } };
