@@ -2,7 +2,15 @@ import type { PasswordLoginStore } from "@portfolio/auth-core";
 
 import type { Database } from "./client.js";
 
-/** Server-only Prisma adapter for the password-login/session boundary. */
+/**
+ * Prisma adapter for the password step of login.
+ *
+ * It reads and records; it creates nothing. The step used to mint a session
+ * here, which meant a correct password alone produced a usable cookie for a
+ * flow that requires a passkey as well. Session creation now belongs to the
+ * assertion step, and lives with the rest of the session adapter in the API's
+ * auth module — where the port it satisfies is declared.
+ */
 export function createPasswordLoginStore(
   database: Database
 ): PasswordLoginStore {
@@ -15,16 +23,6 @@ export function createPasswordLoginStore(
         passwordHash: user.passwordHash,
         status: user.status,
       };
-    },
-    async createSession(input) {
-      await database.session.create({
-        data: {
-          userId: input.userId,
-          tokenHash: input.tokenHash,
-          csrfBindingHash: input.csrfBindingHash,
-          expiresAt: input.expiresAt,
-        },
-      });
     },
     async recordSuccessfulPasswordLogin(userId) {
       await database.user.update({

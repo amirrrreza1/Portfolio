@@ -12,6 +12,12 @@ const validEnvironment = {
   MINIO_ACCESS_KEY_ID: "local-access-key",
   MINIO_SECRET_ACCESS_KEY: "local-secret-key",
   MINIO_FORCE_PATH_STYLE: "true",
+  SESSION_SECRET: "session-secret-that-is-long-enough-x",
+  CSRF_SECRET: "csrf-secret-that-is-long-enough-xxxx",
+  RECOVERY_SECRET: "recovery-secret-that-is-long-enough-",
+  WEBAUTHN_RP_ID: "admin.example.com",
+  WEBAUTHN_RP_NAME: "Portfolio admin",
+  WEBAUTHN_ORIGIN: "https://admin.example.com",
 };
 
 describe("API environment", () => {
@@ -29,6 +35,14 @@ describe("API environment", () => {
         accessKeyId: validEnvironment.MINIO_ACCESS_KEY_ID,
         secretAccessKey: validEnvironment.MINIO_SECRET_ACCESS_KEY,
         forcePathStyle: true,
+      },
+      auth: {
+        sessionSecret: validEnvironment.SESSION_SECRET,
+        csrfSecret: validEnvironment.CSRF_SECRET,
+        recoverySecret: validEnvironment.RECOVERY_SECRET,
+        rpId: validEnvironment.WEBAUTHN_RP_ID,
+        rpName: validEnvironment.WEBAUTHN_RP_NAME,
+        origin: validEnvironment.WEBAUTHN_ORIGIN,
       },
     });
   });

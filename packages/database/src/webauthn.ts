@@ -13,6 +13,20 @@ export function createWebAuthnChallengeStore(
     async create(record) {
       await database.webAuthnChallenge.create({ data: record });
     },
+    async peek(id) {
+      const record = await database.webAuthnChallenge.findUnique({
+        where: { id },
+      });
+      return record === null
+        ? null
+        : ({
+            id: record.id,
+            challenge: record.challenge,
+            purpose: record.purpose,
+            userId: record.userId,
+            expiresAt: record.expiresAt,
+          } satisfies WebAuthnChallengeRecord);
+    },
     async consume(id) {
       try {
         const record = await database.webAuthnChallenge.delete({

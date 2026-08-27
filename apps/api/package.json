@@ -14,7 +14,8 @@
     "start:scheduler": "node dist/worker/main.js --mode=scheduler",
     "dev:worker": "tsx src/worker/main.ts --mode=publication",
     "dev:scheduler": "tsx src/worker/main.ts --mode=scheduler",
-    "verify:cutover": "tsx scripts/verify-public-cutover.ts --apply"
+    "verify:cutover": "tsx scripts/verify-public-cutover.ts --apply",
+    "verify:auth": "tsx scripts/verify-auth-boundary.ts --apply"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1103.0",
@@ -28,6 +29,7 @@
     "@nestjs/platform-fastify": "11.1.28",
     "@nestjs/swagger": "11.4.6",
     "@nestjs/throttler": "6.5.0",
+    "@portfolio/auth-core": "workspace:*",
     "@portfolio/contracts": "workspace:*",
     "@portfolio/database": "workspace:*",
     "@portfolio/markdown": "workspace:*",

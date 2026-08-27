@@ -39,6 +39,14 @@ export interface WebAuthnChallengeRecord {
 
 export interface WebAuthnChallengeStore {
   create(record: WebAuthnChallengeRecord): Promise<void>;
+  /**
+   * Reads without removing, for the step that only needs to *offer* the
+   * challenge. `POST /auth/webauthn/options` hands the challenge to the
+   * browser; consuming it there would leave nothing for the verify step to
+   * check against, and re-issuing one would break the binding between the
+   * password step and the assertion.
+   */
+  peek(id: string): Promise<WebAuthnChallengeRecord | null>;
   /** Atomically retrieves and removes the record, so a response cannot replay. */
   consume(id: string): Promise<WebAuthnChallengeRecord | null>;
 }
@@ -58,6 +66,20 @@ export async function issueWebAuthnChallenge(input: {
     expiresAt: new Date(now.getTime() + 5 * 60_000),
   };
   await input.store.create(record);
+  return record;
+}
+
+/** Reads a live challenge without spending it. */
+export async function peekWebAuthnChallenge(input: {
+  readonly store: WebAuthnChallengeStore;
+  readonly id: string;
+  readonly purpose: WebAuthnChallengePurpose;
+  readonly now?: Date;
+}): Promise<WebAuthnChallengeRecord | null> {
+  const record = await input.store.peek(input.id);
+  const now = input.now ?? new Date();
+  if (!record || record.purpose !== input.purpose || record.expiresAt <= now)
+    return null;
   return record;
 }
 
@@ -103,14 +125,33 @@ export function issueRecoveryCodes(
   }));
 }
 
+/**
+ * The stored hash for a supplied code, or null when the code is malformed.
+ *
+ * Exported because a lookup needs the same hash `issueRecoveryCodes` wrote,
+ * and two implementations of that would be one implementation and one bug.
+ */
+export function recoveryCodeHash(
+  recoverySecret: string,
+  suppliedCode: string
+): string | null {
+  const normalized = suppliedCode.toLowerCase().replace(/[\s-]/g, "");
+  if (!/^[a-z0-9]{20}$/.test(normalized)) return null;
+  return keyedHash(recoverySecret, normalized);
+}
+
 export function verifyRecoveryCode(
   recoverySecret: string,
   suppliedCode: string,
   storedHash: string
 ): boolean {
-  const normalized = suppliedCode.toLowerCase().replace(/[\s-]/g, "");
-  if (!/^[a-z0-9]{20}$/.test(normalized)) return false;
-  return equalHash(keyedHash(recoverySecret, normalized), storedHash);
+  const hash = recoveryCodeHash(recoverySecret, suppliedCode);
+  return hash === null ? false : equalHash(hash, storedHash);
+}
+
+/** The stored hash for a session token. Same rule as recovery codes. */
+export function sessionTokenHash(sessionSecret: string, token: string): string {
+  return keyedHash(sessionSecret, token);
 }
 
 /** OWASP-aligned memory-hard profile; changes require an explicit migration. */
@@ -149,33 +190,33 @@ export interface PasswordLoginAccount {
 
 export interface PasswordLoginStore {
   findByEmail(email: string): Promise<PasswordLoginAccount | null>;
-  createSession(
-    input: Omit<IssuedSession, "sessionToken" | "csrfToken"> & {
-      readonly userId: string;
-    }
-  ): Promise<void>;
   recordSuccessfulPasswordLogin(userId: string): Promise<void>;
 }
 
 /**
- * Password step of a two-factor login. Both absent and invalid accounts verify
- * an Argon2 hash before returning the same failure result, preventing a cheap
- * timing oracle for owner-account discovery.
+ * The password step of a two-factor login, and *only* that step.
+ *
+ * It deliberately issues no session. An earlier revision created one here, so
+ * a correct password alone produced a usable session cookie — a single-factor
+ * session for a flow SECURITY.md §3 requires to complete WebAuthn before it
+ * succeeds. The session is issued by the assertion step instead.
+ *
+ * Both absent and invalid accounts verify an Argon2 hash before returning the
+ * same failure result, so the response is not a cheap timing oracle for owner
+ * account discovery.
  */
 export class PasswordLoginService {
   constructor(
     private readonly store: PasswordLoginStore,
-    private readonly secrets: SessionSecrets,
     private readonly dummyPasswordHash: string
   ) {}
 
   async authenticate(input: {
     readonly email: string;
     readonly password: string;
-    readonly now?: Date;
   }): Promise<
     | { readonly outcome: "FAILED" }
-    | { readonly outcome: "PASSWORD_VERIFIED"; readonly session: IssuedSession }
+    | { readonly outcome: "PASSWORD_VERIFIED"; readonly userId: string }
   > {
     const account = await this.store.findByEmail(input.email);
     const verified = await verifyPasswordHash(
@@ -183,17 +224,8 @@ export class PasswordLoginService {
       account?.passwordHash ?? this.dummyPasswordHash
     );
     if (!verified || account?.status !== "ACTIVE") return { outcome: "FAILED" };
-
-    const session = issueSession(this.secrets, input.now);
-    await this.store.createSession({
-      userId: account.userId,
-      tokenHash: session.tokenHash,
-      csrfBindingHash: session.csrfBindingHash,
-      expiresAt: session.expiresAt,
-      idleExpiresAt: session.idleExpiresAt,
-    });
     await this.store.recordSuccessfulPasswordLogin(account.userId);
-    return { outcome: "PASSWORD_VERIFIED", session };
+    return { outcome: "PASSWORD_VERIFIED", userId: account.userId };
   }
 }
 

@@ -23,6 +23,7 @@ describe("opaque session primitives", () => {
     const store = {
       create: async (record: WebAuthnChallengeRecord) =>
         void records.set(record.id, record),
+      peek: async (id: string) => records.get(id) ?? null,
       consume: async (id: string) => {
         const record = records.get(id) ?? null;
         records.delete(id);
@@ -111,25 +112,34 @@ describe("opaque session primitives", () => {
     ).resolves.toBe(false);
   });
 
-  it("performs a dummy verification and never exposes account existence", async () => {
+  it("performs a dummy verification and never issues a session", async () => {
     const passwordHash = await hashPassword("correct horse battery staple");
     const dummyHash = await hashPassword("unrelated dummy password");
-    const created: unknown[] = [];
+    const seen: string[] = [];
     const service = new PasswordLoginService(
       {
-        findByEmail: async (email) =>
-          email === "owner@example.com"
+        findByEmail: async (email) => {
+          seen.push(email);
+          return email === "owner@example.com"
             ? { userId: "user-1", passwordHash, status: "ACTIVE" }
-            : null,
-        createSession: async (value) => void created.push(value),
+            : null;
+        },
         recordSuccessfulPasswordLogin: async () => undefined,
       },
-      secrets,
       dummyHash
     );
+
     await expect(
       service.authenticate({
         email: "missing@example.com",
+        password: "wrong password",
+      })
+    ).resolves.toEqual({ outcome: "FAILED" });
+    // A locked account fails exactly like an absent one, and for the same
+    // observable cost: the hash is verified either way.
+    await expect(
+      service.authenticate({
+        email: "owner@example.com",
         password: "wrong password",
       })
     ).resolves.toEqual({ outcome: "FAILED" });
@@ -138,9 +148,17 @@ describe("opaque session primitives", () => {
         email: "owner@example.com",
         password: "correct horse battery staple",
       })
-    ).resolves.toMatchObject({ outcome: "PASSWORD_VERIFIED" });
-    expect(created).toHaveLength(1);
-    expect(created[0]).toMatchObject({ userId: "user-1" });
+    ).resolves.toEqual({ outcome: "PASSWORD_VERIFIED", userId: "user-1" });
+
+    expect(seen).toHaveLength(3);
+    // The password step returns a verified user and nothing else. It used to
+    // create a session here, which meant one factor produced a usable cookie
+    // for a flow that requires two.
+    const verified = await service.authenticate({
+      email: "owner@example.com",
+      password: "correct horse battery staple",
+    });
+    expect(Object.keys(verified).sort()).toEqual(["outcome", "userId"]);
   });
 
   it("issues random cookie-only tokens while retaining only keyed hashes", () => {

@@ -47,6 +47,36 @@ const apiEnvironmentSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((value) => value === "true"),
+
+  /**
+   * Independent 32-byte secrets. They are separate values rather than one
+   * because a single secret means a token minted for one purpose verifies for
+   * another, and `assertSecrets` in `@portfolio/auth-core` refuses equal ones.
+   */
+  SESSION_SECRET: z.string().min(32),
+  CSRF_SECRET: z.string().min(32),
+  RECOVERY_SECRET: z.string().min(32),
+
+  /**
+   * The WebAuthn relying party. A passkey is bound to these values at
+   * enrolment, so a change invalidates every registered credential — they are
+   * required configuration rather than something derived at request time from
+   * a header an attacker controls.
+   */
+  WEBAUTHN_RP_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .regex(/^[a-z0-9.-]+$/, "must be a bare hostname"),
+  WEBAUTHN_RP_NAME: z.string().trim().min(1).max(120),
+  WEBAUTHN_ORIGIN: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(
+      (value) => hasProtocol(value, ["http:", "https:"]),
+      "must be an HTTP(S) origin"
+    ),
 });
 
 export type ApiEnvironment = {
@@ -62,6 +92,14 @@ export type ApiEnvironment = {
     readonly accessKeyId: string;
     readonly secretAccessKey: string;
     readonly forcePathStyle: boolean;
+  };
+  readonly auth: {
+    readonly sessionSecret: string;
+    readonly csrfSecret: string;
+    readonly recoverySecret: string;
+    readonly rpId: string;
+    readonly rpName: string;
+    readonly origin: string;
   };
 };
 
@@ -97,6 +135,14 @@ export function parseApiEnvironment(
       accessKeyId: result.data.MINIO_ACCESS_KEY_ID,
       secretAccessKey: result.data.MINIO_SECRET_ACCESS_KEY,
       forcePathStyle: result.data.MINIO_FORCE_PATH_STYLE,
+    },
+    auth: {
+      sessionSecret: result.data.SESSION_SECRET,
+      csrfSecret: result.data.CSRF_SECRET,
+      recoverySecret: result.data.RECOVERY_SECRET,
+      rpId: result.data.WEBAUTHN_RP_ID,
+      rpName: result.data.WEBAUTHN_RP_NAME,
+      origin: result.data.WEBAUTHN_ORIGIN,
     },
   };
 }

@@ -6,6 +6,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module.js";
+import { withStubbedAuth } from "./support/auth-overrides.js";
 import {
   APPLICATION_OPTIONS,
   configureApplication,
@@ -32,7 +33,9 @@ const HEALTHY_QUEUE = {
 async function createApp(overrides: {
   readonly probes?: unknown;
 }): Promise<NestFastifyApplication> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  const moduleRef = await withStubbedAuth(
+    Test.createTestingModule({ imports: [AppModule] })
+  )
     .overrideProvider(CONTACT_SUBMISSION_SERVICE)
     .useValue({ submit: async () => undefined })
     .overrideProvider(READINESS_PROBES)

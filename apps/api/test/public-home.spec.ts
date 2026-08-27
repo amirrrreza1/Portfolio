@@ -11,6 +11,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module.js";
+import { withStubbedAuth } from "./support/auth-overrides.js";
 import { configureApplication } from "../src/configure-app.js";
 import { CONTACT_SUBMISSION_SERVICE } from "../src/modules/contact/contact.controller.js";
 import { PUBLIC_APPEARANCE_SERVICE } from "../src/modules/public/public-appearance.controller.js";
@@ -75,7 +76,9 @@ describe("public homepage API", () => {
         options.readCertificateFile ?? vi.fn().mockResolvedValue(null),
       readResumeFile: options.readResumeFile ?? vi.fn().mockResolvedValue(null),
     };
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    const moduleRef = await withStubbedAuth(
+      Test.createTestingModule({ imports: [AppModule] })
+    )
       .overrideProvider(CONTACT_SUBMISSION_SERVICE)
       .useValue({ submit: async () => undefined })
       .overrideProvider(PUBLIC_PROJECTS_SERVICE)
