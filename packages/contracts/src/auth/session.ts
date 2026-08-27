@@ -127,6 +127,22 @@ export const webAuthnAssertionSchema = z
 
 export type WebAuthnAssertion = z.infer<typeof webAuthnAssertionSchema>;
 
+/**
+ * A registration response, as a browser actually produces one.
+ *
+ * `authenticatorAttachment` is part of `RegistrationResponseJSON` — every
+ * browser that completes `navigator.credentials.create()` reports whether the
+ * key lives on this device or on a roaming one. This schema is `.strict()`, so
+ * omitting the field did not ignore it: it rejected every real enrolment with
+ * `VALIDATION_FAILED`. Nothing caught that until a browser was in the loop,
+ * because the software authenticator the API is tested against builds its
+ * payload by hand and had no reason to send a field the schema never asked
+ * for. The assertion schema below has always accepted it; this is the same
+ * rule, applied to the half that was missing it.
+ *
+ * The value is recorded, not trusted. It is a hint from the client about
+ * where the credential lives, and no decision is made on it.
+ */
 export const webAuthnRegistrationSchema = z
   .object({
     id: z.string().min(1),
@@ -138,6 +154,10 @@ export const webAuthnRegistrationSchema = z
       transports: z.array(z.string()).optional(),
     }),
     clientExtensionResults: z.record(z.string(), z.unknown()).optional(),
+    authenticatorAttachment: z
+      .enum(["platform", "cross-platform"])
+      .nullable()
+      .optional(),
   })
   .strict();
 

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE_NAME } from "@portfolio/contracts/auth";
 import { getLocaleDefinition, isLocale } from "@portfolio/contracts/common";
 
 import { legacyLocaleRedirect } from "./i18n/routing";
@@ -8,6 +9,11 @@ import {
   negotiateRootLocale,
 } from "./i18n/locale-preference";
 import { parsePortfolioDataSource } from "./server/portfolio-data-source";
+import {
+  ADMIN_LOGIN_PATH,
+  isAdminPath,
+  UNAUTHENTICATED_ADMIN_PATHS,
+} from "./server/admin-routes";
 import {
   checkDefaultPublicRouteAvailability,
   type PublicRouteAvailability,
@@ -49,6 +55,130 @@ function secure(response: NextResponse, nonce: string): NextResponse {
   return response;
 }
 
+/**
+ * The admin surface, per SECURITY.md §10 and ROADMAP.md §6.
+ *
+ * Admin responses do not share the public policy. The differences are all in
+ * the same direction — the admin panel loads nothing from anywhere else, is
+ * never indexed, and must not appear in any cache or referrer.
+ */
+/**
+ * Stricter than the public policy in every clause it changes.
+ *
+ * `img-src` drops `https:` and `blob:`: the public site renders remote media,
+ * the admin shell renders none, and an admin page that can load an arbitrary
+ * remote image is an admin page that can leak the fact it was opened. `frame-`,
+ * `worker-`, `manifest-` and `media-src` are named `'none'` explicitly rather
+ * than left to `default-src`, so that a later `default-src` relaxation cannot
+ * silently widen them.
+ *
+ * `style-src` still carries `'unsafe-inline'`. That is inherited, not chosen:
+ * component-level inline styles are removed repository-wide rather than
+ * allowed (SECURITY.md §10), and until that cleanup lands the admin policy
+ * cannot be tighter than the stylesheet it shares.
+ */
+function adminSecurityPolicy(nonce: string): string {
+  const development = process.env.NODE_ENV === "development";
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "frame-src 'none'",
+    "worker-src 'none'",
+    "manifest-src 'none'",
+    "media-src 'none'",
+    `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
+function secureAdmin(response: NextResponse, nonce: string): NextResponse {
+  response.headers.set("Content-Security-Policy", adminSecurityPolicy(nonce));
+  // Not `strict-origin-when-cross-origin`: an admin URL names the resource
+  // being administered, and there is no destination that needs to learn it.
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  // Safe here precisely because the shell embeds nothing cross-origin: under
+  // `require-corp` a same-origin subresource needs no opt-in, so this costs
+  // the panel nothing and refuses anything that is later added carelessly.
+  response.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  // WebAuthn is named explicitly. Both directives already default to `self`,
+  // but SECURITY.md §10 asks for a policy that has been *tested against*
+  // WebAuthn, and a policy that never mentions it is one nobody checked.
+  response.headers.set(
+    "Permissions-Policy",
+    [
+      "camera=()",
+      "microphone=()",
+      "geolocation=()",
+      "payment=()",
+      "usb=()",
+      "publickey-credentials-get=(self)",
+      "publickey-credentials-create=(self)",
+    ].join(", ")
+  );
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  response.headers.set("Vary", "Cookie");
+  return response;
+}
+
+/**
+ * The cheap half of the admin boundary.
+ *
+ * This is a **presence** check, not authentication: it only asks whether a
+ * session cookie was sent at all, so that a signed-out visitor is redirected
+ * before any admin code renders. It cannot tell a valid token from a forged
+ * one and does not try — every admin surface independently asks the API, which
+ * re-reads the session record and its expiry, revocation, and account status.
+ *
+ * Doing it here as well is what makes "the admin shell cannot be reached
+ * without verified credentials" true of the *whole prefix* rather than of the
+ * routes someone remembered to guard.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  for (const name of [
+    SESSION_COOKIE_NAME,
+    SESSION_COOKIE_NAME.replace(/^__Host-/, ""),
+  ]) {
+    const value = request.cookies.get(name)?.value;
+    if (value !== undefined && value.length > 0) return true;
+  }
+  return false;
+}
+
+function handleAdminRequest(
+  request: NextRequest,
+  pathname: string,
+  nonce: string
+): NextResponse {
+  if (
+    !UNAUTHENTICATED_ADMIN_PATHS.has(pathname) &&
+    !hasSessionCookie(request)
+  ) {
+    return secureAdmin(
+      NextResponse.redirect(new URL(ADMIN_LOGIN_PATH, request.url), 307),
+      nonce
+    );
+  }
+
+  const headers = new Headers(request.headers);
+  headers.set("x-portfolio-csp-nonce", nonce);
+  headers.set("x-portfolio-pathname", pathname);
+  // Next reads the nonce for its own inline bootstrap scripts from the request
+  // CSP header, so the policy has to travel inward as well as outward.
+  headers.set("content-security-policy", adminSecurityPolicy(nonce));
+  return secureAdmin(NextResponse.next({ request: { headers } }), nonce);
+}
+
 interface ProxyDependencies {
   readonly dataSource?: "database" | "legacy";
   readonly checkAvailability?: (
@@ -74,6 +204,19 @@ export async function proxyWithDependencies(
     rawPath.length > 1 && rawPath.endsWith("/")
       ? rawPath.replace(/\/+$/, "")
       : rawPath;
+  // Before locale negotiation: the admin panel is English-only in this release
+  // (PRODUCT_SPEC.md §7) and carries no locale prefix, so none of the public
+  // routing below applies to it.
+  if (isAdminPath(pathname)) {
+    if (pathname !== rawPath) {
+      return secureAdmin(
+        NextResponse.redirect(new URL(pathname, request.url), 308),
+        nonce
+      );
+    }
+    return handleAdminRequest(request, pathname, nonce);
+  }
+
   const rootLocale =
     pathname === "/"
       ? negotiateRootLocale(

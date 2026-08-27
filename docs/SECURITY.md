@@ -140,7 +140,7 @@ External links opened in a new context use `rel="noopener noreferrer"`. Third-pa
 - Security events include failed/successful login, recovery use, credential changes, session revocation, permission denial, publish/unpublish, resume activation, role change, and permanent delete.
 - Audit records are append-only through the application role and redact payloads.
 - Alert on repeated login/recovery failures, owner security changes, unusual upload rejection, migration failure, backup failure, and repeated authorization denial.
-- Maintain a runbook to revoke sessions/keys, disable admin traffic, restore content/database, preserve evidence, and communicate impact.
+- Maintain a runbook to revoke sessions/keys, disable admin traffic, restore content/database, preserve evidence, and communicate impact. The session, key, and evidence half is [`runbooks/owner-recovery-and-revocation.md`](runbooks/owner-recovery-and-revocation.md), rehearsed in [`status/evidence/M6-recovery-revocation-drill.md`](status/evidence/M6-recovery-revocation-drill.md); restore and communication arrive with M9.
 
 ## 14. Supply-chain and container controls
 
@@ -171,7 +171,7 @@ Release is blocked until all applicable items pass:
 - security header/CSP checks on public, admin, preview, file, and error responses
 - dependency/secret/container scans with no unresolved critical findings and reviewed high findings
 - encrypted backup plus successful isolated restore and object reconciliation
-- manual owner recovery and incident-revocation drill
+- manual owner recovery and incident-revocation drill — [rehearsed 2026-08-27](status/evidence/M6-recovery-revocation-drill.md)
 
 Use an established verification standard such as OWASP ASVS as the implementation checklist, and obtain an independent review before exposing the admin panel to the public internet.
 

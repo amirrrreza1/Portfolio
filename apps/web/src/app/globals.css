@@ -543,3 +543,45 @@ html[data-motion="reduced"] *::after {
     opacity: 0;
   }
 }
+
+/*
+ * The admin surface.
+ *
+ * `@layer base` above sets `cursor: none` on `html`, `body`, `button`, and `a`
+ * — the last two with `!important` — because the public site draws its own
+ * cursor with a component. The admin panel renders no such component, so
+ * without this the panel would simply have no pointer at all. The override is
+ * scoped to `[data-surface="admin"]`, which the root layout sets only on the
+ * admin document, so the public rule is untouched.
+ *
+ * `theme-tokens.spec.ts` forbids raw colours in components; everything here
+ * either restores a browser default or reads a token.
+ */
+@layer base {
+  html[data-surface="admin"],
+  html[data-surface="admin"] body,
+  html[data-surface="admin"] input,
+  html[data-surface="admin"] textarea,
+  html[data-surface="admin"] select {
+    cursor: auto !important;
+  }
+
+  html[data-surface="admin"] button:not(:disabled),
+  html[data-surface="admin"] a,
+  html[data-surface="admin"] [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer !important;
+  }
+
+  html[data-surface="admin"] button:disabled {
+    cursor: not-allowed !important;
+  }
+
+  /*
+   * A visible focus ring is not optional on a panel whose destructive controls
+   * are reachable by keyboard (WCAG 2.2 AA, PRODUCT_SPEC.md §7).
+   */
+  html[data-surface="admin"] :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}

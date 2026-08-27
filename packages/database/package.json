@@ -24,6 +24,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "verify:articles": "tsx scripts/verify-article-authority.ts --apply",
     "provision:owner": "pnpm --filter @portfolio/auth-core build && tsx scripts/provision-owner.ts --apply",
+    "revoke:credentials": "tsx scripts/revoke-credentials.ts",
     "migrate:legacy": "pnpm --filter @portfolio/media build && pnpm --filter @portfolio/migration build && tsx scripts/migrate-legacy.ts --apply",
     "migrate:github-stats": "pnpm --filter @portfolio/migration build && tsx scripts/migrate-github-stats.ts --apply"
   },

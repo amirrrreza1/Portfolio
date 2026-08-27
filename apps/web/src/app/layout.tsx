@@ -18,6 +18,7 @@ import { cookies, headers } from "next/headers";
 import Script from "next/script";
 
 import { SITE_FONT_PRELOAD_HREF } from "@/server/font-delivery";
+import { isAdminPath } from "@/server/admin-routes";
 
 export const metadata: Metadata = {
   // Without an absolute base, Next.js resolves every relative metadata URL
@@ -52,6 +53,22 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const requestHeaders = await headers();
+
+  // The admin panel shares this file only because Next allows one root layout
+  // per application. It shares nothing else: no appearance read, no theme
+  // provider, no site chrome, and no visitor font preference. That is
+  // deliberate on three counts — the panel must stay reachable while the
+  // public API is down, blog typography must not restyle admin UI
+  // (PRODUCT_SPEC.md §4), and an admin document that renders no public
+  // component cannot inherit a public component's inline script.
+  if (isAdminPath(requestHeaders.get("x-portfolio-pathname") ?? "")) {
+    return (
+      <html lang="en" dir="ltr" data-theme="dark" data-surface="admin">
+        <body>{children}</body>
+      </html>
+    );
+  }
+
   const localeHeader = requestHeaders.get("x-portfolio-locale");
   const nonce = requestHeaders.get("x-portfolio-csp-nonce") ?? undefined;
   const locale = isLocale(localeHeader) ? localeHeader : "en";

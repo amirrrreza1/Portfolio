@@ -103,7 +103,7 @@ Two dependencies are non-negotiable:
 | M3 — PostgreSQL-native article foundation | Complete    | L             | Transactional Markdown persistence, revisions, source integrity, publication jobs, and cache outbox                  | M1, M2             |
 | M4 — Public bilingual cutover             | Complete    | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
 | M5 — Appearance and accessibility         | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
-| M6 — Authentication foundation            | In progress | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
+| M6 — Authentication foundation            | Complete    | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
 | M7 — Portfolio CMS                        | Not started | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
 | M8 — Blog authoring, publishing, and SEO  | Not started | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup     | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
@@ -463,15 +463,26 @@ The owner completed the light-theme and screen-reader verification on
 
 Objective: make the admin boundary safe before any mutation UI is exposed.
 
-Current slice: the API authentication boundary is delivered and proven against
-a running system on 2026-08-27 — all ten §5 endpoints, two-factor login with
+Complete on 2026-08-27. All ten §5 endpoints, two-factor login with
 cryptographically verified passkeys, enrolment, opaque rotating sessions, CSRF
 and origin enforcement, recovery with a session sweep, progressive throttling,
-deny-by-default authorization, and redacted audit events. Evidence is in
-[`status/evidence/M6-auth-boundary-live.md`](status/evidence/M6-auth-boundary-live.md).
-The authenticated admin shell and the documented credential-revocation drill
-remain, and the v1 editor-permission ADR is still owed — `EDITOR` is defined
-but deliberately unassignable until it lands.
+deny-by-default authorization, and redacted audit events — proven against a
+running system in
+[`status/evidence/M6-auth-boundary-live.md`](status/evidence/M6-auth-boundary-live.md)
+(24 checks). The authenticated admin shell is proven in a real browser with a
+virtual authenticator in
+[`status/evidence/M6-admin-shell-live.md`](status/evidence/M6-admin-shell-live.md)
+(10 checks), and the owner recovery and credential-revocation drill is written
+as [`runbooks/owner-recovery-and-revocation.md`](runbooks/owner-recovery-and-revocation.md)
+and rehearsed in
+[`status/evidence/M6-recovery-revocation-drill.md`](status/evidence/M6-recovery-revocation-drill.md)
+(11 steps).
+
+The shell carries no content mutation capability, as the gate requires;
+ADMIN-003's dashboard defers to M7 with the `/admin` endpoints that would feed
+it. The v1 editor-permission ADR is still owed — `EDITOR` is defined but
+deliberately unassignable until it lands. That holds M7's editor story, not
+this gate.
 
 Deliverables:
 

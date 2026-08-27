@@ -32,6 +32,8 @@ import {
 } from "@portfolio/contracts/portfolio";
 import { z } from "zod";
 
+import { parseApiOrigin } from "./api-origin";
+
 const PUBLIC_MAX_STALE_MS = 60 * 60 * 1_000;
 const ARTICLE_MAX_STALE_MS = 15 * 60 * 1_000;
 const DEFAULT_TIMEOUT_MS = 2_000;
@@ -449,28 +451,6 @@ async function mapArticleDetailResponseError(
     }
   }
   return new PublicApiResponseError(response.status);
-}
-
-function parseApiOrigin(input: string): URL {
-  let url: URL;
-  try {
-    url = new URL(input);
-  } catch {
-    throw new Error("API_INTERNAL_ORIGIN must be an absolute URL.");
-  }
-
-  if (
-    !(["http:", "https:"] as const).includes(url.protocol as "http:" | "https:")
-  ) {
-    throw new Error("API_INTERNAL_ORIGIN must use http or https.");
-  }
-  if (url.username || url.password) {
-    throw new Error("API_INTERNAL_ORIGIN must not contain credentials.");
-  }
-  if (url.pathname !== "/" || url.search || url.hash) {
-    throw new Error("API_INTERNAL_ORIGIN must contain only an origin.");
-  }
-  return url;
 }
 
 function readValidCacheEntry<TEnvelope extends LocalizedEnvelope>(
