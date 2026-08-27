@@ -13,6 +13,11 @@ import type {
   AdminSiteSettingsUpdate,
   AdminSocialLinkCreate,
 } from "@portfolio/contracts/portfolio";
+import {
+  invalidationEventSchema,
+  publicCacheTag,
+} from "@portfolio/contracts/content";
+import { randomUUID } from "node:crypto";
 
 /**
  * Portfolio CMS persistence for M7's site-shell slice.
@@ -204,8 +209,28 @@ export class AdminPortfolioService {
     await Promise.all([
       tx.contentRevision.create({ data: { entityType, entityId, entityVersion, action, actorId, before: toJson(before), after: toJson(after) } }),
       tx.auditEvent.create({ data: { actorId, eventType: `admin.${entityType.toLowerCase()}.${action.toLowerCase()}`, targetType: entityType, targetId: entityId, outcome: "SUCCESS", metadata: { version: entityVersion } } }),
+      ...invalidationRows(tx, entityType),
     ]);
   }
+}
+
+function invalidationRows(tx: any, entityType: string): Promise<unknown>[] {
+  const namespaces = entityType === "AppearanceSettings"
+    ? ["appearance"]
+    : ["site", "home"];
+  return (["en", "fa"] as const).map((locale) => {
+    const tags = namespaces.map((namespace) => publicCacheTag(namespace, locale));
+    const event = invalidationEventSchema.parse({
+      eventId: randomUUID(),
+      locale,
+      reason: "save",
+      tags,
+      issuedAt: new Date().toISOString(),
+    });
+    return tx.contentInvalidationOutbox.create({
+      data: { cacheTag: tags[0], payload: event },
+    });
+  });
 }
 
 async function requireVersion(delegate: any, entity: string, id: string, expected: number, data: Record<string, unknown>) {
