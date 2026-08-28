@@ -1,8 +1,23 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type ReactNode } from "react";
 
 export const inputClass =
   "FormInput mt-1 w-full border-border bg-surface px-3 py-2 text-sm focus:border-accent focus:outline-none disabled:opacity-60";
 
+/**
+ * A labelled control.
+ *
+ * The label is a **sibling** bound by `htmlFor`, not a wrapper. That
+ * distinction is not stylistic: when a `<label>` wraps its control, the
+ * control's accessible name is the label element's whole text content — and
+ * for a `<select>` that includes every option. Every select in this panel was
+ * announced as "RoleEditorOwner" or "CategoryNo categoryengineering" rather
+ * than "Role" or "Category". Inputs and textareas contribute no text, which is
+ * why the fault was invisible until a select appeared.
+ *
+ * The id is generated and injected into a single element child, so callers
+ * keep writing `<Field label="X"><input /></Field>` and get the correct
+ * association without having to invent an id each time.
+ */
 export function Field({
   label,
   children,
@@ -12,14 +27,24 @@ export function Field({
   readonly children: ReactNode;
   readonly hint?: string;
 }): React.JSX.Element {
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const control = isValidElement(children)
+    ? cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+        id,
+        ...(hint === undefined ? {} : { "aria-describedby": hintId }),
+      })
+    : children;
   return (
-    <label className="flex min-w-0 flex-col text-sm font-medium">
-      {label}
-      {children}
+    <div className="flex min-w-0 flex-col text-sm font-medium">
+      <label htmlFor={id}>{label}</label>
+      {control}
       {hint === undefined ? null : (
-        <span className="text-text-muted mt-1 text-xs font-normal">{hint}</span>
+        <span id={hintId} className="text-text-muted mt-1 text-xs font-normal">
+          {hint}
+        </span>
       )}
-    </label>
+    </div>
   );
 }
 

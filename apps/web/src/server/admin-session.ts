@@ -140,6 +140,24 @@ export async function requireAdminActor(): Promise<SessionActor> {
   return actor;
 }
 
+/**
+ * One preview render, read as this visitor.
+ *
+ * The preview is fetched on the server rather than in the browser so the page
+ * can set its own `noindex` headers and so unpublished prose never travels
+ * through a client-side fetch that some extension or shared cache could see.
+ * A missing or expired token answers `null`, which the route turns into a
+ * 404 — the same answer as a token that never existed, because distinguishing
+ * them would confirm that a guessed token was once real.
+ */
+export async function readAdminPreview(token: string): Promise<string | null> {
+  const envelope = await authenticatedRead(
+    `/admin/blog/previews/${encodeURIComponent(token)}`,
+    z.object({ data: z.object({ html: z.string() }) })
+  );
+  return envelope?.data.html ?? null;
+}
+
 /** This user's sessions, for the ADMIN-002 management list. */
 export async function listAdminSessions(): Promise<readonly SessionSummary[]> {
   const envelope = await authenticatedRead(

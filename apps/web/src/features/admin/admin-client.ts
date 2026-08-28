@@ -71,7 +71,7 @@ function readCsrfToken(): string | null {
 }
 
 interface RequestOptions {
-  readonly method?: "GET" | "POST" | "PATCH" | "DELETE";
+  readonly method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly body?: unknown;
   readonly ifMatch?: number;
   /**
@@ -90,7 +90,8 @@ export async function adminRequest<T = unknown>(
   if (options.body !== undefined) {
     headers["content-type"] = "application/json";
   }
-  if (options.ifMatch !== undefined) headers["if-match"] = String(options.ifMatch);
+  if (options.ifMatch !== undefined)
+    headers["if-match"] = String(options.ifMatch);
   if (options.mutation === true) {
     const token = readCsrfToken();
     // Send the request without it rather than failing here: the server's

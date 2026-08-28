@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import AdminBlogEditor from "./AdminBlogEditor";
 import AdminCollectionsEditor from "./AdminCollectionsEditor";
 import AdminHistoryEditor from "./AdminHistoryEditor";
 import AdminMediaEditor from "./AdminMediaEditor";
@@ -10,6 +11,7 @@ import AdminPortfolioEditor from "./AdminPortfolioEditor";
 const VIEWS = [
   { key: "portfolio", label: "Site and structure" },
   { key: "collections", label: "Portfolio collections" },
+  { key: "blog", label: "Articles" },
   { key: "media", label: "Media and resume" },
   { key: "history", label: "History and access" },
 ] as const;
@@ -20,7 +22,10 @@ export default function AdminContentWorkspace(): React.JSX.Element {
   const [view, setView] = useState<View>("portfolio");
 
   return (
-    <section className="flex flex-col gap-6" aria-labelledby="content-workspace-title">
+    <section
+      className="flex flex-col gap-6"
+      aria-labelledby="content-workspace-title"
+    >
       <div className="flex flex-col gap-2">
         <p className="text-text-muted font-mono text-xs tracking-widest uppercase">
           Portfolio control room
@@ -36,7 +41,7 @@ export default function AdminContentWorkspace(): React.JSX.Element {
 
       <nav
         aria-label="Content workspace sections"
-        className="border-border grid grid-cols-2 border lg:grid-cols-4"
+        className="border-border grid grid-cols-2 border lg:grid-cols-5"
       >
         {VIEWS.map((item) => (
           <button
@@ -57,6 +62,7 @@ export default function AdminContentWorkspace(): React.JSX.Element {
 
       {view === "portfolio" ? <AdminPortfolioEditor /> : null}
       {view === "collections" ? <AdminCollectionsEditor /> : null}
+      {view === "blog" ? <AdminBlogEditor /> : null}
       {view === "media" ? <AdminMediaEditor /> : null}
       {view === "history" ? <AdminHistoryEditor /> : null}
     </section>

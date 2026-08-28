@@ -552,10 +552,13 @@ live-proven in
 archive as separate commands, an evaluated publish checklist whose blockers
 refuse and whose warnings must be acknowledged by name, autosave that cannot
 reach publication, slug history whose redirects collapse their own chains, and
-preview through the production pipeline. The editor UI, Markdown import,
-article revision restore, the discovery and SEO surfaces, and the
-scheduled-publication test matrix remain open; see
-[`status/M8.md`](status/M8.md).
+preview through the production pipeline. The editor that reaches it is proven
+in a real browser in
+[`status/evidence/M8-editor-live.md`](status/evidence/M8-editor-live.md):
+article workspace panel, directive palette, checklist with a checkbox per
+warning, autosave, and the preview route. Markdown import, article revision
+restore, the discovery and SEO surfaces, and the scheduled-publication test
+matrix remain open; see [`status/M8.md`](status/M8.md).
 
 Deliverables:
 
