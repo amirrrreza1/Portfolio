@@ -43,6 +43,10 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 - [`M6-admin-shell-live.md`](M6-admin-shell-live.md) records the shell in a real browser with a Chrome virtual authenticator — 10 checks, and the two defects only a browser could find.
 - [`M6-recovery-revocation-drill.md`](M6-recovery-revocation-drill.md) records the owner recovery and credential-revocation drill, 11 steps executed against [the runbook](../../runbooks/owner-recovery-and-revocation.md).
 
+## M8 — blog authoring, publishing, and SEO
+
+- [`M8-blog-authoring-live.md`](M8-blog-authoring-live.md) records the first M8 slice — 25 checks over the authenticated authoring boundary, taxonomy, save and autosave, the publish checklist, withdrawal, slug moves that collapse their own chains, archiving, and the revision/audit/invalidation evidence each transition leaves. It also records the defect it found: an invalidation reason the signed-event contract does not define, which failed every archive.
+
 ## M7 — portfolio CMS
 
 - [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.

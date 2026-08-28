@@ -46,14 +46,31 @@ import { renderMarkdownBody } from "@portfolio/markdown";
 const ARTICLE_SLUG = "theme-token-matrix";
 const ARTICLE_SLUG_FA = "ماتریس-تم";
 
+/**
+ * The fixture body carries one of every block the reading surface styles.
+ *
+ * Until 2026-08-28 it was two paragraphs around a code block, and that is
+ * exactly why the matrix could not see that article typography was missing
+ * entirely: with no heading, list, or blockquote in the fixture, a stylesheet
+ * that styled none of them measured the same as one that styled all of them.
+ */
 const ARTICLE_MARKDOWN = `A paragraph before the code, to prove body text picks up the reading surface.
+
+## A section heading
+
+A paragraph under the heading.
+
+- A first list item
+- A second list item
+
+> A quotation, to prove the blockquote rule is present.
 
 \`\`\`ts
 const theme: string = "dark";
 // a comment token
 \`\`\`
 
-A paragraph after.
+A paragraph after, with \`inline code\` and [a link](/en/blog/other).
 `;
 
 function summary(slug: string, locale: "en" | "fa") {

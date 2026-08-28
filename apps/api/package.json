@@ -17,6 +17,7 @@
     "verify:cutover": "tsx scripts/verify-public-cutover.ts --apply",
     "verify:auth": "tsx scripts/verify-auth-boundary.ts --apply",
     "verify:cms": "tsx scripts/verify-portfolio-cms.ts --apply",
+    "verify:blog": "tsx scripts/verify-blog-authoring.ts --apply",
     "provision:cms-browser": "tsx scripts/provision-cms-browser.ts --apply"
   },
   "dependencies": {

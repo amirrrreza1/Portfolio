@@ -260,6 +260,74 @@ async function renderMarkdownBodyInternal(
 }
 
 /**
+ * What a publish checklist needs to know about an article body, without
+ * rendering it.
+ *
+ * The render pipeline *throws* on an H1, an unsafe URL, or an empty body — so
+ * by the time an author could see a rendered article, those problems are
+ * already impossible. That is right for the save path and useless for a
+ * checklist, whose whole job is to describe a body that is not ready yet. This
+ * parses with the same remark configuration and reports instead of refusing.
+ *
+ * It never throws on content. A body too large to parse at all is the one
+ * exception, and that bound is the same one every other entry point applies.
+ */
+export interface ArticleSourceInspection {
+  readonly hasH1: boolean;
+  readonly visibleTextLength: number;
+  readonly wordCount: number;
+  /** Every link and image destination, in document order. */
+  readonly urls: readonly string[];
+  /** Destinations the renderer would refuse — not merely strip. */
+  readonly unsafeUrls: readonly string[];
+  /** Root-relative destinations, which are what an internal link looks like. */
+  readonly internalUrls: readonly string[];
+}
+
+export function inspectArticleSource(source: string): ArticleSourceInspection {
+  assertSize(source, MAX_DOCUMENT_BYTES, "Markdown body");
+  const body = source.replace(/\r\n?/g, "\n").trim();
+  const tree = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkDirective)
+    .parse(body) as Node;
+
+  let hasH1 = false;
+  let visibleTextLength = 0;
+  const urls: string[] = [];
+  const unsafeUrls: string[] = [];
+  const internalUrls: string[] = [];
+
+  visit(tree as any, (node: Node) => {
+    if (node.type === "heading" && node.depth === 1) hasH1 = true;
+    if (node.type === "link" || node.type === "image") {
+      const url = String(node.url ?? "");
+      urls.push(url);
+      if (!SAFE_URL.test(url)) unsafeUrls.push(url);
+      else if (url.startsWith("/")) internalUrls.push(url);
+    }
+    if (
+      node.type === "text" ||
+      node.type === "inlineCode" ||
+      node.type === "code"
+    ) {
+      visibleTextLength += String(node.value ?? "").trim().length;
+    }
+    if (String(node.type).endsWith("Directive")) visibleTextLength += 1;
+  });
+
+  return {
+    hasH1,
+    visibleTextLength,
+    wordCount: body.length === 0 ? 0 : body.split(/\s+/).filter(Boolean).length,
+    urls,
+    unsafeUrls,
+    internalUrls,
+  };
+}
+
+/**
  * The constrained profile used by portfolio text fields. It deliberately has
  * no headings, blocks, images, directives, tables, or raw HTML.
  */

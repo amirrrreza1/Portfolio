@@ -15,10 +15,6 @@ import {
   Res,
   UseFilters,
 } from "@nestjs/common";
-import { authorizeCookieMutation } from "@portfolio/auth-core";
-import {
-  CSRF_HEADER_NAME,
-} from "@portfolio/contracts/auth";
 import {
   adminAppearanceUpdateSchema,
   archiveConfirmationSchema,
@@ -48,7 +44,6 @@ import { OptimisticConcurrencyError } from "@portfolio/database";
 import {
   buildErrorBody,
   ERROR_STATUS,
-  resourceIdSchema,
   toFieldErrors,
   type ErrorCode,
   type FieldErrors,
@@ -62,8 +57,9 @@ import {
   AUTH_SERVICE,
   type AuthRuntimeConfig,
 } from "../auth/auth.controller.js";
-import { authorize, type Permission } from "../auth/authorization.js";
+import type { Permission } from "../auth/authorization.js";
 import type { AuthenticatedRequest, AuthService } from "../auth/auth.service.js";
+import { AdminRequestBoundary } from "./admin-request.js";
 import {
   AdminInvariantError,
   AdminMediaRejectedError,
@@ -160,9 +156,13 @@ export class AdminPortfolioController {
   public constructor(
     @Inject(ADMIN_PORTFOLIO_SERVICE)
     private readonly portfolio: AdminPortfolioService,
-    @Inject(AUTH_SERVICE) private readonly auth: AuthService,
-    @Inject(AUTH_RUNTIME_CONFIG) private readonly config: AuthRuntimeConfig
-  ) {}
+    @Inject(AUTH_SERVICE) auth: AuthService,
+    @Inject(AUTH_RUNTIME_CONFIG) config: AuthRuntimeConfig
+  ) {
+    this.boundary = new AdminRequestBoundary(auth, config);
+  }
+
+  private readonly boundary: AdminRequestBoundary;
 
   @Get("dashboard")
   async dashboard(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
@@ -484,14 +484,11 @@ export class AdminPortfolioController {
   }
 
   private id(value: string, requestId: string): string {
-    const result = resourceIdSchema.safeParse(value);
-    if (!result.success) throw this.fail("VALIDATION_FAILED", requestId, { id: ["Invalid resource identifier."] });
-    return result.data;
+    return this.boundary.id(value, requestId);
   }
 
   private locale(value: string, requestId: string): "en" | "fa" {
-    if (value !== "en" && value !== "fa") throw this.fail("VALIDATION_FAILED", requestId, { locale: ["Locale must be en or fa."] });
-    return value;
+    return this.boundary.locale(value, requestId);
   }
 
   private parseArchiveResource(
@@ -517,58 +514,24 @@ export class AdminPortfolioController {
   }
 
   private ifMatch(request: FastifyRequest, requestId: string): number {
-    const value = request.headers["if-match"];
-    const raw = typeof value === "string" ? value.replaceAll('"', "").trim() : "";
-    if (!/^\d+$/.test(raw)) throw this.fail("VALIDATION_FAILED", requestId, { "if-match": ["A non-negative record version is required."] });
-    const version = Number(raw);
-    if (!Number.isSafeInteger(version)) throw this.fail("VALIDATION_FAILED", requestId, { "if-match": ["A valid record version is required."] });
-    return version;
+    return this.boundary.ifMatch(request, requestId);
   }
 
   private async require(request: FastifyRequest, permission: Permission): Promise<AuthenticatedRequest> {
-    const authenticated = await this.auth.authenticate(this.sessionCookie(request));
-    if (authenticated === null) throw this.fail("AUTHENTICATION_REQUIRED", randomUUID());
-    this.allowed(authenticated, permission);
-    return authenticated;
+    return this.boundary.require(request, permission);
   }
 
   private async requireMutation(request: FastifyRequest, permission: Permission): Promise<AuthenticatedRequest> {
-    const authenticated = await this.require(request, permission);
-    const token = request.headers[CSRF_HEADER_NAME];
-    if (!authorizeCookieMutation({ origin: request.headers.origin, expectedOrigin: this.config.origin, secFetchSite: header(request, "sec-fetch-site"), csrfToken: typeof token === "string" ? token : undefined, csrfSecret: this.config.csrfSecret, csrfBindingHash: authenticated.session.csrfBindingHash, session: authenticated.session })) {
-      throw this.fail("CSRF_FAILED", randomUUID());
-    }
-    return authenticated;
-  }
-
-  private allowed(authenticated: AuthenticatedRequest, permission: Permission): void {
-    const decision = authorize(authenticated, permission);
-    if (!decision.allowed) throw this.fail("FORBIDDEN", randomUUID(), decision.reason === "recent-auth-required" ? { reauthentication: ["required"] } : {});
-  }
-
-  private sessionCookie(request: FastifyRequest): string | undefined {
-    const raw = request.headers.cookie;
-    if (!raw) return undefined;
-    for (const part of raw.split(";")) {
-      const [name, ...rest] = part.trim().split("=");
-      if (name === "__Host-portfolio_session" || name === "portfolio_session") return decodeURIComponent(rest.join("="));
-    }
-    return undefined;
+    return this.boundary.requireMutation(request, permission);
   }
 
   private noStore(reply: FastifyReply): void {
-    void reply.header("Cache-Control", "private, no-store");
-    void reply.header("Vary", "Cookie");
+    this.boundary.noStore(reply);
   }
 
   private fail(code: ErrorCode, requestId: string, fields: FieldErrors = {}): HttpException {
-    return new HttpException(buildErrorBody(code, requestId, fields), ERROR_STATUS[code]);
+    return this.boundary.fail(code, requestId, fields);
   }
-}
-
-function header(request: FastifyRequest, name: string): string | undefined {
-  const value = request.headers[name];
-  return typeof value === "string" ? value : undefined;
 }
 
 function multipartField(fields: unknown, name: string): string {

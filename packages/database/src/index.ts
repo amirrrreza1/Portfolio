@@ -42,6 +42,18 @@ export {
   type SavedArticleTranslation,
 } from "./articles.js";
 export {
+  createBlogTaxonomyStore,
+  TaxonomyNotFoundError,
+  TaxonomyVersionConflictError,
+  type TaxonomyKind,
+} from "./blog-taxonomy.js";
+export {
+  ArticleTransitionRefusedError,
+  articlePathFor,
+  digestMatches,
+  type TransitionResult,
+} from "./article-lifecycle.js";
+export {
   createInvalidationOutboxStore,
   type ClaimedInvalidation,
   type InvalidationOutboxMetrics,

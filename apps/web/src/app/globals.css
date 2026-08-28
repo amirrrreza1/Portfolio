@@ -322,6 +322,220 @@
 }
 
 /*
+ * Article and project typography — the reading surfaces' own element rules.
+ *
+ * Both surfaces previously carried `prose prose-invert max-w-none` and got
+ * nothing from it: `@tailwindcss/typography` is a devDependency, Tailwind v4
+ * only loads a plugin the stylesheet asks for, and nothing here ever did. What
+ * was left was the reset — preflight sets every heading to `font-size: inherit;
+ * font-weight: inherit` and strips list markers, and the base layer above zeroes
+ * every margin — so an `h2` rendered identically to a paragraph, lists had no
+ * bullets, and the whole article was one undifferentiated block.
+ *
+ * These rules are written here rather than by registering the plugin for two
+ * reasons, both from M5. The plugin sets `prose h1 { font-weight: 800 }` and
+ * `h1 strong { 900 }`, and the M5 font trim deleted every face above 700 on the
+ * argument that nothing could select them; and prose declares its own colours,
+ * which THEMING.md §3's "components consume tokens only" rule forbids. Nothing
+ * below uses a weight above 700 or a colour that is not a token.
+ *
+ * `:where()` keeps every selector at zero specificity, so the rules above and
+ * below — the code-block direction rule, the Shiki theme selection, and any
+ * utility a component adds — continue to win without `!important`.
+ */
+.blog-reading-surface,
+.project-reading-surface {
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+
+.blog-reading-surface :where(h2, h3, h4, h5, h6),
+.project-reading-surface :where(h2, h3, h4, h5, h6) {
+  color: var(--color-text);
+  font-weight: 700;
+  line-height: 1.3;
+  /*
+   * Space above a heading, not below it, so a heading stays visually attached
+   * to the text it introduces. The margin collapses against the preceding
+   * block, which is why the value is generous.
+   */
+  margin-block: 2em 0.6em;
+  scroll-margin-block-start: 5rem;
+}
+
+/*
+ * The document's only h1 is the article title, which the page renders outside
+ * this surface — the body renderer refuses an h1 outright. So h2 is the top of
+ * the outline here and is sized as such, without competing with the title.
+ */
+.blog-reading-surface :where(h2),
+.project-reading-surface :where(h2) {
+  font-size: 1.5em;
+}
+
+.blog-reading-surface :where(h3),
+.project-reading-surface :where(h3) {
+  font-size: 1.25em;
+}
+
+.blog-reading-surface :where(h4),
+.project-reading-surface :where(h4) {
+  font-size: 1.1em;
+}
+
+.blog-reading-surface :where(h5, h6),
+.project-reading-surface :where(h5, h6) {
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.blog-reading-surface :where(:first-child),
+.project-reading-surface :where(:first-child) {
+  margin-block-start: 0;
+}
+
+.blog-reading-surface :where(p, ul, ol, blockquote, pre, table, figure),
+.project-reading-surface :where(p, ul, ol, blockquote, pre, table, figure) {
+  margin-block: 0 1.15em;
+}
+
+.blog-reading-surface :where(ul, ol),
+.project-reading-surface :where(ul, ol) {
+  /* `padding-inline-start` rather than `padding-left`: the markers have to sit
+     on the correct side in a Persian article. */
+  padding-inline-start: 1.6em;
+}
+
+.blog-reading-surface :where(ul),
+.project-reading-surface :where(ul) {
+  list-style: disc;
+}
+
+.blog-reading-surface :where(ol),
+.project-reading-surface :where(ol) {
+  list-style: decimal;
+}
+
+.blog-reading-surface :where(li),
+.project-reading-surface :where(li) {
+  margin-block: 0.35em;
+}
+
+.blog-reading-surface :where(li > ul, li > ol),
+.project-reading-surface :where(li > ul, li > ol) {
+  margin-block: 0.35em;
+}
+
+.blog-reading-surface :where(blockquote),
+.project-reading-surface :where(blockquote) {
+  border-inline-start: 3px solid var(--color-border);
+  padding-inline-start: 1em;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.blog-reading-surface :where(pre),
+.project-reading-surface :where(pre) {
+  padding: 1em;
+  overflow-x: auto;
+  /* A long line must scroll inside the block rather than widening the page. */
+  max-width: 100%;
+}
+
+/*
+ * Inline code only. The selector excludes `pre code` because a highlighted
+ * block paints its own surface, and a second background inside it reads as a
+ * box within a box.
+ */
+.blog-reading-surface :where(:not(pre) > code),
+.project-reading-surface :where(:not(pre) > code) {
+  background-color: var(--color-code-bg);
+  color: var(--color-code-text);
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
+
+.blog-reading-surface :where(a):not(.heading-anchor),
+.project-reading-surface :where(a):not(.heading-anchor) {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/*
+ * The section-link anchor is a navigational affordance, not part of the
+ * heading's text. It stays out of the reading flow until the heading is
+ * hovered or the anchor itself is focused — and it must remain focusable, so
+ * it is faded rather than hidden.
+ */
+.blog-reading-surface :where(.heading-anchor),
+.project-reading-surface :where(.heading-anchor) {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-inline-end: 0.35em;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.blog-reading-surface :where(h2, h3, h4, h5, h6):hover .heading-anchor,
+.project-reading-surface :where(h2, h3, h4, h5, h6):hover .heading-anchor,
+.blog-reading-surface .heading-anchor:focus-visible,
+.project-reading-surface .heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-reading-surface :where(.heading-anchor),
+  .project-reading-surface :where(.heading-anchor) {
+    transition: none;
+  }
+}
+
+.blog-reading-surface :where(strong),
+.project-reading-surface :where(strong) {
+  font-weight: 700;
+}
+
+.blog-reading-surface :where(em),
+.project-reading-surface :where(em) {
+  font-style: italic;
+}
+
+.blog-reading-surface :where(hr),
+.project-reading-surface :where(hr) {
+  border: 0;
+  border-block-start: 1px solid var(--color-border);
+  margin-block: 2.5em;
+}
+
+.blog-reading-surface :where(img),
+.project-reading-surface :where(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.blog-reading-surface :where(table),
+.project-reading-surface :where(table) {
+  border-collapse: collapse;
+  display: block;
+  /* A wide table scrolls in its own box; the page body never scrolls sideways. */
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.blog-reading-surface :where(th, td),
+.project-reading-surface :where(th, td) {
+  border: 1px solid var(--color-border);
+  padding: 0.5em 0.75em;
+  text-align: start;
+}
+
+.blog-reading-surface :where(th),
+.project-reading-surface :where(th) {
+  font-weight: 600;
+}
+
+/*
  * Shiki dual-theme code blocks — THEMING.md §3 and §8.
  *
  * `@portfolio/markdown` highlights with `themes: { light, dark }` and

@@ -105,7 +105,7 @@ Two dependencies are non-negotiable:
 | M5 — Appearance and accessibility         | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
 | M6 — Authentication foundation            | Complete    | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
 | M7 — Portfolio CMS                        | Complete    | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
-| M8 — Blog authoring, publishing, and SEO  | Not started | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
+| M8 — Blog authoring, publishing, and SEO  | In progress | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup     | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
 
 M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing downstream, so work continues in parallel.
@@ -544,6 +544,18 @@ The Owner beta checkpoint is private or access-restricted. It is not exposed to 
 ### M8 — Blog authoring, publishing, and SEO
 
 Objective: deliver one coherent article lifecycle across authenticated editing, validated upload, and PostgreSQL.
+
+Started 2026-08-28. The authenticated authoring boundary is delivered and
+live-proven in
+[`status/evidence/M8-blog-authoring-live.md`](status/evidence/M8-blog-authoring-live.md)
+(25 checks): post and taxonomy CRUD, per-locale publish/schedule/unpublish/
+archive as separate commands, an evaluated publish checklist whose blockers
+refuse and whose warnings must be acknowledged by name, autosave that cannot
+reach publication, slug history whose redirects collapse their own chains, and
+preview through the production pipeline. The editor UI, Markdown import,
+article revision restore, the discovery and SEO surfaces, and the
+scheduled-publication test matrix remain open; see
+[`status/M8.md`](status/M8.md).
 
 Deliverables:
 
