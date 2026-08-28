@@ -31,6 +31,11 @@ const publishedSite = publicSiteSchema.parse({
     siteName: "امیررضا آذریون",
     titleTemplate: "%s | امیررضا آذریون",
     metaDescription: "وب‌سایت شخصی امیررضا آذریون",
+    keywords: ["نمونه‌کار"],
+    footerLines: [],
+    footerRights: "تمام حقوق محفوظ است",
+    resumeButtonLabel: "دریافت رزومه",
+    siteVerification: { google: "google-token", bing: null },
     authorName: "Amirreza Azarioun",
     creatorName: "Amirreza Azarioun",
     publisherName: "Amirreza Azarioun",
@@ -178,7 +183,7 @@ describe("PublicSiteService", () => {
       robotsAllowIndexing: false,
       birthDate: new Date("2000-08-15T00:00:00.000Z"),
       contactRecipientEmail: "private@example.invalid",
-      searchConsoleTokens: { secret: true },
+      searchConsoleTokens: { google: "google-token", secret: true },
       updatedAt: lastModified,
       translations: [
         {
@@ -186,6 +191,10 @@ describe("PublicSiteService", () => {
           siteName: "امیررضا آذریون",
           titleTemplate: "%s | امیررضا آذریون",
           metaDescription: "وب‌سایت شخصی امیررضا آذریون",
+          keywords: ["نمونه‌کار"],
+          footerLines: [],
+          footerRights: "تمام حقوق محفوظ است",
+          resumeButtonLabel: "دریافت رزومه",
           updatedAt: lastModified,
         },
       ],
@@ -295,10 +304,10 @@ describe("PublicSiteService", () => {
       })
     );
     expect(navItemFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { enabled: true } })
+      expect.objectContaining({ where: { enabled: true, archivedAt: null } })
     );
     expect(socialLinkFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { enabled: true } })
+      expect.objectContaining({ where: { enabled: true, archivedAt: null } })
     );
   });
 
@@ -317,6 +326,7 @@ describe("PublicSiteService", () => {
           githubRepoAllowlist: [],
           githubCacheTtlSeconds: 3_600,
           robotsAllowIndexing: false,
+          searchConsoleTokens: {},
           birthDate: null,
           updatedAt: lastModified,
           translations: [
@@ -325,6 +335,10 @@ describe("PublicSiteService", () => {
               siteName: "Amirreza Azarioun",
               titleTemplate: "%s | Amirreza Azarioun",
               metaDescription: "Portfolio site",
+              keywords: ["portfolio"],
+              footerLines: [],
+              footerRights: "All rights reserved",
+              resumeButtonLabel: "Download resume",
               updatedAt: lastModified,
             },
           ],

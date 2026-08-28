@@ -13,6 +13,13 @@ import {
 
 const shortTextSchema = z.string().trim().min(1).max(200);
 const proseSchema = z.string().trim().min(1).max(10_000);
+const verificationTokenSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .regex(/^[\p{L}\p{N}._=-]+$/u)
+  .nullable();
 
 export const githubRepositoryNameSchema = z
   .string()
@@ -84,6 +91,16 @@ export const publicSiteSettingsSchema = z
     siteName: shortTextSchema,
     titleTemplate: z.string().trim().min(1).max(240),
     metaDescription: z.string().trim().min(1).max(500),
+    keywords: z.array(shortTextSchema).max(30),
+    footerLines: z.array(shortTextSchema).max(6),
+    footerRights: shortTextSchema,
+    resumeButtonLabel: shortTextSchema,
+    siteVerification: z
+      .object({
+        google: verificationTokenSchema,
+        bing: verificationTokenSchema,
+      })
+      .strict(),
     authorName: shortTextSchema,
     creatorName: shortTextSchema,
     publisherName: shortTextSchema,
@@ -154,9 +171,7 @@ const publicAboutSectionSchema = z
   })
   .strict();
 
-function emptyPublicSectionSchema(
-  key: "skills" | "projects" | "certificates" | "contact"
-) {
+function emptyPublicSectionSchema(key: "skills" | "projects" | "certificates") {
   return z
     .object({
       key: z.literal(key),
@@ -166,13 +181,37 @@ function emptyPublicSectionSchema(
     .strict();
 }
 
+const publicContactSectionSchema = z
+  .object({
+    key: z.literal("contact"),
+    title: shortTextSchema,
+    content: z
+      .object({
+        nameLabel: shortTextSchema,
+        namePlaceholder: shortTextSchema,
+        emailLabel: shortTextSchema,
+        emailPlaceholder: shortTextSchema,
+        messageLabel: shortTextSchema,
+        messagePlaceholder: shortTextSchema,
+        sendingLabel: shortTextSchema,
+        submitLabel: shortTextSchema,
+        successMessage: shortTextSchema,
+        failureMessage: shortTextSchema,
+        invalidNameMessage: shortTextSchema,
+        invalidEmailMessage: shortTextSchema,
+        invalidMessageMessage: shortTextSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
 export const publicPageSectionSchema = z.discriminatedUnion("key", [
   publicHeroSectionSchema,
   publicAboutSectionSchema,
   emptyPublicSectionSchema("skills"),
   emptyPublicSectionSchema("projects"),
   emptyPublicSectionSchema("certificates"),
-  emptyPublicSectionSchema("contact"),
+  publicContactSectionSchema,
 ]);
 
 const publicNavBase = {

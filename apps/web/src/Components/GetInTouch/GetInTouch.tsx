@@ -10,21 +10,22 @@ import { useToast } from "../Toast/Toast";
 import { ContactUsSchema } from "@/Schemas/ContactUsForm";
 import { useAutoLang } from "@/Hooks/useAutoLang";
 import { FormData } from "./Types";
-import type { Locale } from "@portfolio/contracts/common";
-import { getMessages } from "@/i18n/messages";
+import type { PublicPageSection } from "@portfolio/contracts/portfolio";
 
 /** Public contact requests go through the server-side SMTP delivery path. */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
 export default function GetInTouchForm({
   title,
-  locale,
+  content,
 }: {
   readonly title: string;
-  readonly locale: Locale;
+  readonly content: Extract<
+    PublicPageSection,
+    { readonly key: "contact" }
+  >["content"];
 }) {
   const toast = useToast();
-  const messages = getMessages(locale);
   const [startedAt] = useState(() => Date.now());
 
   const {
@@ -45,10 +46,10 @@ export default function GetInTouchForm({
       });
       if (!response.ok) throw new Error("Contact request failed");
 
-      toast(messages.contact.success);
+      toast(content.successMessage);
       reset();
     } catch {
-      toast(messages.contact.failure);
+      toast(content.failureMessage);
     }
   };
 
@@ -68,18 +69,18 @@ export default function GetInTouchForm({
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={`${errors.name?.message ? "text-danger" : ""}`}>
-              {messages.contact.name}
+              {content.nameLabel}
             </label>
             {errors.name?.message && (
               <p className="text-danger text-sm">
-                ({messages.contact.invalidName})
+                ({content.invalidNameMessage})
               </p>
             )}
           </div>
           <input
             type="text"
             className="FormInput"
-            placeholder={messages.contact.namePlaceholder}
+            placeholder={content.namePlaceholder}
             {...register("name")}
             ref={(el) => {
               register("name").ref(el);
@@ -90,18 +91,18 @@ export default function GetInTouchForm({
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={` ${errors.email?.message ? "text-danger" : ""}`}>
-              {messages.contact.email}
+              {content.emailLabel}
             </label>
             {errors.email?.message && (
               <p className="text-danger text-sm">
-                ({messages.contact.invalidEmail})
+                ({content.invalidEmailMessage})
               </p>
             )}
           </div>
           <input
             className="FormInput"
             type="text"
-            placeholder={messages.contact.emailPlaceholder}
+            placeholder={content.emailPlaceholder}
             autoComplete="off"
             {...register("email")}
             ref={(el) => {
@@ -117,17 +118,17 @@ export default function GetInTouchForm({
                 errors.message?.message ? "text-danger" : ""
               }`}
             >
-              {messages.contact.message}
+              {content.messageLabel}
             </label>
             {errors.message?.message && (
               <p className="text-danger text-sm">
-                ({messages.contact.invalidMessage})
+                ({content.invalidMessageMessage})
               </p>
             )}
           </div>
           <textarea
             className="FormInput resize-none"
-            placeholder={messages.contact.messagePlaceholder}
+            placeholder={content.messagePlaceholder}
             rows={4}
             {...register("message")}
             ref={(el) => {
@@ -138,7 +139,7 @@ export default function GetInTouchForm({
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="mb-5">
-          {isSubmitting ? messages.contact.sending : messages.contact.send}
+          {isSubmitting ? content.sendingLabel : content.submitLabel}
         </Button>
       </form>
     </section>

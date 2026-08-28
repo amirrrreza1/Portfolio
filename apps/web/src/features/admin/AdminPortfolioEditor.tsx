@@ -20,6 +20,10 @@ type Translation = {
   readonly siteName?: string;
   readonly titleTemplate?: string;
   readonly metaDescription?: string;
+  readonly keywords?: readonly string[];
+  readonly footerLines?: readonly string[];
+  readonly footerRights?: string;
+  readonly resumeButtonLabel?: string;
   readonly title?: string | null;
   readonly content?: unknown;
 };
@@ -37,6 +41,11 @@ type Settings = {
   readonly contactRecipientEmail: string;
   readonly contactEnabled: boolean;
   readonly contactRetentionDays: number;
+  readonly auditRetentionDays: number;
+  readonly searchConsoleTokens: {
+    readonly google: string | null;
+    readonly bing: string | null;
+  };
   readonly githubUsername: string | null;
   readonly githubRepoAllowlist: readonly string[];
   readonly githubCacheTtlSeconds: number;
@@ -213,6 +222,11 @@ function SettingsEditor({
               contactRecipientEmail: text(form, "contactRecipientEmail"),
               contactEnabled: form.has("contactEnabled"),
               contactRetentionDays: integer(form, "contactRetentionDays"),
+              auditRetentionDays: integer(form, "auditRetentionDays"),
+              searchConsoleTokens: {
+                google: nullable(form, "googleVerificationToken"),
+                bing: nullable(form, "bingVerificationToken"),
+              },
               githubUsername: nullable(form, "githubUsername"),
               githubRepoAllowlist: lines(form, "githubRepoAllowlist"),
               githubCacheTtlSeconds: integer(form, "githubCacheTtlSeconds"),
@@ -231,7 +245,7 @@ function SettingsEditor({
         title="Site settings"
         description="Canonical identity, contact delivery, GitHub statistics, indexing, and the private birth date used to derive age."
       />
-      <form onSubmit={submit} className="border-border grid gap-4 border p-4 md:grid-cols-2">
+      <form data-testid="admin-settings-form" onSubmit={submit} className="border-border grid gap-4 border p-4 md:grid-cols-2">
         <Field label="Canonical site URL">
           <input className={inputClass} name="canonicalSiteUrl" type="url" required defaultValue={settings.canonicalSiteUrl} />
         </Field>
@@ -256,11 +270,14 @@ function SettingsEditor({
         <Field label="Publisher name"><input className={inputClass} name="publisherName" required defaultValue={settings.publisherName} /></Field>
         <Field label="Contact recipient"><input className={inputClass} name="contactRecipientEmail" type="email" required defaultValue={settings.contactRecipientEmail} /></Field>
         <Field label="Contact retention days"><input className={inputClass} name="contactRetentionDays" type="number" min="1" max="3650" required defaultValue={settings.contactRetentionDays} /></Field>
+        <Field label="Audit retention days"><input className={inputClass} name="auditRetentionDays" type="number" min="30" max="3650" required defaultValue={settings.auditRetentionDays} /></Field>
         <Field label="Birth date" hint="Stored privately; only the derived age is public."><input className={inputClass} name="birthDate" type="date" defaultValue={settings.birthDate?.slice(0, 10) ?? ""} /></Field>
         <Field label="GitHub username"><input className={inputClass} name="githubUsername" defaultValue={settings.githubUsername ?? ""} /></Field>
         <Field label="GitHub cache seconds"><input className={inputClass} name="githubCacheTtlSeconds" type="number" min="60" max="86400" required defaultValue={settings.githubCacheTtlSeconds} /></Field>
         <Field label="Repository allowlist" hint="One repository name per line."><textarea className={inputClass} name="githubRepoAllowlist" rows={4} defaultValue={settings.githubRepoAllowlist.join("\n")} /></Field>
         <Field label="Default social-image media ID"><input className={inputClass} name="defaultSocialImageId" defaultValue={settings.defaultSocialImageId ?? ""} /></Field>
+        <Field label="Google verification token"><input className={inputClass} name="googleVerificationToken" defaultValue={settings.searchConsoleTokens.google ?? ""} /></Field>
+        <Field label="Bing verification token"><input className={inputClass} name="bingVerificationToken" defaultValue={settings.searchConsoleTokens.bing ?? ""} /></Field>
         <div className="grid gap-2 md:col-span-2 md:grid-cols-2">
           <Check name="contactEnabled" label="Accept contact messages" defaultChecked={settings.contactEnabled} />
           <Check name="robotsAllowIndexing" label="Allow search indexing" defaultChecked={settings.robotsAllowIndexing} />
@@ -279,7 +296,7 @@ function SettingsEditor({
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
                 void mutate(
-                  () => adminRequest(`/admin/settings/translations/${locale}`, { method: "PATCH", mutation: true, ifMatch: translation?.version ?? 0, body: { siteName: text(form, "siteName"), titleTemplate: text(form, "titleTemplate"), metaDescription: text(form, "metaDescription") } }),
+                  () => adminRequest(`/admin/settings/translations/${locale}`, { method: "PATCH", mutation: true, ifMatch: translation?.version ?? 0, body: { siteName: text(form, "siteName"), titleTemplate: text(form, "titleTemplate"), metaDescription: text(form, "metaDescription"), keywords: lines(form, "keywords"), footerLines: lines(form, "footerLines"), footerRights: text(form, "footerRights"), resumeButtonLabel: text(form, "resumeButtonLabel") } }),
                   `${locale.toUpperCase()} site text saved.`
                 );
               }}
@@ -288,6 +305,10 @@ function SettingsEditor({
               <Field label="Site name"><input className={inputClass} name="siteName" required defaultValue={translation?.siteName ?? ""} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
               <Field label="Title template"><input className={inputClass} name="titleTemplate" required defaultValue={translation?.titleTemplate ?? ""} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
               <Field label="Meta description"><textarea className={inputClass} name="metaDescription" required rows={4} defaultValue={translation?.metaDescription ?? ""} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
+              <Field label="SEO keywords" hint="One reviewed keyword per line."><textarea className={inputClass} name="keywords" rows={6} defaultValue={(translation?.keywords ?? []).join("\n")} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
+              <Field label="Footer rotating lines" hint="Optional; one line per row."><textarea className={inputClass} name="footerLines" rows={3} defaultValue={(translation?.footerLines ?? []).join("\n")} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
+              <Field label="Footer rights text"><input className={inputClass} name="footerRights" required defaultValue={translation?.footerRights ?? ""} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
+              <Field label="Resume button label"><input className={inputClass} name="resumeButtonLabel" required defaultValue={translation?.resumeButtonLabel ?? ""} dir={locale === "fa" ? "rtl" : "ltr"} /></Field>
               <SaveButton busy={busy} />
             </form>
           );
@@ -326,11 +347,12 @@ function SectionBaseForm({ section, busy, mutate }: { readonly section: Section;
 
 function SectionTranslationForm({ section, locale, busy, mutate }: { readonly section: Section; readonly locale: "en" | "fa"; readonly busy: boolean; readonly mutate: (action: () => Promise<unknown>, success: string) => Promise<void> }): React.JSX.Element {
   const translation = section.translations.find((item) => item.locale === locale); const content = record(translation?.content); const direction = locale === "fa" ? "rtl" : "ltr";
-  return <form className="border-border grid gap-3 border-t pt-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const translatedContent = section.key === "hero" ? { lines: lines(form, "lines"), ...(nullable(form, "subtitle") === null ? {} : { subtitle: text(form, "subtitle") }) } : section.key === "about" ? { location: text(form, "location"), role: text(form, "role"), body: paragraphs(form, "body") } : {}; void mutate(() => adminRequest(`/admin/sections/${section.id}/translations/${locale}`, { method: "PATCH", mutation: true, ifMatch: translation?.version ?? 0, body: { key: section.key, translation: { title: nullable(form, "title"), content: translatedContent } } }), `${section.key} ${locale.toUpperCase()} content saved.`); }}>
+  return <form className="border-border grid gap-3 border-t pt-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const translatedContent = section.key === "hero" ? { lines: lines(form, "lines"), ...(nullable(form, "subtitle") === null ? {} : { subtitle: text(form, "subtitle") }) } : section.key === "about" ? { location: text(form, "location"), role: text(form, "role"), body: paragraphs(form, "body") } : section.key === "contact" ? { nameLabel: text(form, "nameLabel"), namePlaceholder: text(form, "namePlaceholder"), emailLabel: text(form, "emailLabel"), emailPlaceholder: text(form, "emailPlaceholder"), messageLabel: text(form, "messageLabel"), messagePlaceholder: text(form, "messagePlaceholder"), sendingLabel: text(form, "sendingLabel"), submitLabel: text(form, "submitLabel"), successMessage: text(form, "successMessage"), failureMessage: text(form, "failureMessage"), invalidNameMessage: text(form, "invalidNameMessage"), invalidEmailMessage: text(form, "invalidEmailMessage"), invalidMessageMessage: text(form, "invalidMessageMessage") } : {}; void mutate(() => adminRequest(`/admin/sections/${section.id}/translations/${locale}`, { method: "PATCH", mutation: true, ifMatch: translation?.version ?? 0, body: { key: section.key, translation: { title: nullable(form, "title"), content: translatedContent } } }), `${section.key} ${locale.toUpperCase()} content saved.`); }}>
     <div className="flex items-center gap-2 md:col-span-2"><h5 className="font-semibold">{locale === "en" ? "English" : "Persian"}</h5><LocaleBadge locale={locale} present={translation !== undefined} /></div>
     <Field label="Section title"><input className={inputClass} name="title" defaultValue={translation?.title ?? ""} dir={direction} /></Field>
     {section.key === "hero" ? <><Field label="Typed lines" hint="One line per row."><textarea className={inputClass} name="lines" required rows={4} defaultValue={stringArray(content.lines).join("\n")} dir={direction} /></Field><Field label="Subtitle"><textarea className={inputClass} name="subtitle" rows={3} defaultValue={stringValue(content.subtitle)} dir={direction} /></Field></> : null}
     {section.key === "about" ? <><Field label="Location"><input className={inputClass} name="location" required defaultValue={stringValue(content.location)} dir={direction} /></Field><Field label="Role"><input className={inputClass} name="role" required defaultValue={stringValue(content.role)} dir={direction} /></Field><Field label="About paragraphs" hint="Separate paragraphs with a blank line."><textarea className={inputClass} name="body" required rows={8} defaultValue={stringArray(content.body).join("\n\n")} dir={direction} /></Field></> : null}
+    {section.key === "contact" ? <><Field label="Name label"><input className={inputClass} name="nameLabel" required defaultValue={stringValue(content.nameLabel)} dir={direction} /></Field><Field label="Name placeholder"><input className={inputClass} name="namePlaceholder" required defaultValue={stringValue(content.namePlaceholder)} dir={direction} /></Field><Field label="Email label"><input className={inputClass} name="emailLabel" required defaultValue={stringValue(content.emailLabel)} dir={direction} /></Field><Field label="Email placeholder"><input className={inputClass} name="emailPlaceholder" required defaultValue={stringValue(content.emailPlaceholder)} dir={direction} /></Field><Field label="Message label"><input className={inputClass} name="messageLabel" required defaultValue={stringValue(content.messageLabel)} dir={direction} /></Field><Field label="Message placeholder"><input className={inputClass} name="messagePlaceholder" required defaultValue={stringValue(content.messagePlaceholder)} dir={direction} /></Field><Field label="Sending label"><input className={inputClass} name="sendingLabel" required defaultValue={stringValue(content.sendingLabel)} dir={direction} /></Field><Field label="Submit label"><input className={inputClass} name="submitLabel" required defaultValue={stringValue(content.submitLabel)} dir={direction} /></Field><Field label="Success message"><input className={inputClass} name="successMessage" required defaultValue={stringValue(content.successMessage)} dir={direction} /></Field><Field label="Failure message"><input className={inputClass} name="failureMessage" required defaultValue={stringValue(content.failureMessage)} dir={direction} /></Field><Field label="Invalid-name message"><input className={inputClass} name="invalidNameMessage" required defaultValue={stringValue(content.invalidNameMessage)} dir={direction} /></Field><Field label="Invalid-email message"><input className={inputClass} name="invalidEmailMessage" required defaultValue={stringValue(content.invalidEmailMessage)} dir={direction} /></Field><Field label="Invalid-message message"><input className={inputClass} name="invalidMessageMessage" required defaultValue={stringValue(content.invalidMessageMessage)} dir={direction} /></Field></> : null}
     <div className="md:col-span-2"><SaveButton busy={busy} /></div>
   </form>;
 }

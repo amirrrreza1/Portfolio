@@ -9,6 +9,7 @@ import type { CertificateType } from "@/Components/Certificate/Types";
 import type { Quote } from "@/Components/DailyQuote/Types";
 import type { Projects } from "@/Components/Projects/Types";
 import type { SkillCategory } from "@/Components/Skills/Types";
+import { getMessages } from "@/i18n/messages";
 import { resolveAge } from "@/Utils/Age";
 import { suggestSlug, type Locale } from "@portfolio/contracts/common";
 import {
@@ -98,6 +99,7 @@ export function getLegacySiteData(
   now: Date = new Date()
 ): PublicSite {
   const fa = locale === "fa";
+  const messages = getMessages(locale);
   const migratedSections = legacyPageSections(now);
   return publicSiteSchema.parse({
     locale,
@@ -132,6 +134,11 @@ export function getLegacySiteData(
       ],
       githubCacheTtlSeconds: 3_600,
       robotsAllowIndexing: true,
+      keywords: ["Amirreza Azarioun", "software engineer", "portfolio"],
+      footerLines: [],
+      footerRights: messages.footer.rights,
+      resumeButtonLabel: messages.resume.download,
+      siteVerification: { google: null, bing: null },
     },
     sections: [
       ...migratedSections,
@@ -139,7 +146,21 @@ export function getLegacySiteData(
       {
         key: "contact",
         title: fa ? "تماس با من" : "Get in Touch",
-        content: {},
+        content: {
+          nameLabel: messages.contact.name,
+          namePlaceholder: messages.contact.namePlaceholder,
+          emailLabel: messages.contact.email,
+          emailPlaceholder: messages.contact.emailPlaceholder,
+          messageLabel: messages.contact.message,
+          messagePlaceholder: messages.contact.messagePlaceholder,
+          sendingLabel: messages.contact.sending,
+          submitLabel: messages.contact.send,
+          successMessage: messages.contact.success,
+          failureMessage: messages.contact.failure,
+          invalidNameMessage: messages.contact.invalidName,
+          invalidEmailMessage: messages.contact.invalidEmail,
+          invalidMessageMessage: messages.contact.invalidMessage,
+        },
       },
       {
         key: "projects",

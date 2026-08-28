@@ -26,6 +26,8 @@ describe("portfolio admin contracts", () => {
       contactRecipientEmail: "owner@example.test",
       contactEnabled: true,
       contactRetentionDays: 90,
+      auditRetentionDays: 400,
+      searchConsoleTokens: { google: null, bing: null },
       githubUsername: null,
       githubRepoAllowlist: [],
       githubCacheTtlSeconds: 3600,

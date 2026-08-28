@@ -53,6 +53,7 @@ export class PublicSiteService {
             authorName: true,
             creatorName: true,
             publisherName: true,
+            searchConsoleTokens: true,
             contactEnabled: true,
             githubUsername: true,
             githubRepoAllowlist: true,
@@ -67,6 +68,10 @@ export class PublicSiteService {
                 siteName: true,
                 titleTemplate: true,
                 metaDescription: true,
+                keywords: true,
+                footerLines: true,
+                footerRights: true,
+                resumeButtonLabel: true,
                 updatedAt: true,
               },
             },
@@ -91,7 +96,7 @@ export class PublicSiteService {
           },
         }),
         this.database.navItem.findMany({
-          where: { enabled: true },
+          where: { enabled: true, archivedAt: null },
           orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
           select: {
             id: true,
@@ -103,7 +108,7 @@ export class PublicSiteService {
           },
         }),
         this.database.socialLink.findMany({
-          where: { enabled: true },
+          where: { enabled: true, archivedAt: null },
           orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
           select: {
             id: true,
@@ -175,6 +180,13 @@ export class PublicSiteService {
         siteName: settingsTranslation.siteName,
         titleTemplate: settingsTranslation.titleTemplate,
         metaDescription: settingsTranslation.metaDescription,
+        keywords: settingsTranslation.keywords,
+        footerLines: settingsTranslation.footerLines,
+        footerRights: settingsTranslation.footerRights,
+        resumeButtonLabel: settingsTranslation.resumeButtonLabel,
+        siteVerification: publicVerificationTokens(
+          settings.searchConsoleTokens
+        ),
         authorName: settings.authorName,
         creatorName: settings.creatorName,
         publisherName: settings.publisherName,
@@ -281,8 +293,60 @@ async function buildSection(
     case "skills":
     case "projects":
     case "certificates":
-    case "contact":
       return publicPageSectionSchema.parse({ key, title, content: {} });
+    case "contact":
+      return publicPageSectionSchema.parse({
+        key,
+        title,
+        content: {
+          nameLabel: localizedValue(localized.nameLabel, english.nameLabel),
+          namePlaceholder: localizedValue(
+            localized.namePlaceholder,
+            english.namePlaceholder
+          ),
+          emailLabel: localizedValue(localized.emailLabel, english.emailLabel),
+          emailPlaceholder: localizedValue(
+            localized.emailPlaceholder,
+            english.emailPlaceholder
+          ),
+          messageLabel: localizedValue(
+            localized.messageLabel,
+            english.messageLabel
+          ),
+          messagePlaceholder: localizedValue(
+            localized.messagePlaceholder,
+            english.messagePlaceholder
+          ),
+          sendingLabel: localizedValue(
+            localized.sendingLabel,
+            english.sendingLabel
+          ),
+          submitLabel: localizedValue(
+            localized.submitLabel,
+            english.submitLabel
+          ),
+          successMessage: localizedValue(
+            localized.successMessage,
+            english.successMessage
+          ),
+          failureMessage: localizedValue(
+            localized.failureMessage,
+            english.failureMessage
+          ),
+          invalidNameMessage: localizedValue(
+            localized.invalidNameMessage,
+            english.invalidNameMessage
+          ),
+          invalidEmailMessage: localizedValue(
+            localized.invalidEmailMessage,
+            english.invalidEmailMessage
+          ),
+          invalidMessageMessage: localizedValue(
+            localized.invalidMessageMessage,
+            english.invalidMessageMessage
+          ),
+        },
+      });
     default:
       throw new Error(`Unknown enabled public section key: ${key}`);
   }
@@ -341,4 +405,15 @@ function ageFromBirthDate(birthDate: Date | null, now: Date): number | null {
 function latestDate(values: readonly Date[]): Date {
   if (values.length === 0) return new Date(0);
   return new Date(Math.max(...values.map((value) => value.getTime())));
+}
+
+function publicVerificationTokens(value: unknown): {
+  readonly google: string | null;
+  readonly bing: string | null;
+} {
+  const record = objectValue(value ?? {}, "Search-console verification tokens");
+  return {
+    google: typeof record.google === "string" ? record.google : null,
+    bing: typeof record.bing === "string" ? record.bing : null,
+  };
 }

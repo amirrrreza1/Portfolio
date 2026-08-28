@@ -293,6 +293,9 @@ model SiteSettings {
   contactRecipientEmail String
   contactEnabled        Boolean  @default(true)
   contactRetentionDays  Int      @default(90)
+  /// Retention policy for append-only audit events. The application role
+  /// cannot delete these rows; the M9 operations job applies this window.
+  auditRetentionDays    Int      @default(400)
   githubUsername        String?
   githubRepoAllowlist   String[] @default([])
   githubCacheTtlSeconds Int      @default(3600)
@@ -312,12 +315,16 @@ model SiteSettings {
 }
 
 model SiteSettingsTranslation {
-  id              String   @id @default(cuid(2))
-  siteSettingsId  Int
-  locale          Locale
-  siteName        String
-  titleTemplate   String
-  metaDescription String
+  id                String   @id @default(cuid(2))
+  siteSettingsId    Int
+  locale            Locale
+  siteName          String
+  titleTemplate     String
+  metaDescription   String
+  keywords          String[] @default([])
+  footerLines       String[] @default([])
+  footerRights      String   @default("All rights reserved")
+  resumeButtonLabel String   @default("Download Resume")
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
   version         Int      @default(0)

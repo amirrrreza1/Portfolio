@@ -110,20 +110,34 @@ export class AdminPortfolioService {
   ) {}
 
   async readSettings(): Promise<unknown> {
-    return this.database.siteSettings.findUniqueOrThrow({
+    const settings = await this.database.siteSettings.findUniqueOrThrow({
       where: { id: 1 },
       include: { translations: { orderBy: { locale: "asc" } } },
     });
+    return {
+      ...settings,
+      birthDate:
+        settings.birthDate === null ? null : dateOnly(settings.birthDate),
+      searchConsoleTokens: editableVerificationTokens(
+        settings.searchConsoleTokens
+      ),
+    };
   }
 
   /** Safe ADMIN-003 summary: counts and event categories only, never bodies or credentials. */
   async dashboard(): Promise<unknown> {
+    const { auditRetentionDays } =
+      await this.database.siteSettings.findUniqueOrThrow({
+        where: { id: 1 },
+        select: { auditRetentionDays: true },
+      });
+    const auditCutoff = retentionCutoff(auditRetentionDays);
     const [drafts, scheduled, contacts, recentEdits, securityEvents, outbox, jobs] = await Promise.all([
       this.database.postTranslation.count({ where: { status: "DRAFT", archivedAt: null } }),
       this.database.postTranslation.count({ where: { status: "SCHEDULED", archivedAt: null } }),
       this.database.contactMessage.count({ where: { deletionDueAt: { gt: new Date() } } }),
       this.database.contentRevision.findMany({ orderBy: { createdAt: "desc" }, take: 10, select: { id: true, entityType: true, entityId: true, action: true, createdAt: true, actor: { select: { displayName: true } } } }),
-      this.database.auditEvent.findMany({ where: { outcome: "FAILURE" }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, eventType: true, targetType: true, outcome: true, createdAt: true } }),
+      this.database.auditEvent.findMany({ where: { outcome: "FAILURE", createdAt: { gte: auditCutoff } }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, eventType: true, targetType: true, outcome: true, createdAt: true } }),
       this.database.contentInvalidationOutbox.groupBy({ by: ["state"], _count: { _all: true } }),
       this.database.contentJob.groupBy({ by: ["state"], _count: { _all: true } }),
     ]);
@@ -720,6 +734,10 @@ export class AdminPortfolioService {
               contactRecipientEmail: current.contactRecipientEmail,
               contactEnabled: snapshot.contactEnabled,
               contactRetentionDays: snapshot.contactRetentionDays,
+              auditRetentionDays: snapshot.auditRetentionDays,
+              searchConsoleTokens: editableVerificationTokens(
+                current.searchConsoleTokens
+              ),
               githubUsername: snapshot.githubUsername ?? null,
               githubRepoAllowlist: snapshot.githubRepoAllowlist,
               githubCacheTtlSeconds: snapshot.githubCacheTtlSeconds,
@@ -827,7 +845,7 @@ export class AdminPortfolioService {
           return restoreCurrent(this, tx, tx.resumeVersion, actorId, "ResumeVersion", revision.entityId, parsed);
         }
         case "SiteSettingsTranslation":
-          return restoreTranslation(this, tx, tx.siteSettingsTranslation, actorId, revision, adminSiteSettingsTranslationSchema, pick(snapshot, ["siteName", "titleTemplate", "metaDescription"]));
+          return restoreTranslation(this, tx, tx.siteSettingsTranslation, actorId, revision, adminSiteSettingsTranslationSchema, pick(snapshot, ["siteName", "titleTemplate", "metaDescription", "keywords", "footerLines", "footerRights", "resumeButtonLabel"]));
         case "ProjectTranslation":
           return restoreTranslation(this, tx, tx.projectTranslation, actorId, revision, adminProjectTranslationSchema, pick(snapshot, ["title", "summary", "longDescription"]));
         case "SkillCategoryTranslation":
@@ -842,7 +860,7 @@ export class AdminPortfolioService {
             key: section.key,
             translation: pick(snapshot, ["title", "content"]),
           });
-          return restoreTranslation(this, tx, tx.pageSectionTranslation, actorId, revision, { parse: (value: unknown) => parsed.translation }, parsed.translation);
+          return restoreTranslation(this, tx, tx.pageSectionTranslation, actorId, revision, { parse: () => parsed.translation }, parsed.translation);
         }
         default:
           throw new AdminInvariantError({ revision: ["This resource family cannot be restored here."] });
@@ -851,7 +869,13 @@ export class AdminPortfolioService {
   }
 
   async listAuditEvents(): Promise<unknown> {
+    const { auditRetentionDays } =
+      await this.database.siteSettings.findUniqueOrThrow({
+        where: { id: 1 },
+        select: { auditRetentionDays: true },
+      });
     return this.database.auditEvent.findMany({
+      where: { createdAt: { gte: retentionCutoff(auditRetentionDays) } },
       select: {
         id: true,
         eventType: true,
@@ -1048,6 +1072,10 @@ export class AdminPortfolioService {
   }
 }
 
+function retentionCutoff(days: number): Date {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1_000);
+}
+
 function invalidationRows(tx: any, entityType: string): Promise<unknown>[] {
   const namespaces = entityType === "AppearanceSettings"
     ? ["appearance"]
@@ -1092,6 +1120,17 @@ function redactSettings(value: Record<string, unknown>) {
   delete safe.searchConsoleTokens;
   delete safe.birthDate;
   return safe;
+}
+
+function editableVerificationTokens(value: unknown): {
+  readonly google: string | null;
+  readonly bing: string | null;
+} {
+  const record = asRecord(value);
+  return {
+    google: typeof record?.google === "string" ? record.google : null,
+    bing: typeof record?.bing === "string" ? record.bing : null,
+  };
 }
 
 function projectData(input: AdminProject) {
@@ -1283,7 +1322,14 @@ function dateOnlyValue(value: unknown): string {
 
 function dateOnlyOrNull(value: unknown): string | null {
   if (value === null || value === undefined) return null;
-  const date = new Date(String(value));
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    !(value instanceof Date)
+  ) {
+    return null;
+  }
+  const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? null : dateOnly(date);
 }
 

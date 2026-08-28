@@ -2,15 +2,13 @@ import { Download } from "lucide-react";
 import Button from "../UI/Buttons/CustomBTN";
 import Link from "next/link";
 import type { PublicResume } from "@portfolio/contracts/portfolio";
-import type { Locale } from "@portfolio/contracts/common";
-import { getMessages } from "@/i18n/messages";
 
 const DownloadResume = ({
   resume,
-  locale,
+  buttonLabel,
 }: {
   readonly resume: PublicResume | null;
-  readonly locale: Locale;
+  readonly buttonLabel: string;
 }) => {
   if (resume === null) return null;
   return (
@@ -23,7 +21,7 @@ const DownloadResume = ({
         >
           <Download size={18} />
           <p>
-            {getMessages(locale).resume.download} {resume.label}
+            {buttonLabel} {resume.label}
           </p>
         </Link>
       </Button>

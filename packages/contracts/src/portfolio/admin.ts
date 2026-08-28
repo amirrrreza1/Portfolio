@@ -26,6 +26,13 @@ import {
 /** Admin-only contracts for the first M7 vertical slice. */
 const shortText = trimmedTextSchema({ max: 200 });
 const prose = multilineTextSchema({ max: 10_000 });
+const verificationToken = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .regex(/^[\p{L}\p{N}._=-]+$/u)
+  .nullable();
 
 export const adminSiteSettingsSchema = z
   .object({
@@ -40,6 +47,10 @@ export const adminSiteSettingsSchema = z
     contactRecipientEmail: normalizedEmailSchema,
     contactEnabled: z.boolean(),
     contactRetentionDays: z.int().min(1).max(3650),
+    auditRetentionDays: z.int().min(30).max(3650),
+    searchConsoleTokens: z
+      .object({ google: verificationToken, bing: verificationToken })
+      .strict(),
     githubUsername: githubUsernameSchema.nullable(),
     githubRepoAllowlist: z.array(githubRepositoryNameSchema).max(100),
     githubCacheTtlSeconds: z.int().min(60).max(86_400),
@@ -82,6 +93,10 @@ export const adminSiteSettingsTranslationSchema = z
     siteName: shortText,
     titleTemplate: trimmedTextSchema({ max: 240 }),
     metaDescription: prose.pipe(z.string().max(500)),
+    keywords: z.array(shortText).max(30),
+    footerLines: z.array(shortText).max(6),
+    footerRights: shortText,
+    resumeButtonLabel: shortText,
   })
   .strict();
 
@@ -130,6 +145,28 @@ const collectionTranslationSchema = z
     content: z.object({}).strict(),
   })
   .strict();
+const contactTranslationSchema = z
+  .object({
+    title: shortText.nullable(),
+    content: z
+      .object({
+        nameLabel: shortText,
+        namePlaceholder: shortText,
+        emailLabel: shortText,
+        emailPlaceholder: shortText,
+        messageLabel: shortText,
+        messagePlaceholder: shortText,
+        sendingLabel: shortText,
+        submitLabel: shortText,
+        successMessage: shortText,
+        failureMessage: shortText,
+        invalidNameMessage: shortText,
+        invalidEmailMessage: shortText,
+        invalidMessageMessage: shortText,
+      })
+      .strict(),
+  })
+  .strict();
 
 export const adminSectionUpdateSchema = z.discriminatedUnion("key", [
   z
@@ -168,9 +205,13 @@ export const adminSectionTranslationSchema = z.discriminatedUnion("key", [
     .object({ key: z.literal("about"), translation: aboutTranslationSchema })
     .strict(),
   ...(["skills", "projects", "certificates", "contact"] as const).map((key) =>
-    z
-      .object({ key: z.literal(key), translation: collectionTranslationSchema })
-      .strict()
+    key === "contact"
+      ? z
+          .object({ key: z.literal("contact"), translation: contactTranslationSchema })
+          .strict()
+      : z
+          .object({ key: z.literal(key), translation: collectionTranslationSchema })
+          .strict()
   ),
 ]);
 

@@ -79,7 +79,8 @@ export default function Footer({
             <CodeStyleText
               strings={[
                 `${messages.footer.copyright} ${year} ${settings.siteName}`,
-                messages.footer.rights,
+                ...settings.footerLines,
+                settings.footerRights,
               ]}
               typingSpeed={50}
               deletingSpeed={30}

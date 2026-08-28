@@ -73,7 +73,7 @@ function renderSection(
       return <Skills title={section.title} skills={portfolio.skills} />;
     case "contact":
       return site.settings.contactEnabled ? (
-        <GetInTouchForm title={section.title} locale={locale} />
+        <GetInTouchForm title={section.title} content={section.content} />
       ) : null;
     case "projects":
       return (
@@ -93,7 +93,10 @@ function renderSection(
             certificates={home.certificates}
             locale={locale}
           />
-          <DownloadResume resume={home.resume} locale={locale} />
+          <DownloadResume
+            resume={home.resume}
+            buttonLabel={site.settings.resumeButtonLabel}
+          />
         </>
       );
   }

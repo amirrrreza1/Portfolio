@@ -21,25 +21,9 @@ import { SITE_FONT_PRELOAD_HREF } from "@/server/font-delivery";
 import { isAdminPath } from "@/server/admin-routes";
 
 export const metadata: Metadata = {
-  // Without an absolute base, Next.js resolves every relative metadata URL
-  // against localhost. These values move into SiteSettings in M7; the base
-  // itself stays an environment concern because it differs per deployment.
+  // The deployment origin remains an environment concern. All authored SEO
+  // copy is supplied by the locale layout from persisted SiteSettings.
   metadataBase: getSiteUrl(),
-  title: "Amirreza Azarioun",
-  description: "Amirreza Azarioun's portfolio site",
-  keywords: [
-    "Amirreza Azarioun",
-    "Portfolio",
-    "Web Developer",
-    "Frontend",
-    "React",
-    "Next.js",
-    "JavaScript",
-    "TypeScript",
-  ],
-  authors: [{ name: "Amirreza Azarioun" }],
-  creator: "Amirreza Azarioun",
-  publisher: "Amirreza Azarioun",
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",

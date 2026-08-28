@@ -23,6 +23,11 @@ function site(locale: "en" | "fa") {
       metaDescription: fa
         ? "وب‌سایت شخصی امیررضا آذریون"
         : "Amirreza Azarioun's portfolio site",
+      keywords: ["portfolio"],
+      footerLines: [],
+      footerRights: fa ? "تمام حقوق محفوظ است" : "All rights reserved",
+      resumeButtonLabel: fa ? "دریافت رزومه" : "Download resume",
+      siteVerification: { google: null, bing: null },
       authorName: "Amirreza Azarioun",
       creatorName: "Amirreza Azarioun",
       publisherName: "Amirreza Azarioun",

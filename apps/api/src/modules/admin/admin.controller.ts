@@ -392,7 +392,7 @@ export class AdminPortfolioController {
     }
     const chunks: Buffer[] = [];
     let total = 0;
-    for await (const chunk of part.file) {
+    for await (const chunk of part.file as AsyncIterable<Buffer>) {
       total += chunk.length;
       if (total > MAX_MEDIA_BYTES) {
         throw this.fail("PAYLOAD_TOO_LARGE", requestId);
@@ -574,7 +574,7 @@ function header(request: FastifyRequest, name: string): string | undefined {
 function multipartField(fields: unknown, name: string): string {
   if (typeof fields !== "object" || fields === null) return "";
   const raw = (fields as Record<string, unknown>)[name];
-  const item = Array.isArray(raw) ? raw[0] : raw;
+  const item: unknown = Array.isArray(raw) ? (raw as unknown[])[0] : raw;
   if (typeof item !== "object" || item === null) return "";
   const value = (item as { readonly value?: unknown }).value;
   return typeof value === "string" ? value : "";
