@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import type { Database } from "@portfolio/database";
 import type { Locale } from "@portfolio/contracts/common";
 import {
@@ -35,6 +36,8 @@ const quoteTextMapSchema = localizedMapSchema(
 
 /** Published homepage collections and authorized document reads. */
 export class PublicHomeService {
+  private static readonly logger = new Logger(PublicHomeService.name);
+
   public constructor(
     private readonly database: Database,
     private readonly media: PublicMediaReader,
@@ -116,24 +119,35 @@ export class PublicHomeService {
       }),
     ]);
 
-    const certificates = certificateRows.map((certificate) => {
-      if (certificate.media === null) {
-        throw new Error("A public certificate is missing its verified PDF.");
+    const certificates = certificateRows.flatMap((certificate) => {
+      const translation = findTranslation(certificate.translations, locale);
+      const fault =
+        certificate.media === null
+          ? "missing verified PDF"
+          : translation === null
+            ? "missing English translation"
+            : null;
+      if (fault !== null || translation === null) {
+        PublicHomeService.logger.error(
+          `Excluding certificate ${certificate.id} from the public home read: ${fault ?? "missing English translation"}.`
+        );
+        return [];
       }
-      const translation = resolveTranslation(certificate.translations, locale);
-      return {
-        id: certificate.id,
-        title: translation.title,
-        description: translation.description,
-        issuerName: certificate.issuerName,
-        issuerUrl: certificate.issuerUrl,
-        instructorName: certificate.instructorName,
-        instructorUrl: certificate.instructorUrl,
-        scoreText: certificate.scoreText,
-        issuedAt: dateOnly(certificate.issuedAt),
-        credentialUrl: certificate.credentialUrl,
-        downloadPath: `/api/v1/public/certificates/${certificate.id}/file`,
-      };
+      return [
+        {
+          id: certificate.id,
+          title: translation.title,
+          description: translation.description,
+          issuerName: certificate.issuerName,
+          issuerUrl: certificate.issuerUrl,
+          instructorName: certificate.instructorName,
+          instructorUrl: certificate.instructorUrl,
+          scoreText: certificate.scoreText,
+          issuedAt: dateOnly(certificate.issuedAt),
+          credentialUrl: certificate.credentialUrl,
+          downloadPath: `/api/v1/public/certificates/${certificate.id}/file`,
+        },
+      ];
     });
 
     const selectedQuote = selectQuote(quoteRows, this.now());
@@ -284,19 +298,20 @@ export class PublicHomeService {
   }
 }
 
-function resolveTranslation<T extends Translation>(
+/**
+ * An unfinished certificate must not decide whether the home page renders, so
+ * the caller excludes a record without an English translation instead of
+ * failing the whole read.
+ */
+function findTranslation<T extends Translation>(
   translations: readonly T[],
   locale: Locale
-): T {
-  const resolved =
+): T | null {
+  return (
     translations.find((translation) => translation.locale === locale) ??
-    translations.find((translation) => translation.locale === "en");
-  if (resolved === undefined) {
-    throw new Error(
-      "Public certificate data is missing its English translation."
-    );
-  }
-  return resolved;
+    translations.find((translation) => translation.locale === "en") ??
+    null
+  );
 }
 
 function resolveQuoteText(value: unknown, locale: Locale): string {

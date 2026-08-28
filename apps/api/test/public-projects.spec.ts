@@ -299,6 +299,107 @@ describe("PublicProjectsService", () => {
     );
   });
 
+  it("excludes an untranslated record instead of failing the whole collection", async () => {
+    // A project created in the CMS before its English translation exists once
+    // threw inside the list map, which returned 500 for the entire locale and
+    // took the public site down with it.
+    const skillCategoryFindMany = vi.fn().mockResolvedValue([
+      {
+        id: categoryId,
+        key: "frameworks",
+        updatedAt: lastModified,
+        translations: [
+          { locale: "en", name: "Frameworks", updatedAt: lastModified },
+        ],
+        skills: [
+          {
+            id: skillId,
+            name: "Next.js",
+            color: "#38bdf8",
+            updatedAt: lastModified,
+          },
+        ],
+      },
+      {
+        id: "c99999999999999999999999",
+        key: "unfinished",
+        updatedAt: lastModified,
+        translations: [],
+        skills: [],
+      },
+    ]);
+    const projectFindMany = vi.fn().mockResolvedValue([
+      {
+        id: projectId,
+        slug: "portfolio",
+        status: "COMPLETED",
+        demoUrl: null,
+        repositoryUrl: "https://github.com/example/portfolio",
+        featured: false,
+        updatedAt: lastModified,
+        image: null,
+        translations: [
+          {
+            locale: "en",
+            title: "Portfolio",
+            summary: "A public project summary.",
+            updatedAt: lastModified,
+          },
+        ],
+        skills: [{ skillId }],
+      },
+      {
+        id: "p99999999999999999999999",
+        slug: "drafted-in-the-cms",
+        status: "IN_PROGRESS",
+        demoUrl: null,
+        repositoryUrl: null,
+        featured: false,
+        updatedAt: lastModified,
+        image: null,
+        translations: [],
+        skills: [],
+      },
+    ]);
+    const database = {
+      skillCategory: { findMany: skillCategoryFindMany },
+      project: { findMany: projectFindMany },
+    } as unknown as Database;
+
+    const result = await new PublicProjectsService(database, {
+      read: vi.fn(),
+    }).read("fa");
+
+    expect(result.data).toEqual(publishedProjects);
+  });
+
+  it("returns nothing for a detail request on an untranslated project", async () => {
+    const projectFindFirst = vi.fn().mockResolvedValue({
+      id: "p99999999999999999999999",
+      slug: "drafted-in-the-cms",
+      status: "IN_PROGRESS",
+      demoUrl: null,
+      repositoryUrl: null,
+      featured: false,
+      startedAt: null,
+      completedAt: null,
+      updatedAt: lastModified,
+      image: null,
+      translations: [],
+      skills: [],
+    });
+    const database = {
+      project: { findFirst: projectFindFirst },
+    } as unknown as Database;
+
+    await expect(
+      new PublicProjectsService(database, { read: vi.fn() }).readDetail(
+        "fa",
+        "drafted-in-the-cms"
+      )
+    ).resolves.toBeNull();
+  });
+
   it("returns safe detail fields and reads only a verified public image", async () => {
     const read = vi.fn().mockResolvedValue(Uint8Array.from([1, 2, 3]));
     const image = {

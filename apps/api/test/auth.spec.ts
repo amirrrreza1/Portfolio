@@ -714,9 +714,12 @@ describe("authorization", () => {
     expect(can(locked, "content.draft.read")).toBe(false);
   });
 
-  it("allows the reviewed M7 editor role to be assigned", () => {
+  // DECISIONS.md: "until accepted, provisioning remains owner-only and EDITOR
+  // is not assignable". The grant table below is still written for the day the
+  // ADR lands; what is refused is handing the role out before then.
+  it("refuses to assign EDITOR while its permission ADR is open", () => {
     expect(isRoleAssignable("OWNER")).toBe(true);
-    expect(isRoleAssignable("EDITOR")).toBe(true);
+    expect(isRoleAssignable("EDITOR")).toBe(false);
   });
 
   it("scopes object access to the owning actor", () => {

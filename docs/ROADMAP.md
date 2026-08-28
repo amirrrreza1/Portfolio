@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-27**
 
-Active milestone: **M7**. M2–M6 are complete. M7 has begun with the authenticated site-shell CMS API: strict contracts and CSRF/origin-protected, versioned settings, appearance, section, navigation, and social-link writes, each with a revision and audit record. The remaining M7 resource, media, translation, restore/health, and administration UI slices are still open. M0's repository-owned work is complete; its gate is held open by one owner action, see §6.
+Active milestone: **M8**. M2–M7 are complete. M7 closed on 2026-08-28 against a running stack: every non-blog portfolio resource is manageable through the authenticated `/admin` surface and its workspace, media and resume replacement is atomic and verified, and the last authored copy has moved out of the source into the database. M0's repository-owned work is complete; its gate is held open by one owner action, see §6. Two decisions remain owed and are named in §6: the v1 editor-permission matrix, which keeps `EDITOR` unassignable, and the contact/audit retention ADR.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -104,7 +104,7 @@ Two dependencies are non-negotiable:
 | M4 — Public bilingual cutover             | Complete    | XL            | Published-only API reads become the default, with locale routing, SSR navigation, and an isolated rollback adapter   | M2, M3             |
 | M5 — Appearance and accessibility         | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
 | M6 — Authentication foundation            | Complete    | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
-| M7 — Portfolio CMS                        | In progress | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
+| M7 — Portfolio CMS                        | Complete    | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
 | M8 — Blog authoring, publishing, and SEO  | Not started | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup     | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
 
@@ -501,6 +501,23 @@ Exit gate:
 ### M7 — Portfolio CMS
 
 Objective: make all existing portfolio content manageable through tested vertical slices.
+
+Complete on 2026-08-28. Every non-blog resource family is reachable through the
+authenticated `/admin` surface with versioned writes, revisions, redacted audit
+events, and durable cache invalidation in the same transaction; the admin
+workspace exposes them with accessible conflict handling; media is verified by
+magic bytes, re-encoded or page-checked, quarantined on refusal, and never
+exposes a storage key; and resume activation is atomic. Proven against a
+running stack in
+[`status/evidence/M7-portfolio-cms-live.md`](status/evidence/M7-portfolio-cms-live.md)
+(31 checks) and in a real browser
+(`pnpm --filter @portfolio/web test:e2e:admin -- portfolio-cms`, 1 test).
+
+The run found two defects, both recorded in that file: one unfinished record
+returned `500` for a whole public collection and took the site to `503`, and
+the M6 role-assignment guard was never wired to M7's user endpoints. Both are
+fixed. `EDITOR` remains unassignable until the overdue v1 editor-permission
+ADR lands, which holds M7's editor story, not this gate.
 
 Deliver slices in this order:
 

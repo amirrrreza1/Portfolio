@@ -79,8 +79,10 @@ test("the complete portfolio workspace loads and handles a real conflict", async
   const staleForm = page.getByTestId("admin-settings-form");
   await staleForm.getByLabel("Timezone").fill("Asia/Tehran");
   await staleForm.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "This item changed in another session."
-  );
+  // Next injects its own route announcer with role="alert", so the conflict
+  // message is matched by its text rather than by the role alone.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "This item changed" })
+  ).toBeVisible();
   await competing.close();
 });

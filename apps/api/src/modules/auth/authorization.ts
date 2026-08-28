@@ -116,7 +116,7 @@ export function can(
  * lands.
  */
 export function isRoleAssignable(role: Role): boolean {
-  return role === "OWNER" || role === "EDITOR";
+  return role === "OWNER";
 }
 
 /**

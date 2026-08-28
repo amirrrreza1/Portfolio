@@ -52,6 +52,8 @@ import {
   publicCacheTag,
 } from "@portfolio/contracts/content";
 import { randomUUID } from "node:crypto";
+
+import { isRoleAssignable } from "../auth/authorization.js";
 import {
   ingestMedia,
   MediaQuarantinedError,
@@ -911,6 +913,7 @@ export class AdminPortfolioService {
     if (this.recoverySecret === undefined) {
       throw new AdminInvariantError({ user: ["User provisioning is unavailable."] });
     }
+    assertRoleAssignable(input.role);
     const recoveryCodes = issueRecoveryCodes(this.recoverySecret, 10);
     const passwordHash = await hashPassword(input.password);
     const user = await this.database.$transaction(async (tx) => {
@@ -960,6 +963,7 @@ export class AdminPortfolioService {
     return this.database.$transaction(async (tx) => {
       const before = await tx.user.findUnique({ where: { id } });
       if (before === null) throw new AdminResourceNotFoundError("User", id);
+      if (input.role !== before.role) assertRoleAssignable(input.role);
       const removesActiveOwner = before.role === "OWNER" && before.status === "ACTIVE" && (input.role !== "OWNER" || input.status !== "ACTIVE");
       if (removesActiveOwner) {
         const activeOwners = await tx.user.count({ where: { role: "OWNER", status: "ACTIVE" } });
@@ -1069,6 +1073,25 @@ export class AdminPortfolioService {
       tx.auditEvent.create({ data: { actorId, eventType: `admin.${entityType.toLowerCase()}.${action.toLowerCase()}`, targetType: entityType, targetId: entityId, outcome: "SUCCESS", metadata: { version: entityVersion } } }),
       ...invalidationRows(tx, entityType),
     ]);
+  }
+}
+
+/**
+ * The single place a role is handed out.
+ *
+ * `isRoleAssignable` was written in M6 to hold `EDITOR` back until the owner's
+ * v1 editor-permission ADR lands, but nothing called it — so M7's user
+ * endpoints could grant the role anyway and answer an open decision by
+ * shipping it. The grant table itself stays as M6 wrote it; only assignment is
+ * refused.
+ */
+function assertRoleAssignable(role: "OWNER" | "EDITOR"): void {
+  if (!isRoleAssignable(role)) {
+    throw new AdminInvariantError({
+      role: [
+        "This role cannot be assigned until the v1 editor-permission decision is recorded.",
+      ],
+    });
   }
 }
 

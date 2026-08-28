@@ -269,6 +269,80 @@ describe("PublicHomeService", () => {
     );
   });
 
+  it("excludes an unfinished certificate instead of failing the home read", async () => {
+    // One certificate created in the CMS without an English translation, or
+    // whose PDF is not yet verified, must not take the whole home page down.
+    const certificateFindMany = vi.fn().mockResolvedValue([
+      {
+        id: certificateId,
+        issuerName: "MFT",
+        issuerUrl: "https://mftplus.com/",
+        instructorName: "Turaj Armin",
+        instructorUrl: "https://www.linkedin.com/in/turaj-armin-34ab14b6/",
+        scoreText: "98/100",
+        issuedAt: new Date("2024-05-26T00:00:00.000Z"),
+        credentialUrl: null,
+        updatedAt: lastModified,
+        translations: [
+          {
+            locale: "en",
+            title: "Web Design 1",
+            description: "HTML and CSS basics.",
+            updatedAt: lastModified,
+          },
+        ],
+        media: { updatedAt: lastModified },
+      },
+      {
+        id: "c99999999999999999999999",
+        issuerName: "Institute",
+        issuerUrl: null,
+        instructorName: "Instructor",
+        instructorUrl: null,
+        scoreText: null,
+        issuedAt: new Date("2026-08-01T00:00:00.000Z"),
+        credentialUrl: null,
+        updatedAt: lastModified,
+        translations: [],
+        media: { updatedAt: lastModified },
+      },
+      {
+        id: "c88888888888888888888888",
+        issuerName: "Institute",
+        issuerUrl: null,
+        instructorName: "Instructor",
+        instructorUrl: null,
+        scoreText: null,
+        issuedAt: new Date("2026-08-02T00:00:00.000Z"),
+        credentialUrl: null,
+        updatedAt: lastModified,
+        translations: [
+          {
+            locale: "en",
+            title: "Awaiting its file",
+            description: "The PDF has not been verified yet.",
+            updatedAt: lastModified,
+          },
+        ],
+        media: null,
+      },
+    ]);
+    const database = {
+      certificate: { findMany: certificateFindMany },
+      quote: { findMany: vi.fn().mockResolvedValue([]) },
+      resumeVersion: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as unknown as Database;
+
+    const result = await new PublicHomeService(
+      database,
+      { read: vi.fn() },
+      () => new Date("2026-01-02T23:30:00.000Z")
+    ).read("en");
+
+    expect(result.data.certificates).toHaveLength(1);
+    expect(result.data.certificates[0]?.id).toBe(certificateId);
+  });
+
   it("reads only an enabled certificate's verified public PDF and checks its size", async () => {
     const bytes = Buffer.from("%PDF-1.7\nproof", "utf8");
     const storageKey = "media/123e4567-e89b-42d3-a456-426614174000.pdf";

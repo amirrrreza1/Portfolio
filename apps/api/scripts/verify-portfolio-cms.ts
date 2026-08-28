@@ -478,20 +478,41 @@ try {
     invalidationCount >= 10,
     `${invalidationCount} events`
   );
+  // The v1 editor-permission ADR has not landed, so DECISIONS.md and
+  // authorization.ts both say EDITOR must not be grantable yet. The API has to
+  // refuse it, and the grant table still has to be right for the day it does
+  // land — so the matrix is proven against a row seeded directly, not against
+  // a role the API handed out.
   const editorEmail = `m7-editor-${suffix}@example.invalid`;
-  const editorCreated = await call("/api/v1/admin/users", {
+  const editorRecovery = issueRecoveryCodes(RECOVERY_SECRET, 1)[0]!;
+  const refusedEditor = await call("/api/v1/admin/users", {
     cookie: ownerCookie,
     csrf: ownerCsrf,
     body: {
-      email: editorEmail,
-      displayName: "M7 proof editor",
+      email: `refused-${editorEmail}`,
+      displayName: "M7 refused editor",
       role: "EDITOR",
       password: "editor correct horse battery staple",
     },
   });
-  const editorCodes = data<any>(editorCreated).recoveryCodes as string[];
+  check(
+    "the API refuses to grant EDITOR while its permission ADR is open",
+    refusedEditor.status === 400 || refusedEditor.status === 422,
+    `HTTP ${refusedEditor.status}`
+  );
+  const editor = await database.user.create({
+    data: {
+      email: editorEmail,
+      displayName: "M7 proof editor",
+      role: "EDITOR",
+      status: "ACTIVE",
+      passwordHash: await hashPassword("editor correct horse battery staple"),
+      passwordChangedAt: new Date(),
+      recoveryCodes: { create: { codeHash: editorRecovery.hash } },
+    },
+  });
   const editorLogin = await call("/api/v1/auth/recovery/verify", {
-    body: { email: editorEmail, code: editorCodes[0] },
+    body: { email: editorEmail, code: editorRecovery.displayCode },
   });
   const editorSession = cookieValue(editorLogin.cookies, "portfolio_session");
   const editorCookie = `portfolio_session=${encodeURIComponent(editorSession ?? "")}`;
@@ -502,8 +523,8 @@ try {
     cookie: editorCookie,
   });
   check(
-    "v1 editor can edit drafts but cannot manage settings",
-    editorCreated.status === 201 &&
+    "a v1 editor can read drafts but cannot manage settings",
+    editor.role === "EDITOR" &&
       editorProjects.status === 200 &&
       editorSettings.status === 403,
     `${editorProjects.status}/${editorSettings.status}`
@@ -519,6 +540,67 @@ try {
     auditView.status === 200 &&
       dashboard.status === 200 &&
       auditView.headers.get("cache-control") === "private, no-store"
+  );
+
+  section("6. Public exposure of what the CMS just changed");
+  const publicSite = await fetch(`${API}/api/v1/public/en/site`);
+  const publicSiteBody = (await publicSite.json()) as any;
+  const publicSettings = publicSiteBody?.data?.settings ?? {};
+  const publicContact = (publicSiteBody?.data?.sections ?? []).find(
+    (entry: any) => entry?.key === "contact"
+  );
+  check(
+    "authored SEO, footer, and contact copy reach the public site read",
+    publicSite.status === 200 &&
+      publicSettings.keywords?.includes(`m7-${suffix}`) === true &&
+      publicSettings.siteVerification?.google === `m7-${suffix}` &&
+      publicContact?.content?.submitLabel === "Send message",
+    `HTTP ${publicSite.status}`
+  );
+  check(
+    "the public site never exposes the raw verification blob",
+    !JSON.stringify(publicSiteBody).includes("searchConsoleTokens")
+  );
+
+  // A project authored in the CMS before its English translation exists is a
+  // normal state. It must not decide whether the rest of the collection
+  // renders: this once returned 500 for the whole locale and took the public
+  // site down behind it.
+  const publicProjects = await fetch(`${API}/api/v1/public/en/projects`);
+  const publicProjectsBody = (await publicProjects.json()) as any;
+  const untranslatedIsPublic = (publicProjectsBody?.data?.projects ?? []).some(
+    (entry: any) => entry?.id === project.id
+  );
+  check(
+    "an untranslated record is withheld, not fatal, on public discovery",
+    publicProjects.status === 200 && !untranslatedIsPublic,
+    `HTTP ${publicProjects.status}`
+  );
+  const untranslatedDetail = await fetch(
+    `${API}/api/v1/public/en/projects/m7-${suffix}`
+  );
+  check(
+    "the untranslated record's detail page is a clean 404, not a crash",
+    untranslatedDetail.status === 404,
+    `HTTP ${untranslatedDetail.status}`
+  );
+
+  const publicHome = await fetch(`${API}/api/v1/public/en/home`);
+  const publicHomeBody = (await publicHome.json()) as any;
+  const download = publicHomeBody?.data?.resume?.downloadPath ?? "";
+  const resumeFile = await fetch(`${API}${download}`);
+  check(
+    "the activated resume is served from a stable path with SECURITY.md §8 headers",
+    publicHome.status === 200 &&
+      publicHomeBody?.data?.resume?.filename === "resume-m7.pdf" &&
+      resumeFile.status === 200 &&
+      resumeFile.headers.get("content-type") === "application/pdf" &&
+      resumeFile.headers.get("x-content-type-options") === "nosniff" &&
+      (resumeFile.headers.get("content-disposition") ?? "").startsWith(
+        "attachment;"
+      ) &&
+      !download.includes("media/"),
+    `${download} -> HTTP ${resumeFile.status}`
   );
 } catch (error) {
   failures += 1;

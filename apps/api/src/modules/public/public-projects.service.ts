@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import type { Database } from "@portfolio/database";
 import {
   publicProjectDetailSchema,
@@ -57,6 +58,8 @@ type ProjectImageRow = {
  * future query edit cannot silently widen the public response.
  */
 export class PublicProjectsService {
+  private static readonly logger = new Logger(PublicProjectsService.name);
+
   public constructor(
     private readonly database: Database,
     private readonly media: PublicMediaReader
@@ -144,33 +147,52 @@ export class PublicProjectsService {
       )
     );
 
-    const skillCategories = categoryRows.map((category) => ({
-      id: category.id,
-      key: category.key,
-      name: resolveTranslation(category.translations, locale).name,
-      skills: category.skills.map((skill) => ({
-        id: skill.id,
-        name: skill.name,
-        color: skill.color,
-      })),
-    }));
+    const skillCategories = categoryRows.flatMap((category) => {
+      const translation = findTranslation(category.translations, locale);
+      if (translation === null) {
+        PublicProjectsService.logger.error(
+          `Excluding skill category ${category.id} from public discovery: missing English translation.`
+        );
+        return [];
+      }
+      return [
+        {
+          id: category.id,
+          key: category.key,
+          name: translation.name,
+          skills: category.skills.map((skill) => ({
+            id: skill.id,
+            name: skill.name,
+            color: skill.color,
+          })),
+        },
+      ];
+    });
 
-    const projects = projectRows.map((project) => {
-      const translation = resolveTranslation(project.translations, locale);
-      return {
-        id: project.id,
-        slug: project.slug,
-        title: translation.title,
-        summary: translation.summary,
-        status: project.status,
-        demoUrl: project.demoUrl,
-        repositoryUrl: project.repositoryUrl,
-        featured: project.featured,
-        skillIds: project.skills
-          .map((relation) => relation.skillId)
-          .filter((skillId) => enabledSkillIds.has(skillId)),
-        image: toPublicImage(project.image, project.slug, translation.title),
-      };
+    const projects = projectRows.flatMap((project) => {
+      const translation = findTranslation(project.translations, locale);
+      if (translation === null) {
+        PublicProjectsService.logger.error(
+          `Excluding project ${project.id} from public discovery: missing English translation.`
+        );
+        return [];
+      }
+      return [
+        {
+          id: project.id,
+          slug: project.slug,
+          title: translation.title,
+          summary: translation.summary,
+          status: project.status,
+          demoUrl: project.demoUrl,
+          repositoryUrl: project.repositoryUrl,
+          featured: project.featured,
+          skillIds: project.skills
+            .map((relation) => relation.skillId)
+            .filter((skillId) => enabledSkillIds.has(skillId)),
+          image: toPublicImage(project.image, project.slug, translation.title),
+        },
+      ];
     });
 
     const lastModified = latestDate([
@@ -261,7 +283,13 @@ export class PublicProjectsService {
     });
     if (project === null) return null;
 
-    const translation = resolveTranslation(project.translations, locale);
+    const translation = findTranslation(project.translations, locale);
+    if (translation === null) {
+      PublicProjectsService.logger.error(
+        `Refusing project ${project.id} on the public detail path: missing English translation.`
+      );
+      return null;
+    }
     if (translation.longDescription !== null) {
       await renderMarkdownBody(translation.longDescription);
     }
@@ -430,21 +458,21 @@ function readImageDimensions(image: ProjectImageRow): {
   return { width: image.width, height: image.height };
 }
 
-function resolveTranslation<T extends Translation>(
+/**
+ * A public collection is read by every visitor, so one unfinished record must
+ * not decide whether the rest of them render. Authoring a record before its
+ * English translation exists is a normal CMS state; the record is simply not
+ * published yet, and the caller excludes it rather than failing the request.
+ */
+function findTranslation<T extends Translation>(
   translations: readonly T[],
   locale: Locale
-): T {
-  const resolved =
+): T | null {
+  return (
     translations.find((translation) => translation.locale === locale) ??
-    translations.find((translation) => translation.locale === "en");
-
-  if (resolved === undefined) {
-    throw new Error(
-      "Public portfolio record is missing its required English translation."
-    );
-  }
-
-  return resolved;
+    translations.find((translation) => translation.locale === "en") ??
+    null
+  );
 }
 
 function latestDate(values: readonly Date[]): Date {
