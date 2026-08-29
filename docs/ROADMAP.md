@@ -556,9 +556,15 @@ preview through the production pipeline. The editor that reaches it is proven
 in a real browser in
 [`status/evidence/M8-editor-live.md`](status/evidence/M8-editor-live.md):
 article workspace panel, directive palette, checklist with a checkbox per
-warning, autosave, and the preview route. Markdown import, article revision
-restore, the discovery and SEO surfaces, and the scheduled-publication test
-matrix remain open; see [`status/M8.md`](status/M8.md).
+warning, autosave, and the preview route. Deterministic Markdown import is
+live-proven in
+[`status/evidence/M8-import-live.md`](status/evidence/M8-import-live.md): strict
+UTF-8 and bounded input, executable-MDX rejection, line findings, normalized
+source and exact diff, private byte-for-byte quarantine, and one-time
+actor/target/version-bound confirmation through the normal article-save path.
+Article revision restore, the discovery and SEO surfaces, and the
+scheduled-publication test matrix remain open; see
+[`status/M8.md`](status/M8.md).
 
 Deliverables:
 

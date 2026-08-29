@@ -133,7 +133,10 @@ The object key is internal. Public URLs are constructed by an adapter or returne
 
 ## 5. Blog models
 
-Article bodies are **not** stored in PostgreSQL. `Post` and `PostTranslation` are the index over `content/blog/<postId>/<locale>.md`.
+Article bodies are stored in PostgreSQL. `PostTranslation.bodyMarkdown` is the
+authoritative normalized source; rendered HTML is a provenance-checked cache.
+Optional `.md`/`.mdx` import is an ingestion path only and never creates a
+second file-backed authority.
 
 ### `Post`
 
@@ -163,6 +166,21 @@ Rules:
 `id`, `postId`, `locale`, `authorId`, `bodyMarkdown`, `frontmatter` (jsonb), `baseVersion`, `updatedAt`.
 
 Editor autosave only. Unique on `(postId, locale, authorId)`. These rows are working state, never a publication source, and are deleted once their content is saved. `baseVersion` records the integer translation revision the author started from. Draft bodies are excluded from revision snapshots.
+
+### `ArticleImportReport`
+
+`id`, unique `tokenHash`, actor ID, unique original quarantined media ID,
+optional requested/resolved post ID, locale, optional base version, acceptance
+flag, line-addressed findings (jsonb), accepted normalized frontmatter (jsonb)
+and body, exact diff, expiry, optional committed timestamp, and created time.
+
+The random confirmation token is returned once and only its SHA-256 is stored.
+Every report is actor-, target-, locale-, version-, expiry-, and one-time-use
+bound. Rejected reports cannot retain normalized frontmatter or body. The
+referenced `MediaAsset` is a private `DOCUMENT` in `QUARANTINED` state holding
+the exact uploaded bytes under a random internal object key; it has no public
+delivery path. Confirmation sends accepted normalized content through the same
+transactional save and revision path as the editor.
 
 ### `Category`, `Tag`, `CategoryTranslation`, `TagTranslation`, and `PostTag`
 

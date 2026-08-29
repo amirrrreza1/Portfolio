@@ -49,6 +49,8 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 
 - [`M8-editor-live.md`](M8-editor-live.md) records the second M8 slice in a real browser — taxonomy creation, a new article, the directive palette, the publish checklist with a checkbox per warning, publication, and the preview route. It records three defects: a palette that could insert a block directive mid-line, every admin `<select>` announcing its own options as part of its accessible name, and a refused transition collapsed to a generic message that discarded what the API had answered with.
 
+- [`M8-import-live.md`](M8-import-live.md) records the third M8 slice — 30/30 live API checks and the extended real-browser flow proving strict and bounded Markdown/MDX dry runs, executable-MDX rejection with source lines, exact private quarantine, visible inference and diff review, one-time confirmation, and lifecycle-preserving persistence through the normal article-save path.
+
 ## M7 — portfolio CMS
 
 - [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.

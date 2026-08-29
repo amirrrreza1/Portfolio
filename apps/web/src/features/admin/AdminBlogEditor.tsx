@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   adminRequest,
+  adminUpload,
   describeAdminError,
   AdminRequestError,
 } from "./admin-client";
@@ -69,6 +70,28 @@ type Translation = {
 type Checklist = {
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
+};
+
+type ImportReport = {
+  readonly reportToken: string;
+  readonly accepted: boolean;
+  readonly findings: readonly {
+    readonly severity: "error" | "warning" | "info";
+    readonly line: number | null;
+    readonly code: string;
+    readonly message: string;
+  }[];
+  readonly normalizedFrontmatter: {
+    readonly postId: string;
+    readonly locale: Locale;
+    readonly title: string;
+    readonly slug: string;
+    readonly excerpt: string;
+  } | null;
+  readonly normalizedDocument: string | null;
+  readonly diff: string;
+  readonly quarantinedSourceId: string;
+  readonly expiresAt: string;
 };
 
 type Taxonomy = {
@@ -192,6 +215,13 @@ export default function AdminBlogEditor(): React.JSX.Element {
         busy={busy}
       />
 
+      <ImportPanel
+        posts={posts}
+        busy={busy}
+        mutate={mutate}
+        onImported={setSelected}
+      />
+
       {selected === null ? (
         <p className="text-text-muted text-sm">
           Choose a translation above to edit it, or start a new article.
@@ -311,6 +341,223 @@ function PostList({
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+function ImportPanel({
+  posts,
+  busy,
+  mutate,
+  onImported,
+}: {
+  readonly posts: readonly PostSummary[];
+  readonly busy: boolean;
+  readonly mutate: (
+    action: () => Promise<unknown>,
+    success: string
+  ) => Promise<void>;
+  readonly onImported: (value: {
+    readonly postId: string;
+    readonly locale: Locale;
+  }) => void;
+}): React.JSX.Element {
+  const [review, setReview] = useState<{
+    readonly report: ImportReport;
+    readonly requestedPostId: string | null;
+    readonly locale: Locale;
+  } | null>(null);
+
+  return (
+    <section className="flex flex-col gap-5" data-testid="blog-import">
+      <ResourceHeading
+        title="Import Markdown"
+        description="The first step only parses and reports. The exact upload is retained privately in quarantine; nothing reaches an article until you review the normalized Markdown and confirm its report token."
+      />
+      <form
+        className="border-border grid gap-4 border p-4 md:grid-cols-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const file = form.get("file");
+          if (!(file instanceof File) || file.size === 0) return;
+          const requestedPostId = String(form.get("postId") ?? "").trim();
+          const locale = String(form.get("locale") ?? "en") as Locale;
+          // Fields precede the file so Fastify can expose them while streaming
+          // the single bounded file instead of buffering an unbounded form.
+          const upload = new FormData();
+          upload.append("postId", requestedPostId);
+          upload.append("locale", locale);
+          upload.append("file", file, file.name);
+          void mutate(async () => {
+            const report = await adminUpload<ImportReport>(
+              "/admin/blog/import",
+              upload
+            );
+            setReview({
+              report,
+              requestedPostId:
+                requestedPostId.length === 0 ? null : requestedPostId,
+              locale,
+            });
+          }, "Import dry run ready for review. No article was changed.");
+        }}
+      >
+        <Field
+          label="Markdown or MDX file"
+          hint="Maximum 512 KiB. Executable MDX, raw HTML, and unsafe URLs are rejected with line findings."
+        >
+          <input
+            className={inputClass}
+            name="file"
+            type="file"
+            accept=".md,.markdown,.mdx,text/markdown"
+            required
+          />
+        </Field>
+        <Field
+          label="Article target"
+          hint="Choose an existing post, or let valid frontmatter/new inference supply the ID."
+        >
+          <select className={inputClass} name="postId" defaultValue="">
+            <option value="">New article or frontmatter target</option>
+            {posts.map((post) => (
+              <option key={post.id} value={post.id}>
+                {post.translations[0]?.title ?? post.id}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Translation locale">
+          <select className={inputClass} name="locale" defaultValue="en">
+            <option value="en">English</option>
+            <option value="fa">Persian</option>
+          </select>
+        </Field>
+        <div className="md:col-span-3">
+          <SaveButton busy={busy}>Parse and review</SaveButton>
+        </div>
+      </form>
+
+      {review === null ? null : (
+        <div className="border-border flex flex-col gap-4 border p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className="font-semibold">
+                {review.report.accepted
+                  ? "Dry run accepted"
+                  : "Dry run needs changes"}
+              </h4>
+              <p className="text-text-muted text-xs">
+                Original retained as {review.report.quarantinedSourceId} ·
+                report expires {formatUtc(review.report.expiresAt)}
+              </p>
+            </div>
+            {review.report.accepted &&
+            review.report.normalizedFrontmatter !== null ? (
+              <button
+                type="button"
+                disabled={busy}
+                className="border-success text-success border px-4 py-2 text-sm disabled:opacity-40"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Save exactly this normalized import through the article transaction?"
+                    )
+                  ) {
+                    return;
+                  }
+                  void mutate(async () => {
+                    await adminRequest("/admin/blog/import", {
+                      method: "POST",
+                      mutation: true,
+                      body: {
+                        postId: review.requestedPostId,
+                        locale: review.locale,
+                        confirm: true,
+                        reportToken: review.report.reportToken,
+                      },
+                    });
+                    onImported({
+                      postId: review.report.normalizedFrontmatter!.postId,
+                      locale: review.locale,
+                    });
+                    setReview(null);
+                  }, "Normalized Markdown imported and saved as a new article revision.");
+                }}
+              >
+                Confirm and save
+              </button>
+            ) : null}
+          </div>
+
+          {review.report.findings.length === 0 ? (
+            <p className="text-success text-sm">No normalization findings.</p>
+          ) : (
+            <ul className="flex flex-col gap-2 text-sm">
+              {review.report.findings.map((finding, index) => (
+                <li
+                  key={`${finding.code}:${finding.line ?? "document"}:${index}`}
+                  className={
+                    finding.severity === "error"
+                      ? "text-danger"
+                      : finding.severity === "warning"
+                        ? "text-accent"
+                        : "text-text-muted"
+                  }
+                >
+                  <span className="font-mono text-xs">
+                    {finding.severity.toUpperCase()} · {finding.code}
+                    {finding.line === null ? "" : ` · line ${finding.line}`}
+                  </span>
+                  <span className="ml-2">{finding.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {review.report.normalizedFrontmatter === null ? null : (
+            <dl className="grid gap-2 text-sm md:grid-cols-2">
+              {(
+                [
+                  ["Title", review.report.normalizedFrontmatter.title],
+                  ["Slug", review.report.normalizedFrontmatter.slug],
+                  ["Excerpt", review.report.normalizedFrontmatter.excerpt],
+                  ["Post ID", review.report.normalizedFrontmatter.postId],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-text-muted text-xs">{label}</dt>
+                  <dd className={label === "Post ID" ? "font-mono" : ""}>
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+
+          {review.report.normalizedDocument === null ? null : (
+            <details>
+              <summary className="cursor-pointer text-sm font-semibold">
+                Normalized Markdown
+              </summary>
+              <pre className="border-border bg-surface mt-3 max-h-96 overflow-auto border p-3 text-xs whitespace-pre-wrap">
+                {review.report.normalizedDocument}
+              </pre>
+            </details>
+          )}
+          {review.report.accepted ? (
+            <details open>
+              <summary className="cursor-pointer text-sm font-semibold">
+                Exact save diff
+              </summary>
+              <pre className="border-border bg-surface mt-3 max-h-96 overflow-auto border p-3 text-xs whitespace-pre-wrap">
+                {review.report.diff || "No content changes."}
+              </pre>
+            </details>
+          ) : null}
+        </div>
       )}
     </section>
   );

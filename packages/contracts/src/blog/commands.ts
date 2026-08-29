@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { postIdSchema, recordVersionSchema } from "../common/ids.js";
+import {
+  mediaAssetIdSchema,
+  postIdSchema,
+  recordVersionSchema,
+} from "../common/ids.js";
 import { localeSchema } from "../common/locale.js";
 import { frontmatterSchema } from "../content/frontmatter.js";
 
@@ -226,8 +230,16 @@ export const importReportSchema = z.object({
   accepted: z.boolean(),
   findings: z.array(importFindingSchema),
   normalizedFrontmatter: frontmatterSchema.nullable(),
+  /**
+   * The complete deterministic `.md` envelope the confirmation would save.
+   * This is deliberately returned even for `.mdx` input: accepted MDX has no
+   * executable constructs left and PostgreSQL stores Markdown, never MDX.
+   */
+  normalizedDocument: z.string().nullable(),
   /** Exact diff the commit would produce, so nothing lands unseen. */
   diff: z.string(),
+  /** Private evidence object retaining the exact uploaded bytes. */
+  quarantinedSourceId: mediaAssetIdSchema,
   expiresAt: z.string().min(1),
 });
 

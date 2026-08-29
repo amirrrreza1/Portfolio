@@ -171,16 +171,17 @@ model User {
   updatedAt         DateTime   @updatedAt @db.Timestamptz(6)
   version           Int        @default(0)
 
-  webAuthnCredentials WebAuthnCredential[]
-  sessions            Session[]
-  recoveryCodes       RecoveryCode[]
-  posts               Post[]
-  postDrafts          PostDraft[]
-  uploadedMedia       MediaAsset[]
-  resumeUploads       ResumeVersion[]
-  revisions           ContentRevision[]
-  auditEvents         AuditEvent[]
-  slugRedirects       SlugRedirect[]
+  webAuthnCredentials  WebAuthnCredential[]
+  sessions             Session[]
+  recoveryCodes        RecoveryCode[]
+  posts                Post[]
+  postDrafts           PostDraft[]
+  uploadedMedia        MediaAsset[]
+  resumeUploads        ResumeVersion[]
+  revisions            ContentRevision[]
+  auditEvents          AuditEvent[]
+  slugRedirects        SlugRedirect[]
+  articleImportReports ArticleImportReport[]
 
   @@index([status])
   @@map("users")
@@ -213,26 +214,26 @@ model WebAuthnCredential {
 /// Short-lived one-time challenge. `delete` is the consume operation so an
 /// assertion cannot replay across API replicas or process restarts.
 model WebAuthnChallenge {
-  id        String                  @id
+  id        String                   @id
   challenge String
   purpose   WebAuthnChallengePurpose
   userId    String?
-  expiresAt DateTime                @db.Timestamptz(6)
-  createdAt DateTime                @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime                 @db.Timestamptz(6)
+  createdAt DateTime                 @default(now()) @db.Timestamptz(6)
 
   @@index([expiresAt])
   @@map("webauthn_challenges")
 }
 
 model Session {
-  id     String @id @default(cuid(2))
-  userId String
+  id               String    @id @default(cuid(2))
+  userId           String
   /// SHA-256/HMAC of the session token. The random token itself exists only in
   /// the cookie, so a database disclosure does not yield usable sessions.
-  tokenHash String @unique
+  tokenHash        String    @unique
   /// Binds the CSRF token to this session, so a token minted for one session
   /// cannot be replayed against another.
-  csrfBindingHash String
+  csrfBindingHash  String
   /// Coarse network and client fingerprints for anomaly review. Hashed and
   /// truncated: enough to notice a session moving continents, not enough to be
   /// a location history.
@@ -277,11 +278,11 @@ model RecoveryCode {
 /// A settings table that can hold two rows eventually holds two rows, and then
 /// every read has to decide which one is real.
 model SiteSettings {
-  id                    Int      @id @default(1)
+  id                    Int       @id @default(1)
   canonicalSiteUrl      String
-  defaultLocale         Locale   @default(en)
-  enabledLocales        Locale[] @default([en, fa])
-  timezone              String   @default("UTC")
+  defaultLocale         Locale    @default(en)
+  enabledLocales        Locale[]  @default([en, fa])
+  timezone              String    @default("UTC")
   defaultSocialImageId  String?
   authorName            String
   creatorName           String
@@ -291,22 +292,22 @@ model SiteSettings {
   /// receives contact mail, and publishing it is how the form becomes a spam
   /// relay target.
   contactRecipientEmail String
-  contactEnabled        Boolean  @default(true)
-  contactRetentionDays  Int      @default(90)
+  contactEnabled        Boolean   @default(true)
+  contactRetentionDays  Int       @default(90)
   /// Retention policy for append-only audit events. The application role
   /// cannot delete these rows; the M9 operations job applies this window.
-  auditRetentionDays    Int      @default(400)
+  auditRetentionDays    Int       @default(400)
   githubUsername        String?
-  githubRepoAllowlist   String[] @default([])
-  githubCacheTtlSeconds Int      @default(3600)
-  robotsAllowIndexing   Boolean  @default(true)
+  githubRepoAllowlist   String[]  @default([])
+  githubCacheTtlSeconds Int       @default(3600)
+  robotsAllowIndexing   Boolean   @default(true)
   /// Owner date of birth. Moved here from the BIRTH_DATE environment variable
   /// so it can change without a deployment; the age is always derived
   /// server-side and the date is never in a public DTO.
   birthDate             DateTime? @db.Date
-  createdAt             DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
-  version               Int      @default(0)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
+  version               Int       @default(0)
 
   defaultSocialImage MediaAsset?               @relation(fields: [defaultSocialImageId], references: [id], onDelete: Restrict)
   translations       SiteSettingsTranslation[]
@@ -325,9 +326,9 @@ model SiteSettingsTranslation {
   footerLines       String[] @default([])
   footerRights      String   @default("All rights reserved")
   resumeButtonLabel String   @default("Download Resume")
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
-  version         Int      @default(0)
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(6)
+  version           Int      @default(0)
 
   siteSettings SiteSettings @relation(fields: [siteSettingsId], references: [id], onDelete: Cascade)
 
@@ -499,11 +500,11 @@ model ProjectTranslation {
 }
 
 model SkillCategory {
-  id        String    @id @default(cuid(2))
-  key       String    @unique
-  sortOrder Int       @default(0)
-  enabled   Boolean   @default(true)
-  legacyId  Int?      @unique
+  id         String    @id @default(cuid(2))
+  key        String    @unique
+  sortOrder  Int       @default(0)
+  enabled    Boolean   @default(true)
+  legacyId   Int?      @unique
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
   archivedAt DateTime? @db.Timestamptz(6)
@@ -533,25 +534,25 @@ model SkillCategoryTranslation {
 }
 
 model Skill {
-  id         String   @id @default(cuid(2))
-  categoryId String
+  id          String    @id @default(cuid(2))
+  categoryId  String
   /// Skill names are proper nouns ("TypeScript", "PostgreSQL") and are
   /// deliberately NOT translated. Normalized for uniqueness.
-  name       String   @unique
+  name        String    @unique
   /// #rrggbb, contrast-checked against every enabled theme before it can be
   /// saved, because label text colour is derived from it at render time. The
   /// checker is `checkBadgeColorContrast` in @portfolio/contracts. Three legacy
   /// values are #000000 and fail; M2 reports them and replaces them under its
   /// own migration version rather than editing the frozen source.
-  color      String
+  color       String
   iconMediaId String?
-  sortOrder  Int      @default(0)
-  enabled    Boolean  @default(true)
-  legacyId   Int?     @unique
-  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
-  archivedAt DateTime? @db.Timestamptz(6)
-  version    Int       @default(0)
+  sortOrder   Int       @default(0)
+  enabled     Boolean   @default(true)
+  legacyId    Int?      @unique
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt  DateTime? @db.Timestamptz(6)
+  version     Int       @default(0)
 
   category  SkillCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   iconMedia MediaAsset?    @relation(fields: [iconMediaId], references: [id], onDelete: Restrict)
@@ -623,18 +624,18 @@ model CertificateTranslation {
 }
 
 model Quote {
-  id           String   @id @default(cuid(2))
+  id           String    @id @default(cuid(2))
   textByLocale Json
   /// "Anonymous" is a legitimate value and MUST NOT be normalized away.
   author       String?
   sourceUrl    String?
-  enabled      Boolean  @default(true)
+  enabled      Boolean   @default(true)
   /// When set, this quote is always shown. Otherwise selection is a stable
   /// function of the UTC date, computed server-side so the cached HTML stays
   /// valid and server and client cannot disagree.
-  pinned       Boolean  @default(false)
-  sortOrder    Int      @default(0)
-  legacyId     Int?     @unique
+  pinned       Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  legacyId     Int?      @unique
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
   archivedAt   DateTime? @db.Timestamptz(6)
@@ -673,14 +674,15 @@ model MediaAsset {
   archivedAt      DateTime?            @db.Timestamptz(6)
   version         Int                  @default(0)
 
-  uploadedBy     User?          @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  projects       Project[]
-  certificates   Certificate[]
-  skills         Skill[]
-  posts          Post[]
-  postTranslations PostTranslation[]
-  resumeVersions ResumeVersion[]
-  siteSettings   SiteSettings[]
+  uploadedBy           User?                 @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  projects             Project[]
+  certificates         Certificate[]
+  skills               Skill[]
+  posts                Post[]
+  postTranslations     PostTranslation[]
+  resumeVersions       ResumeVersion[]
+  siteSettings         SiteSettings[]
+  articleImportReports ArticleImportReport[]
 
   @@index([checksumSha256])
   @@index([processingState])
@@ -746,7 +748,7 @@ model Post {
 }
 
 model PostTranslation {
-  id             String @id @default(cuid(2))
+  id             String  @id @default(cuid(2))
   postId         String
   locale         Locale
   title          String
@@ -764,12 +766,12 @@ model PostTranslation {
   /// Nullable only so the forward migration does not invent source for legacy
   /// Git-index rows. New saves require a nonempty body and digest; public reads
   /// fail closed until old rows are explicitly reimported.
-  bodyMarkdown  String?
-  bodySha256    String?
-  readingMinutes Int?
-  headingTree    Json?
-  renderedHtml    String?
-  rendererVersion String?
+  bodyMarkdown             String?
+  bodySha256               String?
+  readingMinutes           Int?
+  headingTree              Json?
+  renderedHtml             String?
+  rendererVersion          String?
   frontmatterSchemaVersion Int?
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)
@@ -792,17 +794,17 @@ model PostTranslation {
 /// source, and are deleted once their content is explicitly saved. Draft
 /// bodies are excluded from revision snapshots.
 model PostDraft {
-  id            String   @id @default(cuid(2))
-  postId        String
-  locale        Locale
-  authorId      String
-  bodyMarkdown  String
-  frontmatter   Json?
+  id           String   @id @default(cuid(2))
+  postId       String
+  locale       Locale
+  authorId     String
+  bodyMarkdown String
+  frontmatter  Json?
   /// What the author started from, so a conflict can be shown as a diff
   /// rather than as "someone else changed this, good luck".
-  baseVersion   Int?
-  createdAt     DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+  baseVersion  Int?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 
   post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -810,6 +812,36 @@ model PostDraft {
   @@unique([postId, locale, authorId])
   @@index([updatedAt])
   @@map("post_drafts")
+}
+
+/// Durable, actor-bound review state for the two-step Markdown import.
+/// Tokens are stored only as SHA-256 digests. The exact original upload lives
+/// in the referenced private quarantined MediaAsset; only normalized Markdown
+/// can cross the confirmation boundary into PostTranslation.
+model ArticleImportReport {
+  id                    String    @id @default(cuid(2))
+  tokenHash             String    @unique
+  actorId               String
+  originalMediaId       String    @unique
+  requestedPostId       String?
+  postId                String?
+  locale                Locale
+  baseVersion           Int?
+  accepted              Boolean
+  findings              Json
+  normalizedFrontmatter Json?
+  normalizedBody        String?
+  diff                  String
+  expiresAt             DateTime  @db.Timestamptz(6)
+  committedAt           DateTime? @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+
+  actor         User       @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  originalMedia MediaAsset @relation(fields: [originalMediaId], references: [id], onDelete: Restrict)
+
+  @@index([actorId, expiresAt])
+  @@index([expiresAt, committedAt])
+  @@map("article_import_reports")
 }
 
 model Category {
@@ -963,15 +995,15 @@ model ContentJob {
 }
 
 model ContentInvalidationOutbox {
-  id          String      @id @default(cuid(2))
+  id String @id @default(cuid(2))
 
-  cacheTag    String
-  payload     Json
-  state       OutboxState @default(PENDING)
-  attempts    Int         @default(0)
-  nextAttemptAt DateTime  @default(now()) @db.Timestamptz(6)
-  deliveredAt DateTime?
-  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+  cacheTag      String
+  payload       Json
+  state         OutboxState @default(PENDING)
+  attempts      Int         @default(0)
+  nextAttemptAt DateTime    @default(now()) @db.Timestamptz(6)
+  deliveredAt   DateTime?
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
 
   @@index([state, nextAttemptAt])
   @@map("content_invalidation_outbox")
@@ -985,9 +1017,9 @@ model ContentInvalidationOutbox {
 /// changed legacy snapshot under the same version is rejected rather than
 /// silently overwriting the prior migration's provenance.
 model DataMigration {
-  version  String   @id
-  checksum String
-  report   Json
+  version   String   @id
+  checksum  String
+  report    Json
   appliedAt DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("data_migrations")
@@ -1017,17 +1049,17 @@ model ContentRevision {
 /// Append-only. Application roles cannot update these rows; that is enforced by
 /// a database grant in the deployment role setup, not by application discipline.
 model AuditEvent {
-  id               String       @id @default(cuid(2))
-  actorId          String?
-  eventType        String
-  targetType       String?
-  targetId         String?
-  outcome          AuditOutcome
-  requestId        String?
-  ipPrefixHash     String?
-  userAgentHash    String?
-  metadata         Json?
-  createdAt        DateTime     @default(now()) @db.Timestamptz(6)
+  id            String       @id @default(cuid(2))
+  actorId       String?
+  eventType     String
+  targetType    String?
+  targetId      String?
+  outcome       AuditOutcome
+  requestId     String?
+  ipPrefixHash  String?
+  userAgentHash String?
+  metadata      Json?
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
 
   actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 

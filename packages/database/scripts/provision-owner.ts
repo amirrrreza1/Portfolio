@@ -1,9 +1,24 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { config as loadEnvironment } from "dotenv";
 
 import { hashPassword, issueRecoveryCodes } from "@portfolio/auth-core";
 import { ownerProvisioningSchema } from "@portfolio/contracts/auth";
 
 import { createDatabaseClient } from "../src/client.js";
+
+/**
+ * The workspace root .env is the single source of local configuration, as in
+ * scripts/migrate-legacy.ts. Without this the script reads a bare environment
+ * and refuses every required() value when run through a package-scoped cwd.
+ */
+const root = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../.."
+);
+loadEnvironment({ path: path.join(root, ".env"), quiet: true });
 
 if (!process.argv.includes("--apply")) {
   throw new Error(

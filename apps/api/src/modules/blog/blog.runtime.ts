@@ -1,4 +1,5 @@
 import { getDatabaseClient } from "@portfolio/database";
+import { createS3MediaObjectStore } from "@portfolio/media";
 
 import { parseApiEnvironment } from "../../config/environment.js";
 import { BlogAdminService } from "./blog.service.js";
@@ -24,6 +25,8 @@ export function createBlogAdminService(): BlogAdminService {
   const environment = parseApiEnvironment(process.env);
   return new BlogAdminService(
     getDatabaseClient({ connectionString: environment.databaseUrl }),
-    process.env.PUBLIC_SITE_URL ?? null
+    process.env.PUBLIC_SITE_URL ?? null,
+    10 * 60 * 1000,
+    createS3MediaObjectStore(environment.media)
   );
 }

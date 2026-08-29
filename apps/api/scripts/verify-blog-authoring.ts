@@ -1,4 +1,4 @@
-/** M8 slice 1 proof: the authenticated blog authoring boundary, live. */
+/** M8 authoring/import proof against the authenticated live boundary. */
 import { hashPassword, issueRecoveryCodes } from "@portfolio/auth-core";
 import { createDatabaseClient, type Database } from "@portfolio/database";
 
@@ -60,6 +60,31 @@ async function call(
     method: init.method ?? (init.body === undefined ? "GET" : "POST"),
     headers,
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    redirect: "manual",
+  });
+  return {
+    status: response.status,
+    headers: response.headers,
+    body: await response.text(),
+    cookies: response.headers.getSetCookie?.() ?? [],
+  };
+}
+
+async function callMultipart(
+  path: string,
+  form: FormData,
+  cookie: string,
+  csrf: string
+): Promise<HttpResult> {
+  const response = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers: {
+      origin: ORIGIN,
+      "sec-fetch-site": "same-origin",
+      cookie,
+      "x-csrf-token": csrf,
+    },
+    body: form,
     redirect: "manual",
   });
   return {
@@ -484,7 +509,120 @@ try {
     `HTTP ${archived.status}`
   );
 
-  section("6. Evidence written by the same transactions");
+  section("6. Markdown import review and confirmation");
+  const rejectedForm = new FormData();
+  rejectedForm.append("postId", "");
+  rejectedForm.append("locale", "en");
+  rejectedForm.append(
+    "file",
+    new Blob([
+      "# Unsafe import\n\nA body submitted as data.\n\n{process.env.SECRET}\n",
+    ]),
+    "unsafe.mdx"
+  );
+  const rejectedImport = await callMultipart(
+    "/api/v1/admin/blog/import",
+    rejectedForm,
+    ownerCookie,
+    ownerCsrf
+  );
+  const rejectedReport = data<any>(rejectedImport);
+  check(
+    "executable MDX is reported with its uploaded line and cannot be confirmed",
+    rejectedImport.status === 201 &&
+      rejectedReport.accepted === false &&
+      rejectedReport.findings.some(
+        (finding: any) =>
+          finding.code === "MDX_EXPRESSION" && finding.line === 5
+      ),
+    `HTTP ${rejectedImport.status}`
+  );
+  const rejectedSource = await database.mediaAsset.findUnique({
+    where: { id: rejectedReport.quarantinedSourceId },
+  });
+  check(
+    "the rejected original is retained only as a private quarantined object",
+    rejectedSource?.processingState === "QUARANTINED" &&
+      rejectedSource.visibility === "PRIVATE" &&
+      rejectedSource.storageKey.endsWith(".mdx"),
+    rejectedSource?.storageKey
+  );
+
+  const importedTitle = `M8 imported ${suffix}`;
+  const acceptedForm = new FormData();
+  acceptedForm.append("postId", "");
+  acceptedForm.append("locale", "en");
+  acceptedForm.append(
+    "file",
+    new Blob([
+      `# ${importedTitle}\n\nThe first paragraph becomes the explicitly inferred excerpt.\n\n## Imported section\n\nSafe Markdown body.\n`,
+    ]),
+    "accepted.mdx"
+  );
+  const acceptedImport = await callMultipart(
+    "/api/v1/admin/blog/import",
+    acceptedForm,
+    ownerCookie,
+    ownerCsrf
+  );
+  const acceptedReport = data<any>(acceptedImport);
+  check(
+    "a plain MDX upload returns inferred metadata, normalized Markdown, and an exact diff",
+    acceptedImport.status === 201 &&
+      acceptedReport.accepted === true &&
+      acceptedReport.normalizedFrontmatter.title === importedTitle &&
+      acceptedReport.findings.some(
+        (finding: any) => finding.code === "INFERRED_TITLE"
+      ) &&
+      acceptedReport.normalizedDocument.includes("status: draft") &&
+      acceptedReport.diff.includes("+++ import.md"),
+    `HTTP ${acceptedImport.status}`
+  );
+  const confirmedImport = await call("/api/v1/admin/blog/import", {
+    cookie: ownerCookie,
+    csrf: ownerCsrf,
+    body: {
+      postId: null,
+      locale: "en",
+      confirm: true,
+      reportToken: acceptedReport.reportToken,
+    },
+  });
+  const confirmed = data<any>(confirmedImport);
+  const imported = await database.postTranslation.findUnique({
+    where: {
+      postId_locale: {
+        postId: acceptedReport.normalizedFrontmatter.postId,
+        locale: "en",
+      },
+    },
+  });
+  check(
+    "report-token confirmation saves through the transactional article path",
+    confirmedImport.status === 201 &&
+      confirmed.postId === acceptedReport.normalizedFrontmatter.postId &&
+      imported?.title === importedTitle &&
+      imported.bodySha256 !== null &&
+      imported.renderedHtml !== null,
+    `HTTP ${confirmedImport.status}; version ${imported?.version}`
+  );
+  const reusedImport = await call("/api/v1/admin/blog/import", {
+    cookie: ownerCookie,
+    csrf: ownerCsrf,
+    body: {
+      postId: null,
+      locale: "en",
+      confirm: true,
+      reportToken: acceptedReport.reportToken,
+    },
+  });
+  check(
+    "an import report token is single-use",
+    reusedImport.status === 409,
+    `HTTP ${reusedImport.status}`
+  );
+
+  section("7. Evidence written by the same transactions");
   const revisions = await database.contentRevision.count({
     where: { entityType: "PostTranslation", entityId: live.id },
   });
@@ -543,4 +681,4 @@ try {
 
 process.stdout.write(`\n${checks - failures}/${checks} checks passed.\n`);
 if (failures > 0) process.exitCode = 1;
-else process.stdout.write("ALL M8 SLICE 1 CHECKS PASSED\n");
+else process.stdout.write("ALL M8 AUTHORING AND IMPORT CHECKS PASSED\n");

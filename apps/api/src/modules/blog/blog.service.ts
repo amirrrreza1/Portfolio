@@ -6,14 +6,29 @@ import {
   type Database,
   type TaxonomyKind,
 } from "@portfolio/database";
-import { renderArticleBody } from "@portfolio/markdown";
+import {
+  createArticleImportDiff,
+  MAX_ARTICLE_IMPORT_BYTES,
+  prepareArticleImport,
+  renderArticleBody,
+  serializeArticle,
+} from "@portfolio/markdown";
+import {
+  quarantineArticleSource,
+  type MediaObjectStore,
+} from "@portfolio/media";
 import {
   frontmatterSchema,
+  importReportSchema,
+  importRequestSchema,
   previewTranslationSchema,
   type AdminTaxonomy,
   type AdminTaxonomyTranslation,
   type ArchiveTranslation,
   type AutosaveDraft,
+  type Frontmatter,
+  type ImportReport,
+  type ImportRequest,
   type Locale,
   type PreviewTranslation,
   type PublishTranslation,
@@ -21,15 +36,33 @@ import {
   type ScheduleTranslation,
   type UnpublishTranslation,
 } from "@portfolio/contracts";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+
+export class ArticleImportReportError extends Error {
+  public constructor(
+    public readonly reason:
+      | "STORAGE_UNAVAILABLE"
+      | "REPORT_NOT_FOUND"
+      | "REPORT_EXPIRED"
+      | "REPORT_REJECTED"
+      | "REPORT_USED"
+  ) {
+    super(
+      reason === "STORAGE_UNAVAILABLE"
+        ? "Article import storage is unavailable."
+        : "The article import report cannot be confirmed."
+    );
+    this.name = "ArticleImportReportError";
+  }
+}
 
 /**
  * The M8 authoring surface over M3's article authority.
  *
- * This service owns no persistence logic of its own — the article store and
- * the taxonomy store do, because that is where the transactions are. What it
- * owns is the preview cache, which is deliberately in-process and short-lived
- * (see `previewTranslation`).
+ * The article and taxonomy stores own content transactions. This service owns
+ * the deliberately ephemeral preview cache and M8's durable two-step import
+ * reports, which bind a reviewed normalization to one actor and one expiring
+ * confirmation token.
  */
 export class BlogAdminService {
   private readonly articles: ReturnType<typeof createArticleStore>;
@@ -42,7 +75,9 @@ export class BlogAdminService {
   public constructor(
     private readonly database: Database,
     siteOrigin: string | null = null,
-    private readonly previewTtlMs = 10 * 60 * 1000
+    private readonly previewTtlMs = 10 * 60 * 1000,
+    private readonly mediaStore?: MediaObjectStore,
+    private readonly importTtlMs = 15 * 60 * 1000
   ) {
     this.articles = createArticleStore(database, siteOrigin);
     this.taxonomy = createBlogTaxonomyStore(database);
@@ -144,6 +179,220 @@ export class BlogAdminService {
   }
 
   /**
+   * Dry-runs one uploaded source and persists the review state.
+   *
+   * The exact bytes are written first to the private quarantine prefix. The
+   * database row and its report are then created together; if that transaction
+   * fails, the object is removed so storage cannot accumulate orphaned uploads.
+   */
+  async prepareImport(
+    actorId: string,
+    command: ImportRequest,
+    upload: { readonly filename: string; readonly bytes: Uint8Array },
+    now: Date = new Date()
+  ): Promise<ImportReport> {
+    const input = importRequestSchema.parse(command);
+    if (input.confirm) throw new ArticleImportReportError("REPORT_REJECTED");
+    if (this.mediaStore === undefined) {
+      throw new ArticleImportReportError("STORAGE_UNAVAILABLE");
+    }
+
+    const source = await quarantineArticleSource(
+      {
+        ...upload,
+        maxBytes: MAX_ARTICLE_IMPORT_BYTES,
+      },
+      this.mediaStore
+    );
+    try {
+      let prepared = await prepareArticleImport({
+        ...upload,
+        expectedPostId: input.postId,
+        locale: input.locale,
+        inferredPostId: randomUUID(),
+      });
+      const targetPostId = prepared.article?.frontmatter.postId ?? null;
+      const current =
+        targetPostId === null
+          ? null
+          : await this.importTarget(targetPostId, input.locale);
+      if (prepared.article !== null) {
+        const realized = current?.article.frontmatter;
+        const status = realized?.status ?? "draft";
+        const publishedAt = realized?.publishedAt ?? null;
+        const scheduledFor = realized?.scheduledFor ?? null;
+        if (
+          prepared.article.frontmatter.status !== status ||
+          prepared.article.frontmatter.publishedAt !== publishedAt ||
+          prepared.article.frontmatter.scheduledFor !== scheduledFor
+        ) {
+          const article = {
+            ...prepared.article,
+            frontmatter: frontmatterSchema.parse({
+              ...prepared.article.frontmatter,
+              status,
+              publishedAt,
+              scheduledFor,
+            }),
+          };
+          prepared = {
+            ...prepared,
+            findings: [
+              ...prepared.findings,
+              {
+                severity: "warning" as const,
+                line: null,
+                code: "LIFECYCLE_STATE_PRESERVED",
+                message:
+                  current === null
+                    ? "A new import is saved as a draft; publish or schedule it with the reviewed lifecycle command."
+                    : "Import cannot change publication state; the translation's current lifecycle state was preserved.",
+              },
+            ],
+            article,
+            normalizedDocument: serializeArticle(article),
+          };
+        }
+      }
+      const currentDocument =
+        current === null ? null : serializeArticle(current.article);
+      const diff =
+        prepared.normalizedDocument === null
+          ? ""
+          : createArticleImportDiff(
+              currentDocument,
+              prepared.normalizedDocument
+            );
+      const token = randomUUID();
+      const expiresAt = new Date(now.getTime() + this.importTtlMs);
+
+      await this.database.$transaction(async (tx) => {
+        await tx.mediaAsset.create({
+          data: {
+            id: source.id,
+            storageKey: source.storageKey,
+            displayName: source.displayName,
+            kind: source.kind,
+            mimeType: source.mimeType,
+            byteSize: source.byteSize,
+            checksumSha256: source.checksumSha256,
+            width: null,
+            height: null,
+            altText: null,
+            processingState: source.processingState,
+            visibility: source.visibility,
+            uploadedById: actorId,
+          },
+        });
+        await tx.articleImportReport.create({
+          data: {
+            tokenHash: hashToken(token),
+            actorId,
+            originalMediaId: source.id,
+            requestedPostId: input.postId,
+            postId: targetPostId,
+            locale: input.locale,
+            baseVersion: current?.version ?? null,
+            accepted: prepared.accepted,
+            findings: prepared.findings as never,
+            ...(prepared.article === null
+              ? {}
+              : {
+                  normalizedFrontmatter: prepared.article.frontmatter as never,
+                }),
+            normalizedBody: prepared.article?.body ?? null,
+            diff,
+            expiresAt,
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorId,
+            eventType: "article.import.source_quarantined",
+            targetType: "MediaAsset",
+            targetId: source.id,
+            outcome: "SUCCESS",
+            metadata: {
+              accepted: prepared.accepted,
+              locale: input.locale,
+              findingCount: prepared.findings.length,
+            },
+          },
+        });
+      });
+
+      return importReportSchema.parse({
+        reportToken: token,
+        accepted: prepared.accepted,
+        findings: prepared.findings,
+        normalizedFrontmatter: prepared.article?.frontmatter ?? null,
+        normalizedDocument: prepared.normalizedDocument,
+        diff,
+        quarantinedSourceId: source.id,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error) {
+      await this.mediaStore.remove(source.storageKey).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  /** Confirms exactly one actor-bound, unexpired dry-run report. */
+  async confirmImport(
+    actorId: string,
+    command: ImportRequest,
+    now: Date = new Date()
+  ): Promise<unknown> {
+    const input = importRequestSchema.parse(command);
+    if (!input.confirm || input.reportToken === null) {
+      throw new ArticleImportReportError("REPORT_REJECTED");
+    }
+    const report = await this.database.articleImportReport.findUnique({
+      where: { tokenHash: hashToken(input.reportToken) },
+    });
+    if (report === null || report.actorId !== actorId) {
+      throw new ArticleImportReportError("REPORT_NOT_FOUND");
+    }
+    if (
+      report.locale !== input.locale ||
+      report.requestedPostId !== input.postId
+    ) {
+      throw new ArticleImportReportError("REPORT_NOT_FOUND");
+    }
+    if (report.expiresAt <= now) {
+      throw new ArticleImportReportError("REPORT_EXPIRED");
+    }
+    if (report.committedAt !== null) {
+      throw new ArticleImportReportError("REPORT_USED");
+    }
+    if (
+      !report.accepted ||
+      report.normalizedFrontmatter === null ||
+      report.normalizedBody === null
+    ) {
+      throw new ArticleImportReportError("REPORT_REJECTED");
+    }
+
+    const frontmatter = frontmatterSchema.parse(report.normalizedFrontmatter);
+    const saved = await this.articles.saveTranslation(
+      {
+        frontmatter,
+        body: report.normalizedBody,
+        baseVersion: report.baseVersion,
+      },
+      actorId
+    );
+    const consumed = await this.database.articleImportReport.updateMany({
+      where: { id: report.id, committedAt: null, expiresAt: { gt: now } },
+      data: { committedAt: now },
+    });
+    if (consumed.count !== 1) {
+      throw new ArticleImportReportError("REPORT_USED");
+    }
+    return { ...saved, quarantinedSourceId: report.originalMediaId };
+  }
+
+  /**
    * Renders unsaved content through the production pipeline.
    *
    * Two things make this a preview rather than a second renderer. It calls
@@ -178,6 +427,56 @@ export class BlogAdminService {
       return null;
     }
     return entry.html;
+  }
+
+  private async importTarget(
+    postId: string,
+    locale: Locale
+  ): Promise<{
+    readonly version: number;
+    readonly article: {
+      readonly frontmatter: Frontmatter;
+      readonly body: string;
+    };
+  } | null> {
+    const current = await this.database.postTranslation.findUnique({
+      where: { postId_locale: { postId, locale } },
+      include: {
+        post: {
+          select: {
+            category: { select: { key: true } },
+            tags: { select: { tag: { select: { key: true } } } },
+            coverMedia: { select: { id: true, altText: true } },
+          },
+        },
+      },
+    });
+    if (current === null || current.bodyMarkdown === null) return null;
+    const frontmatter = frontmatterSchema.parse({
+      schemaVersion: current.frontmatterSchemaVersion ?? 1,
+      postId: current.postId,
+      locale: current.locale,
+      title: current.title,
+      slug: current.slug,
+      excerpt: current.excerpt,
+      status: current.status.toLowerCase(),
+      publishedAt: current.publishedAt?.toISOString() ?? null,
+      scheduledFor: current.scheduledFor?.toISOString() ?? null,
+      updatedAt: current.updatedAt.toISOString(),
+      category: current.post.category?.key ?? null,
+      tags: current.post.tags.map((row) => row.tag.key),
+      coverImage: current.post.coverMedia?.id ?? null,
+      coverImageAlt: current.post.coverMedia?.altText ?? null,
+      seoTitle: current.seoTitle,
+      seoDescription: current.seoDescription,
+      canonicalUrl: current.canonicalUrl,
+      socialImage: current.socialImageId,
+      translationOf: null,
+    });
+    return {
+      version: current.version,
+      article: { frontmatter, body: current.bodyMarkdown },
+    };
   }
 
   private evictExpiredPreviews(nowMs: number): void {
@@ -228,3 +527,7 @@ export class BlogAdminService {
 }
 
 export { ArticleTransitionRefusedError, ArticleVersionConflictError };
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}

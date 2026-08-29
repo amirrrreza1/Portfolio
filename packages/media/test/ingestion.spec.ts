@@ -10,6 +10,7 @@ import {
   LocalMediaObjectStore,
   MediaValidationError,
   MediaQuarantinedError,
+  quarantineArticleSource,
   safeDisplayName,
 } from "../src/index.js";
 
@@ -101,7 +102,11 @@ describe("verified media ingestion", () => {
   });
 
   it("quarantines active, malformed, and over-limit PDF files without promoting them", async () => {
-    const writes: Array<{ key: string; bytes: Uint8Array; contentType: string }> = [];
+    const writes: Array<{
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    }> = [];
     const store = {
       put: async (
         key: string,
@@ -137,7 +142,11 @@ describe("verified media ingestion", () => {
 
     expect(writes).toHaveLength(3);
     expect(writes.every(({ key }) => key.startsWith("quarantine/"))).toBe(true);
-    expect(writes.every(({ contentType }) => contentType === "application/octet-stream")).toBe(true);
+    expect(
+      writes.every(
+        ({ contentType }) => contentType === "application/octet-stream"
+      )
+    ).toBe(true);
     expect(writes.map(({ bytes }) => Buffer.from(bytes))).toEqual(rejected);
   });
 
@@ -170,7 +179,11 @@ describe("verified media ingestion", () => {
       }
     );
 
-    expect(result).toMatchObject({ width: 4, height: 3, mimeType: "image/jpeg" });
+    expect(result).toMatchObject({
+      width: 4,
+      height: 3,
+      mimeType: "image/jpeg",
+    });
     expect(stored).toBeDefined();
     const metadata = await sharp(Buffer.from(stored!)).metadata();
     expect(metadata.exif).toBeUndefined();
@@ -221,5 +234,40 @@ describe("verified media ingestion", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("quarantines an article source byte-for-byte under a private random key", async () => {
+    const bytes = Buffer.from(
+      "# Original MDX\n\n{dangerousExpression}\n",
+      "utf8"
+    );
+    const writes: Array<{
+      key: string;
+      bytes: Uint8Array;
+      contentType: string;
+    }> = [];
+    const result = await quarantineArticleSource(
+      { bytes, filename: "../../draft.mdx", maxBytes: 1024 },
+      {
+        put: async (key, value, options) =>
+          void writes.push({
+            key,
+            bytes: value,
+            contentType: options.contentType,
+          }),
+        remove: async () => undefined,
+      }
+    );
+
+    expect(result).toMatchObject({
+      displayName: "draft.mdx",
+      kind: "DOCUMENT",
+      processingState: "QUARANTINED",
+      visibility: "PRIVATE",
+    });
+    expect(result.storageKey).toMatch(/^quarantine\/[0-9a-f-]{36}\.mdx$/u);
+    expect(writes).toHaveLength(1);
+    expect(Buffer.from(writes[0]?.bytes ?? [])).toEqual(bytes);
+    expect(writes[0]?.contentType).toBe("application/octet-stream");
   });
 });

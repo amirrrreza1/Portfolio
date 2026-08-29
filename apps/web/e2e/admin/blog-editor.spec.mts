@@ -135,4 +135,48 @@ test("an owner can author, check, publish, and preview an article", async ({
     "content",
     /noindex/
   );
+
+  // Import is a separate two-step boundary inside the same authenticated
+  // workspace. First prove executable MDX stays in quarantine and produces a
+  // line finding without exposing a confirm control.
+  const importFile = page.getByLabel("Markdown or MDX file");
+  await importFile.setInputFiles({
+    name: "unsafe.mdx",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(
+      "# Unsafe import\n\nThis body is long enough to inspect.\n\n{process.env.SECRET}\n"
+    ),
+  });
+  await page.getByRole("button", { name: "Parse and review" }).click();
+  await expect(page.getByText("Dry run needs changes")).toBeVisible();
+  await expect(page.getByText(/MDX_EXPRESSION · line 5/u)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Confirm and save" })
+  ).toHaveCount(0);
+
+  // A plain MDX document is data, not code. Missing frontmatter is shown as
+  // explicitly inferred metadata, the normalized `.md` and exact diff are
+  // reviewable, and only the report-token confirmation writes the article.
+  const importedTitle = `Imported through file ${suffix}`;
+  await importFile.setInputFiles({
+    name: "imported-article.mdx",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(
+      `# ${importedTitle}\n\nThe first paragraph becomes the reviewable excerpt.\n\n## Section\n\nImported body.\n`
+    ),
+  });
+  await page.getByRole("button", { name: "Parse and review" }).click();
+  await expect(page.getByText("Dry run accepted")).toBeVisible();
+  await expect(page.getByText(/INFERRED_TITLE · line 1/u)).toBeVisible();
+  await expect(page.getByText("Exact save diff")).toBeVisible();
+  await expect(page.getByText(/Original retained as/u)).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Confirm and save" }).click();
+  await expect(page.getByTestId("blog-workspace-status")).toHaveText(
+    "Normalized Markdown imported and saved as a new article revision."
+  );
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: importedTitle })
+  ).toBeVisible();
 });

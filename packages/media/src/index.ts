@@ -75,6 +75,20 @@ export interface QuarantinedMedia {
   readonly rejectionReason: string;
 }
 
+export interface QuarantinedArticleSource {
+  readonly id: string;
+  readonly storageKey: string;
+  readonly displayName: string;
+  readonly kind: "DOCUMENT";
+  readonly mimeType: "application/octet-stream";
+  readonly byteSize: bigint;
+  readonly checksumSha256: string;
+  readonly width: null;
+  readonly height: null;
+  readonly visibility: "PRIVATE";
+  readonly processingState: "QUARANTINED";
+}
+
 const MIME_BY_EXTENSION = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -173,6 +187,60 @@ export async function ingestMedia(
     });
     throw new MediaQuarantinedError(error.message, quarantined);
   }
+}
+
+/**
+ * Retains the exact Markdown/MDX upload as a private evidence object.
+ *
+ * Unlike normal media ingestion this deliberately performs no transformation:
+ * the point of the object is to preserve what was reviewed, including invalid
+ * UTF-8 or rejected MDX. It can never be referenced by public content because
+ * it is persisted as `QUARANTINED` and `PRIVATE`.
+ */
+export async function quarantineArticleSource(
+  input: {
+    readonly bytes: Uint8Array;
+    readonly filename: string;
+    readonly maxBytes: number;
+  },
+  store: MediaObjectStore
+): Promise<QuarantinedArticleSource> {
+  if (!Number.isSafeInteger(input.maxBytes) || input.maxBytes <= 0) {
+    throw new MediaValidationError("maxBytes must be a positive safe integer.");
+  }
+  if (input.bytes.byteLength === 0 || input.bytes.byteLength > input.maxBytes) {
+    throw new MediaValidationError(
+      "Article source byte size must be between 1 and the configured maximum."
+    );
+  }
+  const extension = /\.(md|markdown|mdx)$/iu
+    .exec(input.filename.normalize("NFC"))?.[1]
+    ?.toLowerCase();
+  if (extension !== "md" && extension !== "markdown" && extension !== "mdx") {
+    throw new MediaValidationError(
+      "Article source must use a .md, .markdown, or .mdx extension."
+    );
+  }
+  const bytes = Buffer.from(input.bytes);
+  const id = randomUUID();
+  const storageKey = `quarantine/${id}.${extension}`;
+  const source: QuarantinedArticleSource = {
+    id,
+    storageKey,
+    displayName: safeDisplayName(input.filename, extension),
+    kind: "DOCUMENT",
+    mimeType: "application/octet-stream",
+    byteSize: BigInt(bytes.byteLength),
+    checksumSha256: createHash("sha256").update(bytes).digest("hex"),
+    width: null,
+    height: null,
+    visibility: "PRIVATE",
+    processingState: "QUARANTINED",
+  };
+  await store.put(storageKey, bytes, {
+    contentType: "application/octet-stream",
+  });
+  return source;
 }
 
 /**
@@ -309,7 +377,7 @@ function safeObjectPath(root: string, key: string): string {
 
 function assertObjectKey(key: string): void {
   if (
-    !/^(?:media|quarantine)\/[0-9a-f-]{36}\.(?:pdf|jpg|png|webp|bin)$/i.test(
+    !/^(?:media\/[0-9a-f-]{36}\.(?:pdf|jpg|png|webp)|quarantine\/[0-9a-f-]{36}\.(?:pdf|jpg|png|webp|bin|md|markdown|mdx))$/i.test(
       key
     )
   ) {
@@ -335,7 +403,9 @@ function verifyPdf(
       source
     )
   ) {
-    throw new MediaValidationError("Active or embedded PDF content is not allowed.");
+    throw new MediaValidationError(
+      "Active or embedded PDF content is not allowed."
+    );
   }
   const pages = source.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
   if (pages < 1 || pages > maxPages) {
@@ -351,7 +421,11 @@ async function reencodeImage(
   mimeType: Exclude<VerifiedMime, "application/pdf">,
   maxWidth: number,
   maxHeight: number
-): Promise<{ readonly bytes: Buffer; readonly width: number; readonly height: number }> {
+): Promise<{
+  readonly bytes: Buffer;
+  readonly width: number;
+  readonly height: number;
+}> {
   if (
     !Number.isSafeInteger(maxWidth) ||
     !Number.isSafeInteger(maxHeight) ||

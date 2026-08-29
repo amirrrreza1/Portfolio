@@ -6,6 +6,7 @@ import {
   bodyMarkdownSchema,
   canPublish,
   importRequestSchema,
+  importReportSchema,
   MAX_BODY_BYTES,
   publishTranslationSchema,
   saveTranslationSchema,
@@ -225,6 +226,21 @@ describe("importRequestSchema", () => {
         locale: "en",
         confirm: true,
         reportToken: "token-from-dry-run",
+      }).success
+    ).toBe(true);
+  });
+
+  it("requires the normalized document and quarantined source identity", () => {
+    expect(
+      importReportSchema.safeParse({
+        reportToken: "opaque-report-token",
+        accepted: true,
+        findings: [],
+        normalizedFrontmatter: frontmatter,
+        normalizedDocument: "---\nschemaVersion: 1\n---\nBody\n",
+        diff: "+Body\n",
+        quarantinedSourceId: "clx8k2p9q0000abcd1234efm",
+        expiresAt: "2026-08-29T00:15:00.000Z",
       }).success
     ).toBe(true);
   });

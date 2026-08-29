@@ -1,9 +1,15 @@
 import {
   FRONTMATTER_KEY_ORDER,
+  CURRENT_FRONTMATTER_VERSION,
   checkPathAgreement,
   frontmatterSchema,
   type Frontmatter,
 } from "@portfolio/contracts/content";
+import {
+  importFindingSchema,
+  type ImportFinding,
+} from "@portfolio/contracts/blog";
+import { normalizeSlug, type Locale } from "@portfolio/contracts/common";
 import { codeToHast } from "shiki";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
@@ -55,6 +61,25 @@ export interface ParsedArticle {
   readonly frontmatter: Frontmatter;
   readonly body: string;
 }
+
+export interface ArticleImportInput {
+  readonly bytes: Uint8Array;
+  readonly filename: string;
+  readonly expectedPostId: string | null;
+  readonly locale: Locale;
+  /** Server-minted opaque ID used only when the file has no frontmatter. */
+  readonly inferredPostId: string;
+}
+
+export interface PreparedArticleImport {
+  readonly accepted: boolean;
+  readonly findings: readonly ImportFinding[];
+  readonly article: ParsedArticle | null;
+  /** Always a deterministic `.md` envelope, including for accepted `.mdx`. */
+  readonly normalizedDocument: string | null;
+}
+
+export const MAX_ARTICLE_IMPORT_BYTES = MAX_DOCUMENT_BYTES;
 
 export interface Heading {
   readonly depth: number;
@@ -175,6 +200,173 @@ export function serializeArticle(article: ParsedArticle): string {
     lineWidth: 0,
     nullStr: "null",
   })}---\n${body}\n`;
+}
+
+/**
+ * Converts one untrusted upload into the exact Markdown envelope an import
+ * confirmation would save.
+ *
+ * This function reports content failures instead of throwing. Transport and
+ * persistence failures still throw in the API, but a malformed document is a
+ * review result: the author needs line-addressed findings and the original
+ * upload remains quarantined as evidence.
+ */
+export async function prepareArticleImport(
+  input: ArticleImportInput
+): Promise<PreparedArticleImport> {
+  const findings: ImportFinding[] = [];
+  const extension = importExtension(input.filename);
+  if (extension === null) {
+    return rejected([
+      finding(
+        "error",
+        null,
+        "UNSUPPORTED_EXTENSION",
+        "Choose a .md, .markdown, or .mdx file."
+      ),
+    ]);
+  }
+  if (
+    input.bytes.byteLength === 0 ||
+    input.bytes.byteLength > MAX_ARTICLE_IMPORT_BYTES
+  ) {
+    return rejected([
+      finding(
+        "error",
+        null,
+        "INVALID_SIZE",
+        `The import must contain between 1 and ${MAX_ARTICLE_IMPORT_BYTES} bytes.`
+      ),
+    ]);
+  }
+
+  let source: string;
+  try {
+    source = new TextDecoder("utf-8", { fatal: true }).decode(input.bytes);
+  } catch {
+    return rejected([
+      finding("error", null, "INVALID_UTF8", "The upload is not valid UTF-8."),
+    ]);
+  }
+  source = source.replace(/\r\n?/g, "\n");
+
+  if (extension === "mdx") {
+    findings.push(...inspectMdx(source));
+  }
+
+  let article: ParsedArticle | null = null;
+  if (/^---\n/u.test(source)) {
+    try {
+      article = parseArticle(source);
+    } catch (error) {
+      findings.push(...markdownFindings(error, source));
+    }
+  } else {
+    const inferred = inferArticle(source, input);
+    findings.push(...inferred.findings);
+    article = inferred.article;
+  }
+
+  if (article !== null) {
+    if (
+      input.expectedPostId !== null &&
+      article.frontmatter.postId !== input.expectedPostId
+    ) {
+      findings.push(
+        finding(
+          "error",
+          frontmatterLine(source, "postId"),
+          "POST_ID_MISMATCH",
+          "frontmatter.postId does not match the selected article."
+        )
+      );
+    }
+    if (article.frontmatter.locale !== input.locale) {
+      findings.push(
+        finding(
+          "error",
+          frontmatterLine(source, "locale"),
+          "LOCALE_MISMATCH",
+          "frontmatter.locale does not match the selected import locale."
+        )
+      );
+    }
+  }
+
+  if (article === null || findings.some((item) => item.severity === "error")) {
+    return rejected(findings);
+  }
+
+  try {
+    await renderArticleBody(article.body);
+  } catch (error) {
+    findings.push(...markdownFindings(error, source));
+    return rejected(findings);
+  }
+
+  const normalizedDocument = serializeArticle(article);
+  if (extension === "mdx") {
+    findings.push(
+      finding(
+        "info",
+        null,
+        "MDX_NORMALIZED_TO_MARKDOWN",
+        "The accepted MDX contains no executable constructs and will be stored as deterministic Markdown."
+      )
+    );
+  }
+  return {
+    accepted: true,
+    findings: findings.map((item) => importFindingSchema.parse(item)),
+    article,
+    normalizedDocument,
+  };
+}
+
+/** A compact deterministic unified diff for the review screen. */
+export function createArticleImportDiff(
+  currentDocument: string | null,
+  importedDocument: string
+): string {
+  const before = currentDocument ?? "";
+  if (before === importedDocument) return "";
+  const oldLines = splitDocumentLines(before);
+  const newLines = splitDocumentLines(importedDocument);
+  let prefix = 0;
+  while (
+    prefix < oldLines.length &&
+    prefix < newLines.length &&
+    oldLines[prefix] === newLines[prefix]
+  ) {
+    prefix += 1;
+  }
+  let suffix = 0;
+  while (
+    suffix < oldLines.length - prefix &&
+    suffix < newLines.length - prefix &&
+    oldLines[oldLines.length - 1 - suffix] ===
+      newLines[newLines.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  const contextStart = Math.max(0, prefix - 3);
+  const oldChangedEnd = oldLines.length - suffix;
+  const newChangedEnd = newLines.length - suffix;
+  const oldEnd = Math.min(oldLines.length, oldChangedEnd + 3);
+  const newEnd = Math.min(newLines.length, newChangedEnd + 3);
+  const oldCount = oldEnd - contextStart;
+  const newCount = newEnd - contextStart;
+  const lines = [
+    "--- current.md",
+    "+++ import.md",
+    `@@ -${contextStart + 1},${oldCount} +${contextStart + 1},${newCount} @@`,
+    ...oldLines.slice(contextStart, prefix).map((line) => ` ${line}`),
+    ...oldLines.slice(prefix, oldChangedEnd).map((line) => `-${line}`),
+    ...newLines.slice(prefix, newChangedEnd).map((line) => `+${line}`),
+    ...newLines.slice(newChangedEnd, newEnd).map((line) => ` ${line}`),
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 /** Parse, validate, and render a full article through the server-only pipeline. */
@@ -361,6 +553,307 @@ export async function renderInlineMarkdown(source: string): Promise<string> {
     .use(rehypeStringify);
   const rendered = await renderer.run(tree as any);
   return String(renderer.stringify(rendered));
+}
+
+function importExtension(filename: string): "md" | "markdown" | "mdx" | null {
+  const match = /\.([^.\\/]+)$/u.exec(filename.normalize("NFC"));
+  const extension = match?.[1]?.toLowerCase();
+  return extension === "md" || extension === "markdown" || extension === "mdx"
+    ? extension
+    : null;
+}
+
+function rejected(findings: readonly ImportFinding[]): PreparedArticleImport {
+  return {
+    accepted: false,
+    findings: findings.map((item) => importFindingSchema.parse(item)),
+    article: null,
+    normalizedDocument: null,
+  };
+}
+
+function finding(
+  severity: ImportFinding["severity"],
+  line: number | null,
+  code: string,
+  message: string
+): ImportFinding {
+  return importFindingSchema.parse({ severity, line, code, message });
+}
+
+function inferArticle(
+  source: string,
+  input: ArticleImportInput
+): {
+  readonly article: ParsedArticle | null;
+  readonly findings: ImportFinding[];
+} {
+  const findings: ImportFinding[] = [];
+  const lines = source.split("\n");
+  const firstContent = lines.findIndex((line) => line.trim().length > 0);
+  const heading =
+    firstContent >= 0
+      ? /^#\s+(.+?)\s*#*\s*$/u.exec(lines[firstContent] ?? "")
+      : null;
+  const filenameStem = input.filename
+    .normalize("NFC")
+    .replace(/^.*[\\/]/u, "")
+    .replace(/\.(?:md|markdown|mdx)$/iu, "")
+    .replace(/[-_]+/gu, " ")
+    .trim();
+  const title = (heading?.[1]?.trim() || filenameStem).slice(0, 200);
+  if (heading !== null && firstContent >= 0) lines.splice(firstContent, 1);
+  const body = lines.join("\n").replace(/^\n+/u, "");
+  const excerpt = inferExcerpt(body);
+  const slug = normalizeSlug(title, input.locale);
+
+  const inferredFields: readonly [string, string][] = [
+    ["schemaVersion", "the current import schema"],
+    [
+      "postId",
+      input.expectedPostId === null
+        ? "a new opaque ID"
+        : "the selected article",
+    ],
+    ["locale", "the selected locale"],
+    ["title", heading === null ? "the filename" : "the first H1"],
+    ["slug", "the inferred title"],
+    ["excerpt", "the first readable paragraph"],
+    ["status", "a safe draft state"],
+  ];
+  for (const [field, basis] of inferredFields) {
+    findings.push(
+      finding(
+        "info",
+        field === "title" && heading !== null ? firstContent + 1 : null,
+        `INFERRED_${field.replace(/([A-Z])/g, "_$1").toUpperCase()}`,
+        `${field} was inferred from ${basis}; review it before confirmation.`
+      )
+    );
+  }
+
+  if (title.length === 0) {
+    findings.push(
+      finding(
+        "error",
+        null,
+        "MISSING_TITLE",
+        "A title could not be inferred from the first H1 or filename."
+      )
+    );
+  }
+  if (slug.length === 0) {
+    findings.push(
+      finding(
+        "error",
+        null,
+        "MISSING_SLUG",
+        "A locale-safe slug could not be inferred from the title."
+      )
+    );
+  }
+  if (excerpt.length === 0) {
+    findings.push(
+      finding(
+        "error",
+        null,
+        "MISSING_EXCERPT",
+        "An excerpt could not be inferred from the Markdown body."
+      )
+    );
+  }
+  if (findings.some((item) => item.severity === "error")) {
+    return { article: null, findings };
+  }
+
+  const parsed = frontmatterSchema.safeParse({
+    schemaVersion: CURRENT_FRONTMATTER_VERSION,
+    postId: input.expectedPostId ?? input.inferredPostId,
+    locale: input.locale,
+    title,
+    slug,
+    excerpt,
+    status: "draft",
+  });
+  if (!parsed.success) {
+    findings.push(
+      ...parsed.error.issues.map((issue) =>
+        finding(
+          "error",
+          null,
+          "INVALID_INFERRED_FRONTMATTER",
+          `${issue.path.join(".") || "frontmatter"}: ${issue.message}`
+        )
+      )
+    );
+    return { article: null, findings };
+  }
+  return { article: { frontmatter: parsed.data, body }, findings };
+}
+
+function inferExcerpt(body: string): string {
+  const withoutFences = body.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/gu, " ");
+  const paragraphs = withoutFences.split(/\n\s*\n/gu);
+  for (const paragraph of paragraphs) {
+    const readable = paragraph
+      .replace(/^#{1,6}\s+/gmu, "")
+      .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
+      .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
+      .replace(/[*_~`>|]/gu, " ")
+      .replace(/^\s*(?:[-+*]|\d+\.)\s+/gmu, "")
+      .replace(/\s+/gu, " ")
+      .trim();
+    if (readable.length > 0) return readable.slice(0, 400).trim();
+  }
+  return "";
+}
+
+function inspectMdx(source: string): readonly ImportFinding[] {
+  const findings: ImportFinding[] = [];
+  const { body, firstLine } = importBody(source);
+  const lines = body.split("\n");
+  let fence: string | null = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const fenceMatch = /^\s*(`{3,}|~{3,})/u.exec(line);
+    if (fenceMatch !== null) {
+      const marker = fenceMatch[1]?.[0] ?? null;
+      if (fence === null) fence = marker;
+      else if (fence === marker) fence = null;
+      continue;
+    }
+    if (fence !== null) continue;
+    const lineNumber = firstLine + index;
+    if (/^\s*import\s+(?:[\w*{]|["'])/u.test(line)) {
+      findings.push(
+        finding(
+          "error",
+          lineNumber,
+          "MDX_IMPORT",
+          "MDX import declarations are executable and are not permitted."
+        )
+      );
+    }
+    if (
+      /^\s*export\s+(?:default\b|(?:const|let|var|function|class)\b|\{)/u.test(
+        line
+      )
+    ) {
+      findings.push(
+        finding(
+          "error",
+          lineNumber,
+          "MDX_EXPORT",
+          "MDX export declarations are executable and are not permitted."
+        )
+      );
+    }
+    const component = /<\/?([A-Z][A-Za-z0-9.]*)\b/u.exec(line)?.[1];
+    if (component !== undefined) {
+      findings.push(
+        finding(
+          "error",
+          lineNumber,
+          "UNMAPPED_MDX_COMPONENT",
+          `The JSX component ${component} is not mapped to an allowlisted Markdown directive.`
+        )
+      );
+    }
+    if (
+      !/^\s*:{1,3}[\w-]+(?:\{.*\})?\s*$/u.test(line) &&
+      /(^|[^\\])\{[^}\n]*\}/u.test(line)
+    ) {
+      findings.push(
+        finding(
+          "error",
+          lineNumber,
+          "MDX_EXPRESSION",
+          "MDX expressions are executable and are not permitted."
+        )
+      );
+    }
+  }
+  return findings;
+}
+
+function importBody(source: string): {
+  readonly body: string;
+  readonly firstLine: number;
+} {
+  const match = /^---\n[\s\S]*?\n---(?:\n|$)/u.exec(source);
+  if (match === null) return { body: source, firstLine: 1 };
+  return {
+    body: source.slice(match[0].length),
+    firstLine: match[0].split("\n").length,
+  };
+}
+
+function markdownFindings(
+  error: unknown,
+  source: string
+): readonly ImportFinding[] {
+  const issues =
+    error instanceof MarkdownValidationError
+      ? error.issues
+      : [error instanceof Error ? error.message : "The document is invalid."];
+  return issues.map((message) => {
+    const lower = message.toLowerCase();
+    const code = lower.includes("raw html")
+      ? "RAW_HTML"
+      : lower.includes("unsafe") && lower.includes("url")
+        ? "UNSAFE_URL"
+        : lower.includes("h1")
+          ? "BODY_HAS_H1"
+          : lower.includes("directive")
+            ? "INVALID_DIRECTIVE"
+            : lower.includes("bom")
+              ? "UTF8_BOM"
+              : "INVALID_MARKDOWN";
+    return finding("error", lineForIssue(source, message), code, message);
+  });
+}
+
+function lineForIssue(source: string, message: string): number | null {
+  const field = /^([A-Za-z][A-Za-z0-9]*)(?:\.|:)/u.exec(message)?.[1];
+  if (field !== undefined) {
+    const line = frontmatterLine(source, field);
+    if (line !== null) return line;
+  }
+  const lines = source.split("\n");
+  if (/raw html/iu.test(message)) {
+    const index = lines.findIndex((line) => /<\/?[A-Za-z][^>]*>/u.test(line));
+    return index < 0 ? null : index + 1;
+  }
+  if (/H1/iu.test(message)) {
+    const index = lines.findIndex((line) => /^#\s+/u.test(line));
+    return index < 0 ? null : index + 1;
+  }
+  const url = /URL:\s*(\S+)/iu.exec(message)?.[1];
+  if (url !== undefined) {
+    const index = lines.findIndex((line) => line.includes(url));
+    return index < 0 ? null : index + 1;
+  }
+  return null;
+}
+
+function frontmatterLine(source: string, field: string): number | null {
+  const lines = source.split("\n");
+  const end = lines.slice(1).findIndex((line) => line === "---");
+  if (lines[0] !== "---" || end < 0) return null;
+  const pattern = new RegExp(
+    `^${field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:`,
+    "u"
+  );
+  const index = lines.slice(1, end + 1).findIndex((line) => pattern.test(line));
+  return index < 0 ? null : index + 2;
+}
+
+function splitDocumentLines(document: string): readonly string[] {
+  if (document.length === 0) return [];
+  const withoutFinalNewline = document.endsWith("\n")
+    ? document.slice(0, -1)
+    : document;
+  return withoutFinalNewline.split("\n");
 }
 
 function rejectUnsafeMarkdown() {

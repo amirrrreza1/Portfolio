@@ -20,6 +20,7 @@ import {
   adminTaxonomyTranslationSchemaFor,
   archiveTranslationSchema,
   autosaveDraftSchema,
+  importRequestSchema,
   previewTranslationSchema,
   publishTranslationSchema,
   saveTranslationSchema,
@@ -40,7 +41,11 @@ import {
   TaxonomyVersionConflictError,
   type TaxonomyKind,
 } from "@portfolio/database";
-import { MarkdownValidationError } from "@portfolio/markdown";
+import {
+  MAX_ARTICLE_IMPORT_BYTES,
+  MarkdownValidationError,
+} from "@portfolio/markdown";
+import { MediaValidationError } from "@portfolio/media";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
@@ -52,7 +57,7 @@ import {
   type AuthRuntimeConfig,
 } from "../auth/auth.controller.js";
 import type { AuthService } from "../auth/auth.service.js";
-import { BlogAdminService } from "./blog.service.js";
+import { ArticleImportReportError, BlogAdminService } from "./blog.service.js";
 
 export const BLOG_ADMIN_SERVICE = Symbol("BLOG_ADMIN_SERVICE");
 
@@ -132,6 +137,32 @@ class BlogExceptionFilter implements ExceptionFilter {
       void reply.status(ERROR_STATUS.VALIDATION_FAILED).send(
         buildErrorBody("VALIDATION_FAILED", requestId, {
           body: [exception.message],
+        })
+      );
+      return;
+    }
+    if (exception instanceof MediaValidationError) {
+      void reply.status(ERROR_STATUS.VALIDATION_FAILED).send(
+        buildErrorBody("VALIDATION_FAILED", requestId, {
+          file: [exception.message],
+        })
+      );
+      return;
+    }
+    if (exception instanceof ArticleImportReportError) {
+      const code: ErrorCode =
+        exception.reason === "REPORT_USED"
+          ? "CONFLICT"
+          : exception.reason === "REPORT_REJECTED"
+            ? "VALIDATION_FAILED"
+            : exception.reason === "STORAGE_UNAVAILABLE"
+              ? "INTERNAL_ERROR"
+              : "NOT_FOUND";
+      void reply.status(ERROR_STATUS[code]).send(
+        buildErrorBody(code, requestId, {
+          ...(code === "VALIDATION_FAILED"
+            ? { reportToken: ["The dry-run report was not accepted."] }
+            : {}),
         })
       );
       return;
@@ -302,6 +333,78 @@ export class BlogAdminController {
       },
       requestId
     );
+  }
+
+  @Post("import")
+  async importArticle(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const requestId = randomUUID();
+    const contentType = String(request.headers["content-type"] ?? "");
+    if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
+      const command = this.parse(importRequestSchema, body, requestId);
+      if (!command.confirm) {
+        throw this.fail("VALIDATION_FAILED", requestId, {
+          file: ["A dry run requires one multipart Markdown upload."],
+        });
+      }
+      const actor = await this.boundary.requireMutation(
+        request,
+        "content.import"
+      );
+      const value = await this.blog.confirmImport(actor.user.userId, command);
+      this.boundary.noStore(reply);
+      return this.envelope(value, requestId);
+    }
+
+    const actor = await this.boundary.requireMutation(
+      request,
+      "content.draft.write"
+    );
+    const part = await request.file({
+      limits: {
+        fileSize: MAX_ARTICLE_IMPORT_BYTES,
+        files: 1,
+        fields: 4,
+        parts: 5,
+      },
+    });
+    if (part === undefined) {
+      throw this.fail("VALIDATION_FAILED", requestId, {
+        file: ["Choose one .md, .markdown, or .mdx file."],
+      });
+    }
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for await (const chunk of part.file as AsyncIterable<Buffer>) {
+      total += chunk.length;
+      if (total > MAX_ARTICLE_IMPORT_BYTES) {
+        throw this.fail("PAYLOAD_TOO_LARGE", requestId);
+      }
+      chunks.push(chunk);
+    }
+    if (part.file.truncated) {
+      throw this.fail("PAYLOAD_TOO_LARGE", requestId);
+    }
+    const postIdValue = importMultipartField(part.fields, "postId");
+    const command = this.parse(
+      importRequestSchema,
+      {
+        postId: postIdValue.trim().length === 0 ? null : postIdValue,
+        locale: importMultipartField(part.fields, "locale"),
+        confirm: false,
+        reportToken: null,
+      },
+      requestId
+    );
+    const value = await this.blog.prepareImport(actor.user.userId, command, {
+      filename: part.filename,
+      bytes: Buffer.concat(chunks),
+    });
+    this.boundary.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Get("previews/:token")
@@ -628,4 +731,13 @@ export class BlogAdminController {
   ): HttpException {
     return this.boundary.fail(code, requestId, fields);
   }
+}
+
+function importMultipartField(fields: unknown, name: string): string {
+  if (typeof fields !== "object" || fields === null) return "";
+  const raw = (fields as Record<string, unknown>)[name];
+  const item: unknown = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof item !== "object" || item === null) return "";
+  const value = (item as { readonly value?: unknown }).value;
+  return typeof value === "string" ? value : "";
 }
