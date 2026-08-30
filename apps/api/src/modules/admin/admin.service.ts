@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- Prisma's transaction client is structurally typed but not exported by the generated client. This adapter is contained here; controller inputs are runtime validated. */
 
 import {
+  ArticleRestoreRefusedError,
   OptimisticConcurrencyError,
+  restoreArticleRevision,
   type Database,
 } from "@portfolio/database";
 import type {
@@ -108,7 +110,9 @@ export class AdminPortfolioService {
   public constructor(
     private readonly database: Database,
     private readonly mediaStore?: MediaObjectStore,
-    private readonly recoverySecret?: string
+    private readonly recoverySecret?: string,
+    /** Only used to evaluate off-site canonical URLs on the article path. */
+    private readonly siteOrigin: string | null = null
   ) {}
 
   async readSettings(): Promise<unknown> {
@@ -706,7 +710,37 @@ export class AdminPortfolioService {
     });
   }
 
+  /**
+   * The single restore endpoint, per API_SPEC §6.
+   *
+   * An article translation is answered before the generic transaction opens,
+   * not inside the switch below. Its restore has to render Markdown and
+   * re-derive a digest, and doing that between `BEGIN` and `COMMIT` would hold
+   * a write transaction open across the whole pipeline; opening a second
+   * transaction from inside this one would be worse still. So the article path
+   * runs its own read-render-write, using the same versioned save an author's
+   * edit uses, and this method's job is only to route to it.
+   */
   async restoreRevision(actorId: string, revisionId: string): Promise<unknown> {
+    const head = await this.database.contentRevision.findUnique({
+      where: { id: revisionId },
+      select: { entityType: true },
+    });
+    if (head?.entityType === "PostTranslation") {
+      try {
+        return await restoreArticleRevision(this.database, {
+          revisionId,
+          actorId,
+          siteOrigin: this.siteOrigin,
+        });
+      } catch (error) {
+        if (!(error instanceof ArticleRestoreRefusedError)) throw error;
+        if (error.code === "TRANSLATION_MISSING") {
+          throw new AdminResourceNotFoundError("PostTranslation", revisionId);
+        }
+        throw new AdminInvariantError({ revision: [error.detail] });
+      }
+    }
     return this.database.$transaction(async (tx) => {
       const revision = await tx.contentRevision.findUnique({
         where: { id: revisionId },

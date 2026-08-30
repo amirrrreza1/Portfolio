@@ -39,8 +39,19 @@ export {
   createArticleStore,
   enqueueDuePublications,
   publishDueTranslation,
+  type ArticleSaveOrigin,
   type SavedArticleTranslation,
 } from "./articles.js";
+export {
+  ArticleRestoreRefusedError,
+  buildCurrentFrontmatter,
+  buildRestoreFrontmatter,
+  parseArticleRevisionSnapshot,
+  readArticleRestoreTarget,
+  restoreArticleRevision,
+  type ArticleRestoreTarget,
+  type ArticleRevisionSnapshot,
+} from "./article-restore.js";
 export {
   createBlogTaxonomyStore,
   TaxonomyNotFoundError,

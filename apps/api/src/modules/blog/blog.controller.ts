@@ -35,6 +35,7 @@ import {
   type FieldErrors,
 } from "@portfolio/contracts/common";
 import {
+  ArticleRestoreRefusedError,
   ArticleTransitionRefusedError,
   ArticleVersionConflictError,
   TaxonomyNotFoundError,
@@ -129,6 +130,21 @@ class BlogExceptionFilter implements ExceptionFilter {
                 blockers: [...exception.checklist.blockers],
                 warnings: [...exception.checklist.warnings],
               }),
+        })
+      );
+      return;
+    }
+    if (exception instanceof ArticleRestoreRefusedError) {
+      const code: ErrorCode =
+        exception.code === "NOT_AN_ARTICLE" ||
+        exception.code === "TRANSLATION_MISSING"
+          ? "NOT_FOUND"
+          : "VALIDATION_FAILED";
+      void reply.status(ERROR_STATUS[code]).send(
+        buildErrorBody(code, requestId, {
+          ...(code === "VALIDATION_FAILED"
+            ? { revision: [exception.detail] }
+            : {}),
         })
       );
       return;
@@ -249,6 +265,53 @@ export class BlogAdminController {
     const value = await this.blog.checklist(
       this.boundary.id(id, requestId),
       this.boundary.locale(locale, requestId)
+    );
+    if (value === null) throw this.fail("NOT_FOUND", requestId);
+    this.boundary.noStore(reply);
+    return this.envelope(value, requestId);
+  }
+
+  /**
+   * Article history, scoped to the translation the path addresses.
+   *
+   * M7's `/admin/revisions` lists every family at once, which is what a
+   * recovery ledger needs and exactly what an author editing one article does
+   * not: they would have to find their own translation's id among every
+   * project, skill and setting change on the site. Restoring still happens on
+   * M7's single endpoint — this is the read that makes it usable.
+   */
+  @Get("posts/:id/translations/:locale/revisions")
+  async listRevisions(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const requestId = randomUUID();
+    await this.boundary.require(request, "content.draft.read");
+    const value = await this.blog.listRevisions(
+      this.boundary.id(id, requestId),
+      this.boundary.locale(locale, requestId)
+    );
+    if (value === null) throw this.fail("NOT_FOUND", requestId);
+    this.boundary.noStore(reply);
+    return this.envelope(value, requestId);
+  }
+
+  @Get("posts/:id/translations/:locale/revisions/:revisionId")
+  async readRevision(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Param("revisionId") revisionId: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const requestId = randomUUID();
+    await this.boundary.require(request, "content.draft.read");
+    const value = await this.blog.readRevision(
+      this.boundary.id(id, requestId),
+      this.boundary.locale(locale, requestId),
+      this.boundary.id(revisionId, requestId)
     );
     if (value === null) throw this.fail("NOT_FOUND", requestId);
     this.boundary.noStore(reply);

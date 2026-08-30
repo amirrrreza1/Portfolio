@@ -1,8 +1,11 @@
 import {
+  ArticleRestoreRefusedError,
   ArticleTransitionRefusedError,
   ArticleVersionConflictError,
   createArticleStore,
   createBlogTaxonomyStore,
+  parseArticleRevisionSnapshot,
+  readArticleRestoreTarget,
   type Database,
   type TaxonomyKind,
 } from "@portfolio/database";
@@ -176,6 +179,96 @@ export class BlogAdminService {
     command: ArchiveTranslation
   ) {
     return this.articles.archiveTranslation(postId, locale, actorId, command);
+  }
+
+  /**
+   * The revision history of one translation, as the editor needs to show it.
+   *
+   * The stored snapshots carry `renderedHtml`, which is the largest column in
+   * the row and useless to a history list — a fifty-entry list would ship
+   * megabytes of markup the browser immediately discards. So the list is a
+   * projection, and the document itself is fetched one revision at a time.
+   *
+   * `restorable` is computed here, by the same validation the restore runs, so
+   * the editor never offers a button that is guaranteed to fail.
+   */
+  async listRevisions(postId: string, locale: Locale): Promise<unknown | null> {
+    const translation = await this.database.postTranslation.findUnique({
+      where: { postId_locale: { postId, locale } },
+      select: { id: true, version: true, status: true },
+    });
+    if (translation === null) return null;
+    const rows = await this.database.contentRevision.findMany({
+      where: { entityType: "PostTranslation", entityId: translation.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        action: true,
+        entityVersion: true,
+        createdAt: true,
+        after: true,
+        actor: { select: { displayName: true } },
+      },
+    });
+    return {
+      translationId: translation.id,
+      currentVersion: translation.version,
+      status: translation.status,
+      revisions: rows.map((row) => {
+        const snapshot = describeSnapshot(row.after);
+        return {
+          id: row.id,
+          action: row.action,
+          entityVersion: row.entityVersion,
+          createdAt: row.createdAt,
+          actorName: row.actor?.displayName ?? null,
+          title: snapshot.ok ? snapshot.value.title : null,
+          slug: snapshot.ok ? snapshot.value.slug : null,
+          status: snapshot.ok ? snapshot.value.status : null,
+          restorable: snapshot.ok && translation.status !== "ARCHIVED",
+          refusal: snapshot.ok
+            ? translation.status === "ARCHIVED"
+              ? "Unarchive this translation before restoring an earlier version."
+              : null
+            : snapshot.detail,
+        };
+      }),
+    };
+  }
+
+  /**
+   * One revision as the document a restore would write, plus its diff.
+   *
+   * Both sides are produced by the restore path itself rather than by a
+   * second rendering of "what history probably means", so what the author
+   * reviews is exactly what pressing restore commits.
+   */
+  async readRevision(
+    postId: string,
+    locale: Locale,
+    revisionId: string
+  ): Promise<unknown | null> {
+    const target = await readArticleRestoreTarget(this.database, revisionId);
+    // The path addresses the article; a revision belonging to a different
+    // translation is not found here, whatever its id resolves to elsewhere.
+    if (target.postId !== postId || target.locale !== locale) return null;
+    const document = serializeArticle({
+      frontmatter: target.frontmatter,
+      body: target.body,
+    });
+    const currentDocument = serializeArticle({
+      frontmatter: target.currentFrontmatter,
+      body: target.currentBody,
+    });
+    return {
+      id: target.revisionId,
+      revisionVersion: target.revisionVersion,
+      currentVersion: target.currentVersion,
+      restorable: target.currentStatus !== "ARCHIVED",
+      document,
+      diff: createArticleImportDiff(currentDocument, document),
+    };
   }
 
   /**
@@ -526,8 +619,30 @@ export class BlogAdminService {
   }
 }
 
-export { ArticleTransitionRefusedError, ArticleVersionConflictError };
+export {
+  ArticleRestoreRefusedError,
+  ArticleTransitionRefusedError,
+  ArticleVersionConflictError,
+};
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+type SnapshotDescription =
+  | {
+      readonly ok: true;
+      readonly value: ReturnType<typeof parseArticleRevisionSnapshot>;
+    }
+  | { readonly ok: false; readonly detail: string };
+
+function describeSnapshot(value: unknown): SnapshotDescription {
+  try {
+    return { ok: true, value: parseArticleRevisionSnapshot(value) };
+  } catch (error) {
+    if (error instanceof ArticleRestoreRefusedError) {
+      return { ok: false, detail: error.detail };
+    }
+    throw error;
+  }
 }

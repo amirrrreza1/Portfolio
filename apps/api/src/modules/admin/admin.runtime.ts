@@ -24,6 +24,7 @@ export function createAdminPortfolioService(): AdminPortfolioService {
   return new AdminPortfolioService(
     getDatabaseClient({ connectionString: environment.databaseUrl }),
     createS3MediaObjectStore(environment.media),
-    environment.auth.recoverySecret
+    environment.auth.recoverySecret,
+    process.env.PUBLIC_SITE_URL ?? null
   );
 }

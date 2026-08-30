@@ -255,6 +255,18 @@ export async function recordTransition(
  * belongs in the audit trail, which is redacted and access-controlled as a
  * unit. Copying it into the content revision would put it on the restore path,
  * where it would eventually be shown as though it were part of the article.
+ *
+ * Everything else an author typed *is* here, because the restore path can only
+ * give back what a snapshot recorded. The SEO fields and the social image were
+ * added in M8 slice 4 for exactly that reason: without them a restore silently
+ * kept today's metadata beside yesterday's prose. Snapshots written before
+ * that carry no such keys, and `??` below is what makes an older revision
+ * restorable rather than a parse failure.
+ *
+ * Post-level state — category, tags, cover image, featured — is deliberately
+ * absent. It belongs to the post, which both translations share, and copying
+ * it into a per-locale snapshot would let restoring the English article
+ * silently retag the Persian one.
  */
 export function revisionSnapshot(value: any) {
   return {
@@ -263,6 +275,11 @@ export function revisionSnapshot(value: any) {
     title: value.title,
     slug: value.slug,
     excerpt: value.excerpt,
+    seoTitle: value.seoTitle ?? null,
+    seoDescription: value.seoDescription ?? null,
+    canonicalUrl: value.canonicalUrl ?? null,
+    socialImageId: value.socialImageId ?? null,
+    frontmatterSchemaVersion: value.frontmatterSchemaVersion ?? 1,
     status: value.status,
     bodyMarkdown: value.bodyMarkdown,
     bodySha256: value.bodySha256,
@@ -351,14 +368,25 @@ export async function recordSlugMove(
   const { locale, fromPath, toPath, translationId, actorId } = options;
   if (fromPath === toPath) return;
 
-  // Anything that pointed at the old path now points at the new one, so no
-  // visitor is ever asked to make two hops.
+  /**
+   * The destination's own rule goes first, and that order is the whole fix.
+   *
+   * Collapsing chains before clearing the destination breaks the moment an
+   * article moves *back* — which is exactly what restoring an earlier revision
+   * does. `/a → /b` exists, the article returns to `/a`, and the collapse
+   * rewrites that row's target to `/a`, producing `/a → /a`: a redirect to
+   * itself, refused by the `slug_redirects_no_self_target` check constraint,
+   * which failed the whole transaction with a `500`. Deleting the destination
+   * rule first removes that row before anything can point it at itself.
+   */
+  await prisma.slugRedirect.deleteMany({ where: { locale, fromPath: toPath } });
+  // Anything that still pointed at the old path now points at the new one, so
+  // no visitor is ever asked to make two hops. The exclusion is belt and
+  // braces beside the delete above: no rule may be rewritten into itself.
   await prisma.slugRedirect.updateMany({
-    where: { locale, toPath: fromPath },
+    where: { locale, toPath: fromPath, fromPath: { not: toPath } },
     data: { toPath },
   });
-  // The destination must not itself redirect away, or the move creates a loop.
-  await prisma.slugRedirect.deleteMany({ where: { locale, fromPath: toPath } });
 
   await prisma.slugRedirect.upsert({
     where: { locale_fromPath: { locale, fromPath } },

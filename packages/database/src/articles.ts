@@ -24,6 +24,7 @@ import {
   gatherChecklistFacts,
   recordSlugMove,
   recordTransition,
+  revisionSnapshot,
   transitionResult,
   updateGuarded,
   type ArchiveTranslation,
@@ -44,6 +45,13 @@ export class ArticleVersionConflictError extends Error {
     this.name = "ArticleVersionConflictError";
   }
 }
+
+/** Evidence context for a save that an editor did not type. */
+export type ArticleSaveOrigin = {
+  readonly kind: "restore";
+  readonly revisionId: string;
+  readonly revisionVersion: number;
+};
 
 export interface SavedArticleTranslation {
   readonly id: string;
@@ -72,7 +80,16 @@ export function createArticleStore(
   return {
     saveTranslation: async (
       command: SaveTranslation,
-      actorId: string | null
+      actorId: string | null,
+      /**
+       * Why this save is happening, when it is not an author pressing save.
+       *
+       * A restore is the same write — validate, render, digest, revise,
+       * invalidate — and giving it its own transaction would mean two code
+       * paths that must stay identical forever. What differs is only the
+       * evidence it leaves, so that is all this changes.
+       */
+      origin: ArticleSaveOrigin | null = null
     ): Promise<SavedArticleTranslation> => {
       const input = saveTranslationSchema.parse(command);
       const frontmatter = frontmatterSchema.parse(input.frontmatter);
@@ -148,7 +165,12 @@ export function createArticleStore(
             entityType: "PostTranslation",
             entityId: translation.id,
             entityVersion: translation.version,
-            action: existing === null ? "CREATE" : "UPDATE",
+            action:
+              existing === null
+                ? "CREATE"
+                : origin?.kind === "restore"
+                  ? "RESTORE"
+                  : "UPDATE",
             actorId,
             before: existing === null ? undefined : revisionSnapshot(existing),
             after: revisionSnapshot(translation),
@@ -157,13 +179,22 @@ export function createArticleStore(
         await prisma.auditEvent.create({
           data: {
             actorId,
-            eventType: "article.translation.saved",
+            eventType:
+              origin?.kind === "restore"
+                ? "article.translation.restored"
+                : "article.translation.saved",
             targetType: "PostTranslation",
             targetId: translation.id,
             outcome: "SUCCESS",
             metadata: {
               locale: frontmatter.locale,
               version: translation.version,
+              ...(origin?.kind === "restore"
+                ? {
+                    restoredFromRevisionId: origin.revisionId,
+                    restoredFromVersion: origin.revisionVersion,
+                  }
+                : {}),
             },
           },
         });
@@ -800,18 +831,12 @@ async function assertMedia(prisma: any, frontmatter: Frontmatter) {
     throw new Error("Referenced media is missing or unavailable.");
 }
 
-function revisionSnapshot(value: any) {
-  return {
-    postId: value.postId,
-    locale: value.locale,
-    title: value.title,
-    slug: value.slug,
-    excerpt: value.excerpt,
-    status: value.status,
-    bodyMarkdown: value.bodyMarkdown,
-    bodySha256: value.bodySha256,
-    renderedHtml: value.renderedHtml,
-    rendererVersion: value.rendererVersion,
-    version: value.version,
-  };
-}
+/**
+ * `revisionSnapshot` lives in `article-lifecycle.ts` and is imported here.
+ *
+ * It used to exist twice, once per module, with identical bodies. Two copies
+ * of the shape a revision records is one copy too many: M8 slice 4 needed to
+ * add the SEO fields for restore to be faithful, and a second copy is exactly
+ * where that addition would have been forgotten — leaving transitions and
+ * saves writing snapshots that disagree about what an article is.
+ */

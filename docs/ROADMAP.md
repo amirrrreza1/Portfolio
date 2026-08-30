@@ -562,8 +562,14 @@ live-proven in
 UTF-8 and bounded input, executable-MDX rejection, line findings, normalized
 source and exact diff, private byte-for-byte quarantine, and one-time
 actor/target/version-bound confirmation through the normal article-save path.
-Article revision restore, the discovery and SEO surfaces, and the
-scheduled-publication test matrix remain open; see
+Article revision restore is live-proven in
+[`status/evidence/M8-restore-live.md`](status/evidence/M8-restore-live.md): an
+earlier version is replayed from its recorded source through the same validated
+save an author uses, re-rendered and re-digested by today's renderer, recorded
+as a new revision on the single `POST /admin/revisions/:id/restore` endpoint,
+refused when the snapshot no longer matches its digest or the translation is
+archived, and unable to change publication state. The discovery and SEO
+surfaces and the scheduled-publication test matrix remain open; see
 [`status/M8.md`](status/M8.md).
 
 Deliverables:

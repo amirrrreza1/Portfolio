@@ -1,6 +1,8 @@
 /** M8 authoring/import proof against the authenticated live boundary. */
 import { hashPassword, issueRecoveryCodes } from "@portfolio/auth-core";
 import { createDatabaseClient, type Database } from "@portfolio/database";
+import { RENDERER_VERSION } from "@portfolio/markdown";
+import { createHash } from "node:crypto";
 
 if (!process.argv.includes("--apply")) {
   throw new Error(
@@ -622,7 +624,201 @@ try {
     `HTTP ${reusedImport.status}`
   );
 
-  section("7. Evidence written by the same transactions");
+  section("7. Revision history and restore");
+  const importedPostId = acceptedReport.normalizedFrontmatter.postId as string;
+  const importedBase = `/api/v1/admin/blog/posts/${importedPostId}/translations/en`;
+  const importedFrontmatter = {
+    ...acceptedReport.normalizedFrontmatter,
+    updatedAt: null,
+  };
+  const editedBody =
+    "## An edited section\n\nThe body the author is about to regret. ".repeat(
+      4
+    );
+  const edited = await call(importedBase, {
+    method: "PUT",
+    cookie: ownerCookie,
+    csrf: ownerCsrf,
+    body: {
+      frontmatter: {
+        ...importedFrontmatter,
+        title: `M8 edited ${suffix}`,
+        slug: `m8-edited-${suffix}`,
+      },
+      body: editedBody,
+      baseVersion: imported?.version ?? 0,
+    },
+  });
+  check(
+    "a second save gives the imported article a history to restore from",
+    edited.status === 200,
+    `HTTP ${edited.status}`
+  );
+
+  const history = data<any>(
+    await call(`${importedBase}/revisions`, { cookie: ownerCookie })
+  );
+  const original = history.revisions.at(-1);
+  check(
+    "history is scoped to one translation and omits the stored render",
+    history.revisions.length >= 2 &&
+      history.revisions[0].entityVersion > original.entityVersion &&
+      history.revisions.every((row: any) => !("renderedHtml" in row)) &&
+      original.restorable === true,
+    `${history.revisions.length} revisions; oldest v${original?.entityVersion}`
+  );
+
+  const preview = data<any>(
+    await call(`${importedBase}/revisions/${original.id}`, {
+      cookie: ownerCookie,
+    })
+  );
+  check(
+    "a revision is previewed as the document a restore would write, with its diff",
+    preview.document.includes(`title: ${importedTitle}`) &&
+      preview.diff.includes(`-title: M8 edited ${suffix}`) &&
+      preview.diff.includes(`+title: ${importedTitle}`),
+    `${preview.diff.split("\n").length} diff lines`
+  );
+
+  const foreign = await call(
+    `/api/v1/admin/blog/posts/${postId}/translations/en/revisions/${original.id}`,
+    { cookie: ownerCookie }
+  );
+  check(
+    "a revision cannot be read through another article's path",
+    foreign.status === 404,
+    `HTTP ${foreign.status}`
+  );
+
+  const restored = await call(
+    `/api/v1/admin/revisions/${original.id}/restore`,
+    {
+      cookie: ownerCookie,
+      csrf: ownerCsrf,
+      body: { confirm: true },
+    }
+  );
+  const afterRestore = await database.postTranslation.findUniqueOrThrow({
+    where: { postId_locale: { postId: importedPostId, locale: "en" } },
+  });
+  check(
+    "restoring replays the recorded source through the validated save path",
+    restored.status === 201 &&
+      afterRestore.title === importedTitle &&
+      afterRestore.bodyMarkdown?.includes("Imported section") === true &&
+      afterRestore.version === (imported?.version ?? 0) + 2,
+    `HTTP ${restored.status}; v${afterRestore.version}`
+  );
+  check(
+    "the restored article is re-rendered and re-digested rather than copied",
+    afterRestore.bodySha256 ===
+      createHash("sha256")
+        .update(afterRestore.bodyMarkdown ?? "", "utf8")
+        .digest("hex") &&
+      afterRestore.renderedHtml?.includes("Imported section") === true &&
+      afterRestore.rendererVersion === RENDERER_VERSION,
+    `renderer ${afterRestore.rendererVersion}`
+  );
+  const restoreRedirect = await database.slugRedirect.findUnique({
+    where: {
+      locale_fromPath: {
+        locale: "en",
+        fromPath: `/en/blog/m8-edited-${suffix}`,
+      },
+    },
+  });
+  check(
+    "the slug the restore moved away from keeps resolving",
+    restoreRedirect?.toPath ===
+      `/en/blog/${acceptedReport.normalizedFrontmatter.slug}` &&
+      restoreRedirect.statusCode === 308,
+    `${restoreRedirect?.fromPath} -> ${restoreRedirect?.toPath}`
+  );
+  const restoreEvidence = await database.auditEvent.findFirst({
+    where: {
+      targetId: afterRestore.id,
+      eventType: "article.translation.restored",
+    },
+    select: { metadata: true },
+  });
+  const restoreRevision = await database.contentRevision.findFirst({
+    where: { entityType: "PostTranslation", entityId: afterRestore.id },
+    orderBy: { createdAt: "desc" },
+    select: { action: true },
+  });
+  const stillThere = await database.contentRevision.findUnique({
+    where: { id: original.id },
+    select: { id: true },
+  });
+  check(
+    "the restore is recorded as a new revision and never rewrites history",
+    restoreRevision?.action === "RESTORE" &&
+      stillThere !== null &&
+      JSON.stringify(restoreEvidence?.metadata ?? {}).includes(original.id),
+    `${restoreRevision?.action}; source revision retained: ${stillThere !== null}`
+  );
+
+  const restoredStatus = await database.postTranslation.findUniqueOrThrow({
+    where: { id: afterRestore.id },
+    select: { status: true, publishedAt: true },
+  });
+  check(
+    "a restore cannot publish or withdraw: lifecycle stays where the commands left it",
+    restoredStatus.status === "DRAFT" && restoredStatus.publishedAt === null,
+    `${restoredStatus.status}`
+  );
+
+  const archivedRestore = await call(
+    `/api/v1/admin/revisions/${
+      (
+        await database.contentRevision.findFirstOrThrow({
+          where: { entityType: "PostTranslation", entityId: live.id },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        })
+      ).id
+    }/restore`,
+    { cookie: ownerCookie, csrf: ownerCsrf, body: { confirm: true } }
+  );
+  check(
+    "an archived translation refuses a restore instead of re-dating its withdrawal",
+    archivedRestore.status === 400 &&
+      JSON.stringify(fields(archivedRestore)).includes("Unarchive"),
+    `HTTP ${archivedRestore.status}`
+  );
+
+  const tampered = await database.contentRevision.findFirstOrThrow({
+    where: { entityType: "PostTranslation", entityId: afterRestore.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, after: true },
+  });
+  await database.contentRevision.update({
+    where: { id: tampered.id },
+    data: {
+      after: {
+        ...(tampered.after as Record<string, unknown>),
+        bodyMarkdown: "## Injected\n\nText nobody signed.",
+      } as never,
+    },
+  });
+  const tamperedRestore = await call(
+    `/api/v1/admin/revisions/${tampered.id}/restore`,
+    { cookie: ownerCookie, csrf: ownerCsrf, body: { confirm: true } }
+  );
+  const afterTamper = await database.postTranslation.findUniqueOrThrow({
+    where: { id: afterRestore.id },
+    select: { version: true, bodyMarkdown: true },
+  });
+  check(
+    "a snapshot edited outside the write path is refused, and writes nothing",
+    tamperedRestore.status === 400 &&
+      afterTamper.version === afterRestore.version &&
+      afterTamper.bodyMarkdown?.includes("Injected") !== true,
+    `HTTP ${tamperedRestore.status}; v${afterTamper.version}`
+  );
+
+  section("8. Evidence written by the same transactions");
   const revisions = await database.contentRevision.count({
     where: { entityType: "PostTranslation", entityId: live.id },
   });

@@ -94,6 +94,35 @@ type ImportReport = {
   readonly expiresAt: string;
 };
 
+type RevisionSummary = {
+  readonly id: string;
+  readonly action: string;
+  readonly entityVersion: number;
+  readonly createdAt: string;
+  readonly actorName: string | null;
+  readonly title: string | null;
+  readonly slug: string | null;
+  readonly status: string | null;
+  readonly restorable: boolean;
+  readonly refusal: string | null;
+};
+
+type RevisionHistory = {
+  readonly translationId: string;
+  readonly currentVersion: number;
+  readonly status: string;
+  readonly revisions: readonly RevisionSummary[];
+};
+
+type RevisionComparison = {
+  readonly id: string;
+  readonly revisionVersion: number;
+  readonly currentVersion: number;
+  readonly restorable: boolean;
+  readonly document: string;
+  readonly diff: string;
+};
+
 type Taxonomy = {
   readonly id: string;
   readonly key: string;
@@ -952,6 +981,186 @@ function TranslationEditor({
           />
         )}
       </div>
+
+      {translation === null ? null : (
+        <RevisionHistoryPanel
+          postId={postId}
+          locale={locale}
+          currentVersion={translation.version}
+          busy={busy}
+          mutate={mutate}
+          reload={loadTranslation}
+        />
+      )}
+    </section>
+  );
+}
+
+/**
+ * The article's own history, beside the article.
+ *
+ * The recovery ledger in "History and access" lists every revision the site
+ * has, which is what recovering from a bad change across the whole CMS needs.
+ * An author fixing one paragraph is doing something narrower, and asking them
+ * to find their translation's row among every project and setting change is
+ * how a restore turns into a guess. The restore itself is still the one
+ * endpoint from API_SPEC §6 — only the reading is scoped here.
+ *
+ * A revision is compared before it can be restored, and the comparison is the
+ * document the server says it would write, not a diff this panel assembles
+ * from what it thinks a restore means.
+ */
+function RevisionHistoryPanel({
+  postId,
+  locale,
+  currentVersion,
+  busy,
+  mutate,
+  reload,
+}: {
+  readonly postId: string;
+  readonly locale: Locale;
+  readonly currentVersion: number;
+  readonly busy: boolean;
+  readonly mutate: (
+    action: () => Promise<unknown>,
+    success: string
+  ) => Promise<void>;
+  readonly reload: () => Promise<void>;
+}): React.JSX.Element {
+  const [history, setHistory] = useState<RevisionHistory | null>(null);
+  const [comparison, setComparison] = useState<RevisionComparison | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const value = await adminRequest<RevisionHistory>(
+          `/admin/blog/posts/${postId}/translations/${locale}/revisions`
+        );
+        if (!cancelled) {
+          setHistory(value);
+          setComparison(null);
+        }
+      } catch (loadError) {
+        if (!cancelled) setError(describeAdminError(loadError));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `currentVersion` is in the dependency list so every save, transition and
+    // restore re-reads the history it just added a row to.
+  }, [postId, locale, currentVersion]);
+
+  if (history === null) {
+    return (
+      <EditorStatus
+        message={error ?? "Loading history…"}
+        error={error !== null}
+      />
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-3" data-testid="revision-history">
+      <ResourceHeading
+        title="Version history"
+        description="Every save and transition of this translation. Restoring replays the recorded Markdown through the normal save — it re-renders, writes a new revision, and never changes publication state."
+      />
+      <EditorStatus message={error} error={error !== null} />
+      {history.revisions.length === 0 ? (
+        <p className="text-text-muted text-sm">
+          No revisions have been recorded for this translation yet.
+        </p>
+      ) : (
+        <ol className="flex flex-col gap-2">
+          {history.revisions.map((revision) => (
+            <li
+              key={revision.id}
+              className="border-border flex flex-wrap items-center justify-between gap-3 border p-3 text-sm"
+            >
+              <span>
+                <span className="font-semibold">
+                  {revision.action.toLowerCase()}
+                </span>{" "}
+                <span className="font-mono text-xs">
+                  v{revision.entityVersion}
+                </span>
+                {revision.title === null ? null : ` · ${revision.title}`}
+                <span className="text-text-muted block text-xs">
+                  {revision.actorName ?? "System"} ·{" "}
+                  {formatUtc(revision.createdAt)}
+                  {revision.restorable ? "" : ` · ${revision.refusal ?? ""}`}
+                </span>
+              </span>
+              <span className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="border-border border px-3 py-1 text-xs"
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        setComparison(
+                          await adminRequest<RevisionComparison>(
+                            `/admin/blog/posts/${postId}/translations/${locale}/revisions/${revision.id}`
+                          )
+                        );
+                        setError(null);
+                      } catch (compareError) {
+                        setError(describeAdminError(compareError));
+                      }
+                    })()
+                  }
+                >
+                  Compare
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !revision.restorable}
+                  className="border-border border px-3 py-1 text-xs disabled:opacity-50"
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Restore this translation to version ${revision.entityVersion}? This writes a new revision; nothing in the history is removed.`
+                      )
+                    ) {
+                      return;
+                    }
+                    void mutate(async () => {
+                      await adminRequest(
+                        `/admin/revisions/${revision.id}/restore`,
+                        {
+                          method: "POST",
+                          mutation: true,
+                          body: { confirm: true },
+                        }
+                      );
+                      await reload();
+                    }, "Earlier version restored as a new revision.");
+                  }}
+                >
+                  Restore this version
+                </button>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {comparison === null ? null : (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-semibold">What restoring would change</h4>
+          <pre
+            data-testid="revision-diff"
+            className="bg-secondary max-h-72 overflow-auto p-3 text-xs whitespace-pre-wrap"
+          >
+            {comparison.diff.length === 0
+              ? "This revision is identical to the current article."
+              : comparison.diff}
+          </pre>
+        </div>
+      )}
     </section>
   );
 }

@@ -51,6 +51,8 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 
 - [`M8-import-live.md`](M8-import-live.md) records the third M8 slice — 30/30 live API checks and the extended real-browser flow proving strict and bounded Markdown/MDX dry runs, executable-MDX rejection with source lines, exact private quarantine, visible inference and diff review, one-time confirmation, and lifecycle-preserving persistence through the normal article-save path.
 
+- [`M8-restore-live.md`](M8-restore-live.md) records the fourth M8 slice — 41/41 live API checks and the extended real-browser flow proving that an earlier article version is restored by replaying its recorded source through the normal validated save: re-rendered and re-digested, recorded as a new revision, refused when the snapshot no longer matches its digest or the translation is archived, and never able to change publication state. It also records the defect it found: moving a slug back to a path that already redirected away collapsed the old rule into a redirect to itself, which the check constraint refused mid-transaction.
+
 ## M7 — portfolio CMS
 
 - [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.

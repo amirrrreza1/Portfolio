@@ -179,4 +179,55 @@ test("an owner can author, check, publish, and preview an article", async ({
   await expect(
     page.getByRole("paragraph").filter({ hasText: importedTitle })
   ).toBeVisible();
+
+  // Version history closes the loop the editor opened: an author who can save
+  // over their own article has to be able to get the earlier one back. The
+  // article under test is published, so this also proves a restore re-renders
+  // a live page without touching its publication state.
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: title })
+    .first()
+    .getByRole("button", { name: /^EN/u })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "EN translation" })
+  ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue(title);
+  const editedTitle = `The regretted edit ${suffix}`;
+  await page.getByLabel("Title").fill(editedTitle);
+  await page.getByRole("button", { name: "Save article" }).click();
+  await expect(page.getByTestId("blog-workspace-status")).toHaveText(
+    "Article saved."
+  );
+
+  const history = page.getByTestId("revision-history");
+  await expect(history.getByRole("listitem").first()).toContainText(
+    editedTitle
+  );
+  const earlier = history.getByRole("listitem").filter({ hasText: title });
+  await earlier.first().getByRole("button", { name: "Compare" }).click();
+  // The diff is the server's answer about what a restore would write, so the
+  // author reviews the actual change rather than a client's guess at one.
+  await expect(page.getByTestId("revision-diff")).toContainText(
+    `-title: ${editedTitle}`
+  );
+  await expect(page.getByTestId("revision-diff")).toContainText(
+    `+title: ${title}`
+  );
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await earlier
+    .first()
+    .getByRole("button", { name: "Restore this version" })
+    .click();
+  await expect(page.getByTestId("blog-workspace-status")).toHaveText(
+    "Earlier version restored as a new revision."
+  );
+  await expect(page.getByLabel("Title")).toHaveValue(title);
+  // Restoring is an edit, never a publication command: the article it brought
+  // back is still the published one.
+  await expect(
+    page.getByRole("button", { name: "Withdraw", exact: true })
+  ).toBeEnabled();
 });
