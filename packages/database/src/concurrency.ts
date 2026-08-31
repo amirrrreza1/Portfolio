@@ -140,6 +140,16 @@ export interface TransactionCapable {
   $queryRawUnsafe<R = unknown>(query: string, ...values: unknown[]): Promise<R>;
 }
 
+export interface AdvisoryLockPool {
+  connect(): Promise<{
+    query(
+      sql: string,
+      values: unknown[]
+    ): Promise<{ rows: Record<string, unknown>[] }>;
+    release(destroy?: boolean): void;
+  }>;
+}
+
 /**
  * Runs work while holding a session-level advisory lock, or returns `null` if
  * another process holds it.
@@ -148,24 +158,45 @@ export interface TransactionCapable {
  * skip a tick it cannot claim, not queue up behind the previous one. Queuing is
  * how a slow run turns into a backlog that publishes everything at once.
  *
- * The lock is session-scoped, so the release in `finally` matters — and if the
- * process dies without it, the connection closing releases the lock anyway.
+ * Check out one connection for the entire callback. Independent Prisma/pool
+ * queries can use different sessions, and an idle pool can close a connection
+ * that still owns a session lock. Neither is safe for a long-lived worker.
+ * No database transaction is held open while the worker runs.
  */
 export async function withAdvisoryLock<R>(
-  db: TransactionCapable,
+  pool: AdvisoryLockPool,
   key: bigint,
   fn: () => Promise<R>
 ): Promise<R | null> {
-  const rows = await db.$queryRawUnsafe<Array<{ locked: boolean }>>(
-    "SELECT pg_try_advisory_lock($1) AS locked",
-    key
-  );
-
-  if (!rows[0]?.locked) return null;
-
+  const session = await pool.connect();
+  let locked = false;
+  let reusable = false;
   try {
+    const { rows } = await session.query(
+      "SELECT pg_try_advisory_lock($1::bigint) AS locked",
+      [key.toString()]
+    );
+    locked = rows[0]?.locked === true;
+    reusable = true;
+    if (!locked) return null;
     return await fn();
   } finally {
-    await db.$queryRawUnsafe("SELECT pg_advisory_unlock($1)", key);
+    try {
+      if (locked) {
+        reusable = false;
+        const { rows } = await session.query(
+          "SELECT pg_advisory_unlock($1::bigint) AS unlocked",
+          [key.toString()]
+        );
+        if (rows[0]?.unlocked !== true) {
+          throw new Error("The leadership session no longer owns its lock.");
+        }
+        reusable = true;
+      }
+    } finally {
+      // An uncertain unlock must destroy the connection, not return a leaked
+      // session lock to the pool for a later worker to inherit.
+      session.release(!reusable);
+    }
   }
 }

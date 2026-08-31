@@ -81,6 +81,15 @@ Import is a deliberate **parse and report, then confirm and save** operation:
 
 Accepted MDX is converted to safe Markdown/directives before storage. Export serializes current PostgreSQL metadata and Markdown deterministically. Import/export does not require Git credentials, a webhook, a content branch, or a deployment.
 
+The authenticated editor's **Export saved Markdown** action downloads
+`<postId>.<locale>.md` from the exact saved translation. It includes current
+lifecycle timestamps, taxonomy, and media references, but never autosaved or
+unsaved edits, cached HTML, or historical revisions. The source digest must
+match. Tags use stable key order; UTF-8, LF, fixed frontmatter key order, and
+one final newline make repeated exports byte-stable. Missing translations
+return `404` without locale fallback. The attachment is private, `no-store`,
+and `noindex`; exporting does not save or publish anything.
+
 ## 6. Versions, revisions, and conflict handling
 
 `PostTranslation.version` is the only article write concurrency token. `PostDraft.baseVersion` records the revision an editor started from. Every committed content change creates an immutable `ContentRevision` snapshot containing enough information to inspect and restore the article.

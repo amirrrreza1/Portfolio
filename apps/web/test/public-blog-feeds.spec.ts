@@ -34,6 +34,11 @@ const feed = publicFeedIndexSchema.parse({
   ],
 });
 
+const persianFeed = publicFeedIndexSchema.parse({
+  locale: "fa",
+  entries: [{ ...feed.entries[0]!, slug: "خواندن-عمومی-نوعدار" }],
+});
+
 describe("XML escaping", () => {
   it("escapes every character that can end an element or an attribute", () => {
     // Authored text reaches these documents unaltered. `Q&A` in a title is the
@@ -63,13 +68,16 @@ describe("buildRssFeed", () => {
       siteUrl,
       title: "وبلاگ",
       description: "مقاله‌ها",
-      entries: feed.entries,
+      entries: persianFeed.entries,
     });
-    expect(xml).toContain("<language>fa-IR</language>");
+    expect(xml).toContain("<language>fa</language>");
     expect(xml).toContain(
       '<atom:link href="https://example.test/fa/blog/feed.xml" rel="self" type="application/rss+xml" />'
     );
     expect(xml).toContain('<guid isPermaLink="true">');
+    expect(xml).toContain(
+      `<guid isPermaLink="true">https://example.test/fa/blog/${encodeURIComponent(persianFeed.entries[0]!.slug)}</guid>`
+    );
     expect(xml).toContain("<dc:creator>Example Author</dc:creator>");
     expect(xml).toContain('xmlns:dc="http://purl.org/dc/elements/1.1/"');
   });
@@ -107,7 +115,7 @@ describe("sitemap generation", () => {
   it("emits the article's own alternate group, plus x-default for English", () => {
     // The same list the page emits as `hreflang`. Generating them from one DTO
     // is what makes "identical to page metadata" a property rather than a hope.
-    const url = toArticleSitemapUrl("fa", feed.entries[0]!, siteUrl);
+    const url = toArticleSitemapUrl("fa", persianFeed.entries[0]!, siteUrl);
     expect(url.loc).toBe(
       `https://example.test/fa/blog/${encodeURIComponent("خواندن-عمومی-نوعدار")}`
     );

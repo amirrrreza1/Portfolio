@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 import { PrismaClient } from "./generated/client/client.js";
 
@@ -40,6 +41,17 @@ const DEFAULTS = {
 } as const;
 
 export type Database = PrismaClient;
+
+/** Dedicated session pool: checked-out leadership connections never go idle. */
+export function createAdvisoryLockPool(connectionString: string): Pool {
+  if (!connectionString) throw new Error("DATABASE_URL is required.");
+  return new Pool({
+    connectionString,
+    max: 1,
+    connectionTimeoutMillis: DEFAULTS.connectionTimeoutMs,
+    statement_timeout: DEFAULTS.statementTimeoutMs,
+  });
+}
 
 export function createDatabaseClient(config: DatabaseConfig): Database {
   const {

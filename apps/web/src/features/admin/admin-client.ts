@@ -12,6 +12,11 @@ import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from "@portfolio/contracts/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
+/** Same-origin URL for authenticated attachments as well as JSON requests. */
+export function adminResourceUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
 /** The closed error-code list from API_SPEC.md §2. */
 export type AdminErrorCode =
   | "VALIDATION_FAILED"
@@ -103,7 +108,7 @@ export async function adminRequest<T = unknown>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(adminResourceUrl(path), {
       method: options.method ?? "GET",
       headers,
       body:
@@ -141,7 +146,7 @@ export async function adminUpload<T = unknown>(
   if (token !== null) headers[CSRF_HEADER_NAME] = token;
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(adminResourceUrl(path), {
       method: "POST",
       headers,
       body,

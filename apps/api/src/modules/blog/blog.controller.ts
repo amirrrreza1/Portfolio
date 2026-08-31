@@ -253,6 +253,31 @@ export class BlogAdminController {
     return this.envelope(value, requestId);
   }
 
+  @Get("posts/:id/translations/:locale/export")
+  async exportTranslation(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const requestId = randomUUID();
+    this.boundary.noStore(reply);
+    void reply.header("X-Robots-Tag", "noindex, nofollow, noarchive");
+    void reply.header("X-Content-Type-Options", "nosniff");
+    await this.boundary.require(request, "content.draft.read");
+    const value = await this.blog.exportTranslation(
+      this.boundary.id(id, requestId),
+      this.boundary.locale(locale, requestId)
+    );
+    if (value === null) throw this.fail("NOT_FOUND", requestId);
+    void reply.header("Content-Type", "text/markdown; charset=utf-8");
+    void reply.header(
+      "Content-Disposition",
+      `attachment; filename="${value.filename}"`
+    );
+    return value.document;
+  }
+
   @Get("posts/:id/translations/:locale/checklist")
   async checklist(
     @Param("id") id: string,

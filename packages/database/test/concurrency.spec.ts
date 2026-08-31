@@ -4,7 +4,7 @@ import {
   advisoryLockKey,
   ADVISORY_LOCKS,
   withAdvisoryLock,
-  type TransactionCapable,
+  type AdvisoryLockPool,
 } from "../src/concurrency.js";
 
 /**
@@ -21,22 +21,27 @@ import {
  */
 
 function fakeDatabase(responses: readonly boolean[]): {
-  db: TransactionCapable;
+  db: AdvisoryLockPool;
   statements: string[];
+  release: ReturnType<typeof vi.fn>;
 } {
   const statements: string[] = [];
   let attempt = 0;
-  const db = {
-    $transaction: vi.fn(),
-    $queryRawUnsafe: vi.fn(async (query: string) => {
+  const release = vi.fn();
+  const session = {
+    release,
+    query: vi.fn(async (query: string) => {
       statements.push(query);
-      if (!query.includes("pg_try_advisory_lock")) return [];
+      if (!query.includes("pg_try_advisory_lock")) {
+        return { rows: [{ unlocked: true }] };
+      }
       const locked = responses[attempt] ?? true;
       attempt += 1;
-      return [{ locked }];
+      return { rows: [{ locked }] };
     }),
-  } as unknown as TransactionCapable;
-  return { db, statements };
+  };
+  const db: AdvisoryLockPool = { connect: vi.fn(async () => session) };
+  return { db, statements, release };
 }
 
 describe("advisoryLockKey", () => {
@@ -76,13 +81,18 @@ describe("advisoryLockKey", () => {
 
 describe("withAdvisoryLock", () => {
   it("runs the work and releases the lock", async () => {
-    const { db, statements } = fakeDatabase([true]);
-    const work = vi.fn(async () => "done");
+    const { db, statements, release } = fakeDatabase([true]);
+    const work = vi.fn(async () => {
+      expect(release).not.toHaveBeenCalled();
+      return "done";
+    });
 
     await expect(
       withAdvisoryLock(db, ADVISORY_LOCKS.scheduler, work)
     ).resolves.toBe("done");
     expect(work).toHaveBeenCalledTimes(1);
+    expect(db.connect).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledExactlyOnceWith(false);
     expect(statements.some((sql) => sql.includes("pg_advisory_unlock"))).toBe(
       true
     );
@@ -96,11 +106,23 @@ describe("withAdvisoryLock", () => {
       withAdvisoryLock(db, ADVISORY_LOCKS.scheduler, work)
     ).resolves.toBeNull();
     expect(work).not.toHaveBeenCalled();
-    // Nothing was taken, so nothing may be released: unlocking a lock this
-    // session does not hold would release the holder's.
+    // Nothing was taken, so no unlock may be attempted on this session.
     expect(statements.some((sql) => sql.includes("pg_advisory_unlock"))).toBe(
       false
     );
+  });
+
+  it("destroys a session when releasing its lock fails", async () => {
+    const release = vi.fn();
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ locked: true }] })
+      .mockRejectedValueOnce(new Error("connection lost"));
+    const pool = { connect: async () => ({ query, release }) };
+    await expect(
+      withAdvisoryLock(pool, ADVISORY_LOCKS.scheduler, async () => "done")
+    ).rejects.toThrow("connection lost");
+    expect(release).toHaveBeenCalledExactlyOnceWith(true);
   });
 
   it("releases the lock when the work throws", async () => {

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   adminRequest,
+  adminResourceUrl,
   adminUpload,
   describeAdminError,
   AdminRequestError,
@@ -969,6 +970,18 @@ function TranslationEditor({
           Preview
         </button>
         {translation === null ? null : (
+          <a
+            href={adminResourceUrl(
+              `/admin/blog/posts/${postId}/translations/${locale}/export`
+            )}
+            download
+            aria-describedby="article-export-help"
+            className="border-border border px-4 py-2 text-sm"
+          >
+            Export saved Markdown
+          </a>
+        )}
+        {translation === null ? null : (
           <TransitionButtons
             postId={postId}
             locale={locale}
@@ -981,6 +994,13 @@ function TranslationEditor({
           />
         )}
       </div>
+
+      {translation === null ? null : (
+        <p id="article-export-help" className="text-muted text-sm">
+          Export downloads the latest saved article. Unsaved edits and autosaved
+          drafts are not included.
+        </p>
+      )}
 
       {translation === null ? null : (
         <RevisionHistoryPanel

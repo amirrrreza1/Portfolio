@@ -322,7 +322,7 @@ Webhook sync, reconciliation, invalidation, and scheduled publication need obser
 
 Durable job and outbox tables in PostgreSQL are the queue. A dedicated worker process, built from the API workspace and using the same domain modules, claims jobs with transactional row locking (`FOR UPDATE SKIP LOCKED`), leases, attempt counts, next-at timestamps, and dead-letter visibility. Work is serialized per post where ordering matters.
 
-The scheduler is a separate process mode. Exactly one logical scheduler claims a PostgreSQL advisory lock before enqueueing due-publication or reconciliation jobs; replicas that do not hold the lock do nothing. HTTP API replicas never run background timers. Health distinguishes liveness from readiness and reports queue age/failure metrics without making Git reachability a public-read dependency.
+The scheduler is a separate process mode. Exactly one logical scheduler claims a PostgreSQL advisory lock before enqueueing due-publication or reconciliation jobs; replicas that do not hold the lock do nothing. Session-level locks must retain a dedicated checked-out connection for the entire worker callback and unlock on that same connection; independent pooled queries are not a valid ownership boundary. HTTP API replicas never run background timers. Health distinguishes liveness from readiness and reports queue age/failure metrics without making Git reachability a public-read dependency.
 
 ### Rejected alternatives
 

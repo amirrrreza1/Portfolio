@@ -2,6 +2,7 @@ import {
   ArticleRestoreRefusedError,
   ArticleTransitionRefusedError,
   ArticleVersionConflictError,
+  buildCurrentFrontmatter,
   createArticleStore,
   createBlogTaxonomyStore,
   parseArticleRevisionSnapshot,
@@ -12,6 +13,7 @@ import {
 import {
   createArticleImportDiff,
   MAX_ARTICLE_IMPORT_BYTES,
+  MarkdownValidationError,
   prepareArticleImport,
   renderArticleBody,
   serializeArticle,
@@ -132,6 +134,47 @@ export class BlogAdminService {
     return this.articles.checklistFor(postId, locale);
   }
 
+  /** Export committed source, never an actor's autosave or cached render. */
+  async exportTranslation(postId: string, locale: Locale) {
+    const current = await this.database.postTranslation.findUnique({
+      where: { postId_locale: { postId, locale } },
+      include: {
+        post: {
+          select: {
+            category: { select: { key: true } },
+            tags: { select: { tag: { select: { key: true } } } },
+            coverMedia: { select: { id: true, altText: true } },
+          },
+        },
+      },
+    });
+    if (current === null) return null;
+    if (
+      current.bodyMarkdown === null ||
+      current.bodySha256 === null ||
+      createHash("sha256")
+        .update(current.bodyMarkdown, "utf8")
+        .digest("hex") !== current.bodySha256
+    ) {
+      throw new MarkdownValidationError(
+        "The saved article source is missing or fails its integrity check."
+      );
+    }
+    const frontmatter = buildCurrentFrontmatter(current);
+    return {
+      filename: `${postId}.${locale}.md`,
+      document: serializeArticle({
+        frontmatter: {
+          ...frontmatter,
+          updatedAt: current.updatedAt.toISOString(),
+          // Relation retrieval order is not a portable document ordering.
+          tags: [...frontmatter.tags].sort(),
+        },
+        body: current.bodyMarkdown,
+      }),
+    };
+  }
+
   saveTranslation(command: SaveTranslation, actorId: string) {
     return this.articles.saveTranslation(command, actorId);
   }
@@ -192,7 +235,7 @@ export class BlogAdminService {
    * `restorable` is computed here, by the same validation the restore runs, so
    * the editor never offers a button that is guaranteed to fail.
    */
-  async listRevisions(postId: string, locale: Locale): Promise<unknown | null> {
+  async listRevisions(postId: string, locale: Locale): Promise<unknown> {
     const translation = await this.database.postTranslation.findUnique({
       where: { postId_locale: { postId, locale } },
       select: { id: true, version: true, status: true },
@@ -248,7 +291,7 @@ export class BlogAdminService {
     postId: string,
     locale: Locale,
     revisionId: string
-  ): Promise<unknown | null> {
+  ): Promise<unknown> {
     const target = await readArticleRestoreTarget(this.database, revisionId);
     // The path addresses the article; a revision belonging to a different
     // translation is not found here, whatever its id resolves to elsewhere.

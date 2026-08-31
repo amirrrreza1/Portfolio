@@ -9,7 +9,7 @@ What that means concretely:
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
 - **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
-Where the work stands: shared contracts, Prisma migrations, safe Markdown rendering, media adapters, deterministic legacy migration, public bilingual reads, accessible appearance, and authentication primitives are built. The PostgreSQL/MinIO portfolio migration and public-read boundaries have live evidence. Article persistence is being migrated to the PostgreSQL-native architecture in ADR-015; authenticated admin authoring remains gated on the completed M6 security boundary. [docs/ROADMAP.md](docs/ROADMAP.md) tracks current implementation gates; [docs/BASELINE_M0.md](docs/BASELINE_M0.md) preserves the original legacy baseline.
+Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingual articles, public portfolio/blog reads, accessible appearance, two-factor admin authentication, portfolio CMS, Markdown authoring/import/export/restore, discovery/SEO, and scheduled publication. The final M8 run passed 63 live API checks, 47 browser tests, and 817 unit/integration tests. M9 operations and launch hardening have not started, and M0 still needs owner-confirmed EmailJS revocation and evidence reconciliation. [docs/STATUS.md](docs/STATUS.md) summarizes the current evidence; [docs/ROADMAP.md](docs/ROADMAP.md) defines the remaining gates.
 
 ## Workspace
 

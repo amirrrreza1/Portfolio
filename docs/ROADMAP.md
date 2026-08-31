@@ -2,7 +2,7 @@
 
 Status snapshot: **2026-08-31**
 
-Active milestone: **M8**. M2–M7 are complete. M7 closed on 2026-08-28 against a running stack: every non-blog portfolio resource is manageable through the authenticated `/admin` surface and its workspace, media and resume replacement is atomic and verified, and the last authored copy has moved out of the source into the database. M0's repository-owned work is complete; its gate is held open by one owner action, see §6. Two decisions remain owed and are named in §6: the v1 editor-permission matrix, which keeps `EDITOR` unassignable, and the contact/audit retention ADR.
+Latest completed milestone: **M8**, closed 2026-08-31. M1–M8 are complete; **M9 is next and has not started**. The final M8 run passed 63 live API checks, 45 public browser tests, and both real-stack admin regression flows. M0 remains open for owner-confirmed EmailJS revocation and the evidence discrepancies in its status file. The caching, v1 editor-permission, and contact/audit retention decisions remain separate follow-ups.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -32,7 +32,7 @@ M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close be
 | Area                         | Current state                                                                                                                                                                                                                                                                                                                                                        | Roadmap implication                                                                                                                                                                                                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                                                                                                                                                                                                                                | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                                                                                    |
-| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Complete. The discovery surfaces — category and tag pages, cursor pagination, per-locale RSS and sitemaps, `robots.txt`, social images — are implemented in M8 and await their live and browser runs.              |
+| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Complete. M8 discovery and SEO are live/browser-proven; see the final discovery and publication evidence.                                                                                                          |
 | API                          | NestJS/Fastify exposes health/contact plus strict public project, site, appearance, home, and cursor-paginated article list/detail endpoints with ETag/conditional-cache behavior. Article discovery is published and integrity-valid only; detail requires current render provenance.                                                                               | The PostgreSQL-native article repository and invalidation outbox are delivered and proven; exposing them needs the M6 auth/admin boundary                                                                          |
 | Contracts                    | `packages/contracts` exports strict portfolio and public article DTOs, including canonical locale slugs, sanitized render payloads, headings, published alternates, cursor envelopes, and bounded translation-missing errors; tests reject internal fields and cross-locale shapes.                                                                                  | Public read shapes are delivered; admin command DTOs remain M7/M8 work                                                                                                                                             |
 | Database                     | `packages/database` has a 41-model/19-enum Prisma schema, three schema migrations, separately ledgered content, page-section, and GitHub-statistics settings migrations, supplemental constraints, a pooled client, concurrency helpers, and deterministic seed                                                                                                      | M1/M2 apply/replay passed; content, media, exact Hero/About, private age, ordering, rollback, the GitHub repository allowlist, and the three reviewed colour replacements are proven.                              |
@@ -105,7 +105,7 @@ Two dependencies are non-negotiable:
 | M5 — Appearance and accessibility         | Complete    | M             | Flash-free site theme, blog-only typography, reduced motion, and tokenized colours                                   | M4                 |
 | M6 — Authentication foundation            | Complete    | L             | Owner provisioning, passkeys, sessions, CSRF, authorization, and audit baseline                                      | M1                 |
 | M7 — Portfolio CMS                        | Complete    | XL            | Every non-blog portfolio field, translation, media item, and resume manageable through admin                         | M2, M3, M4, M5, M6 |
-| M8 — Blog authoring, publishing, and SEO  | In progress | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
+| M8 — Blog authoring, publishing, and SEO  | Complete    | XL            | Editor/import/export parity, lifecycle and scheduling, discovery, and locale SEO                                     | M3, M4, M6, M7     |
 | M9 — Operations, release, and cleanup     | Not started | L             | Operational contact/media controls, reproducible deployment, restore drill, launch, and rollback-window cleanup      | M5, M8             |
 
 M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing downstream, so work continues in parallel.
@@ -571,7 +571,7 @@ refused when the snapshot no longer matches its digest or the translation is
 archived, and unable to change publication state.
 
 The last two slices — the discovery and SEO surfaces, and the
-scheduled-publication test matrix — are **implemented but not yet proven**. The
+scheduled-publication test matrix — are **complete and proven on 2026-08-31**. The
 discovery slice adds three public read models from §4 plus one addition to that
 table (`/public/:locale/blog/taxonomy`, which the navigation index and the
 sitemap both need in order to enumerate terms), the category and tag routes,
@@ -583,15 +583,20 @@ sharing one published-and-integrity-valid predicate, and one alternate list
 feeding both a page's `hreflang` and its sitemap entry's `xhtml:link`. The
 publication slice extracts the single-scheduler rule from the worker's process
 entrypoint so it can be asserted, and proves enqueue deduplication and
-retry-idempotency against real PostgreSQL. `verify:blog` grew from 41 to 56
-checks and a new `discovery` browser suite exists; neither has been run against
-a stack, so no evidence file is written for them and this milestone stays open.
-See [`status/M8.md`](status/M8.md).
+retry-idempotency against real PostgreSQL. Final verification passed **63/63
+live checks**, **45/45 public browser tests** (including 10 discovery tests),
+and **2/2 real-stack admin flows**. The lock now retains one checked-out
+PostgreSQL session for the worker's lifetime, and a late audit failure proves
+rollback after actual publication writes. See
+[`M8-discovery-live.md`](status/evidence/M8-discovery-live.md),
+[`M8-publication-live.md`](status/evidence/M8-publication-live.md), and
+[`status/M8.md`](status/M8.md).
 
 Deliverables:
 
 - Markdown editor, directive palette, database-only autosave, production-pipeline preview, and optimistic integer-version conflict handling;
 - `.md`/`.mdx` dry-run import, normalization report, confirmation, original-file quarantine, and rejection of executable MDX constructs;
+- authenticated, deterministic saved-translation Markdown export with source integrity checks and no autosave or lifecycle mutation;
 - post/translation/taxonomy CRUD, per-locale state transitions, revisions, slug history, redirects, and transactional scheduled publishing and durable invalidation;
 - locale blog index/detail/category/tag/preview pages with accessible headings and code blocks;
 - dynamic metadata, canonicals, reciprocal `hreflang`, JSON-LD, per-locale RSS/sitemaps, robots, related content, and editorial checks; every discovery surface excludes translations with incomplete source/render integrity;

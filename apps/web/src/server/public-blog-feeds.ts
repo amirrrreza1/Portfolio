@@ -195,7 +195,7 @@ export function toArticleSitemapUrl(
   entry: PublicFeedEntry,
   siteUrl: URL
 ): SitemapUrl {
-  const alternates = entry.alternates.map((alternate) => ({
+  const alternates: SitemapAlternate[] = entry.alternates.map((alternate) => ({
     hreflang: alternate.locale,
     href: new URL(
       articlePath(alternate.locale, alternate.slug),
@@ -231,7 +231,7 @@ export function toTaxonomySitemapUrl(
   },
   siteUrl: URL
 ): SitemapUrl {
-  const alternates = term.alternates.map((alternate) => ({
+  const alternates: SitemapAlternate[] = term.alternates.map((alternate) => ({
     hreflang: alternate.locale,
     href: new URL(
       blogTaxonomyPath(alternate.locale, kind, alternate.slug),

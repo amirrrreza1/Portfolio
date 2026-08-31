@@ -22,6 +22,9 @@ import { API_PORT, fixtureApiOrigin, WEB_PORT, webOrigin } from "./e2e/config";
 
 export default defineConfig({
   testDir: "./e2e",
+  // The authenticated suites use their own real-stack config and credentials.
+  // Never collect them while running the public fixture-backed project.
+  testIgnore: "**/admin/**",
   // Appearance is a per-visitor cookie and the fixture API carries one global
   // failure switch, so parallel workers would race each other's state.
   workers: 1,

@@ -12,7 +12,7 @@ This directory contains evidence-backed snapshots for every milestone that has s
 | [M5.md](M5.md) | Appearance and accessibility         | Complete       | 2026-08-25 |
 | [M6.md](M6.md) | Authentication foundation            | Complete       | 2026-08-27 |
 | [M7.md](M7.md) | Portfolio CMS                        | Complete       | 2026-08-28 |
-| [M8.md](M8.md) | Blog authoring, publishing, and SEO  | In progress    | 2026-08-28 |
+| [M8.md](M8.md) | Blog authoring, publishing, and SEO  | Complete       | 2026-08-31 |
 
 M9 (operations, release, and cleanup) has not started and has no status file yet.
 

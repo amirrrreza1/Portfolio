@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { parseArticle, serializeArticle } from "@portfolio/markdown";
+import { readFile } from "node:fs/promises";
 
 const email = process.env.E2E_CMS_OWNER_EMAIL;
 const recoveryCode = process.env.E2E_CMS_OWNER_RECOVERY_CODE;
@@ -91,6 +93,23 @@ test("an owner can author, check, publish, and preview an article", async ({
 
   await page.getByRole("button", { name: "Save article" }).click();
   await expect(page.getByText("Article saved.")).toBeVisible();
+
+  const savedBody = await body.inputValue();
+  await body.fill(`${savedBody}\nAn unsaved change must not be exported.\n`);
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Export saved Markdown" }).click();
+  const download = await downloading;
+  const exported = await readFile((await download.path())!, "utf8");
+  const parsedExport = parseArticle(exported);
+  expect(download.suggestedFilename()).toBe(
+    `${parsedExport.frontmatter.postId}.en.md`
+  );
+  expect(parsedExport.frontmatter.title).toBe(title);
+  expect(parsedExport.frontmatter.tags).toEqual([tagKey]);
+  expect(parsedExport.frontmatter.category).toBe(categoryKey);
+  expect(parsedExport.body.trimEnd()).toBe(savedBody.trimEnd());
+  expect(serializeArticle(parsedExport)).toBe(exported);
+  await body.fill(savedBody);
 
   await expect(
     page.getByRole("heading", { name: "Publish checklist" })

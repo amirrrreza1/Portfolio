@@ -467,6 +467,12 @@ export class PublicArticlesService {
       data: publicBlogTaxonomyIndexSchema.parse({
         locale,
         categories: categories
+          .sort((left, right) =>
+            compareTerms(
+              { sortOrder: left.category.sortOrder, name: left.name },
+              { sortOrder: right.category.sortOrder, name: right.name }
+            )
+          )
           .map((row) => ({
             kind: "category" as const,
             key: row.category.key,
@@ -475,11 +481,14 @@ export class PublicArticlesService {
             description: row.description,
             alternates: toTermAlternates(row.category.translations),
             articleCount: categoryCounts.get(row.category.key) ?? 0,
-            sortOrder: row.category.sortOrder,
-          }))
-          .sort(compareTerms)
-          .map(({ sortOrder: _sortOrder, ...term }) => term),
+          })),
         tags: tags
+          .sort((left, right) =>
+            compareTerms(
+              { sortOrder: left.tag.sortOrder, name: left.name },
+              { sortOrder: right.tag.sortOrder, name: right.name }
+            )
+          )
           .map((row) => ({
             kind: "tag" as const,
             key: row.tag.key,
@@ -488,10 +497,7 @@ export class PublicArticlesService {
             description: row.description,
             alternates: toTermAlternates(row.tag.translations),
             articleCount: tagCounts.get(row.tag.key) ?? 0,
-            sortOrder: row.tag.sortOrder,
-          }))
-          .sort(compareTerms)
-          .map(({ sortOrder: _sortOrder, ...term }) => term),
+          })),
       }),
       lastModified: latestDate([
         ...rows.map((row) => row.updatedAt),

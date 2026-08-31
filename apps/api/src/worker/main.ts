@@ -2,6 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import {
   ADVISORY_LOCKS,
+  createAdvisoryLockPool,
   createContentJobStore,
   createDatabaseClient,
   createInvalidationOutboxStore,
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
     connectionString: required("DATABASE_URL"),
   });
   const jobs = createContentJobStore(createPrismaSqlExecutor(database));
+  const lockPool = createAdvisoryLockPool(required("DATABASE_URL"));
   let running = true;
   const stop = (): void => {
     running = false;
@@ -50,7 +52,7 @@ async function main(): Promise<void> {
   try {
     if (mode === "scheduler") {
       await withLockOrIdle(
-        database,
+        lockPool,
         ADVISORY_LOCKS.scheduler,
         () => running,
         async () => {
@@ -69,7 +71,7 @@ async function main(): Promise<void> {
     const invalidationEndpoint = process.env.CACHE_INVALIDATION_URL?.trim();
     const invalidationSecret = process.env.CACHE_INVALIDATION_SECRET?.trim();
     await withLockOrIdle(
-      database,
+      lockPool,
       ADVISORY_LOCKS.publication,
       () => running,
       async () => {
@@ -122,6 +124,7 @@ async function main(): Promise<void> {
       }
     );
   } finally {
+    await lockPool.end();
     await database.$disconnect();
   }
 }

@@ -206,9 +206,14 @@ function articleListEnvelope(locale: "en" | "fa") {
   });
 }
 
+// Production renders at save time, never on a reader's first request. Prepare
+// the fixture before declaring readiness so cold Shiki startup cannot consume
+// the public client's request timeout during the first article navigation.
+const renderedArticle = await renderMarkdownBody(ARTICLE_MARKDOWN);
+
 async function articleDetailEnvelope(locale: "en" | "fa") {
   const slug = locale === "fa" ? ARTICLE_SLUG_FA : ARTICLE_SLUG;
-  const rendered = await renderMarkdownBody(ARTICLE_MARKDOWN);
+  const rendered = renderedArticle;
 
   return publicArticleDetailEnvelopeSchema.parse({
     data: {

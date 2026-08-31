@@ -11,6 +11,7 @@
  * this package will build.
  */
 export {
+  createAdvisoryLockPool,
   createDatabaseClient,
   disconnectDatabase,
   getDatabaseClient,
@@ -24,6 +25,7 @@ export {
   OptimisticConcurrencyError,
   updateWithVersion,
   withAdvisoryLock,
+  type AdvisoryLockPool,
   type TransactionCapable,
   type VersionedDelegate,
 } from "./concurrency.js";

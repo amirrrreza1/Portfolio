@@ -2,6 +2,7 @@
 import { hashPassword, issueRecoveryCodes } from "@portfolio/auth-core";
 import {
   ADVISORY_LOCKS,
+  createAdvisoryLockPool,
   createContentJobStore,
   createDatabaseClient,
   createPrismaSqlExecutor,
@@ -10,7 +11,12 @@ import {
   withAdvisoryLock,
   type Database,
 } from "@portfolio/database";
-import { RENDERER_VERSION } from "@portfolio/markdown";
+import {
+  parseArticle,
+  prepareArticleImport,
+  RENDERER_VERSION,
+  serializeArticle,
+} from "@portfolio/markdown";
 import { createHash } from "node:crypto";
 
 if (!process.argv.includes("--apply")) {
@@ -1086,6 +1092,10 @@ try {
   });
   const outboxBefore = await database.contentInvalidationOutbox.count();
   const firstPublish = await publishDueTranslation(database, scheduled.id);
+  const firstPublished = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+    select: { publishedAt: true },
+  });
   const secondPublish = await publishDueTranslation(database, scheduled.id);
   const afterPublish = await database.postTranslation.findUniqueOrThrow({
     where: { id: scheduled.id },
@@ -1101,6 +1111,8 @@ try {
       secondPublish === "skipped" &&
       afterPublish.status === "PUBLISHED" &&
       afterPublish.scheduledFor === null &&
+      afterPublish.publishedAt?.getTime() ===
+        firstPublished.publishedAt?.getTime() &&
       revisionsAfter === revisionsBefore + 1 &&
       outboxAfter === outboxBefore + 1,
     `${firstPublish}/${secondPublish}; +${revisionsAfter - revisionsBefore} revisions`
@@ -1130,7 +1142,7 @@ try {
     select: { status: true, publishedAt: true },
   });
   check(
-    "a publication that fails inside its transaction commits nothing at all",
+    "a publication with invalid source is refused without any write",
     rolledBack &&
       afterRollback.status === "SCHEDULED" &&
       afterRollback.publishedAt === null &&
@@ -1142,42 +1154,106 @@ try {
     `rolled back: ${rolledBack}; ${afterRollback.status}`
   );
 
-  const second: Database = createDatabaseClient({
-    connectionString: required("DATABASE_URL"),
+  // Inject a failure at the final audit insert, after the actual PostgreSQL
+  // transaction has updated the row and inserted its revision and outbox.
+  // A bad digest alone only proves a pre-write refusal, not rollback.
+  await database.postTranslation.update({
+    where: { id: scheduled.id },
+    data: {
+      bodySha256: createHash("sha256")
+        .update(storedSource.bodyMarkdown!, "utf8")
+        .digest("hex"),
+    },
   });
+  const beforeLateFailure = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+  });
+  const auditBefore = await database.auditEvent.count();
+  let reachedFinalWrite = false;
+  const rollbackDatabase = database.$extends({
+    query: {
+      auditEvent: {
+        async create() {
+          reachedFinalWrite = true;
+          throw new Error("M8 injected final audit failure");
+        },
+      },
+    },
+  });
+  let lateFailure = false;
+  try {
+    await publishDueTranslation(
+      rollbackDatabase as unknown as Database,
+      scheduled.id
+    );
+  } catch (error) {
+    lateFailure =
+      error instanceof Error &&
+      error.message.includes("M8 injected final audit failure");
+  }
+  const afterLateFailure = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+  });
+  check(
+    "a failure after publication writes rolls back the row, revision, outbox, and audit",
+    reachedFinalWrite &&
+      lateFailure &&
+      afterLateFailure.status === "SCHEDULED" &&
+      afterLateFailure.publishedAt === null &&
+      afterLateFailure.version === beforeLateFailure.version &&
+      afterLateFailure.scheduledFor?.getTime() ===
+        beforeLateFailure.scheduledFor?.getTime() &&
+      (await database.contentRevision.count({
+        where: { entityType: "PostTranslation", entityId: scheduled.id },
+      })) === revisionsBeforeRollback &&
+      (await database.contentInvalidationOutbox.count()) ===
+        outboxBeforeRollback &&
+      (await database.auditEvent.count()) === auditBefore,
+    `reached final write: ${reachedFinalWrite}; rolled back: ${lateFailure}`
+  );
+
+  const firstLockPool = createAdvisoryLockPool(required("DATABASE_URL"));
+  const secondLockPool = createAdvisoryLockPool(required("DATABASE_URL"));
   try {
     let concurrent = 0;
-    let release = (): void => {};
+    const entered = Promise.withResolvers<void>();
+    const released = Promise.withResolvers<void>();
     const holder = withAdvisoryLock(
-      database,
+      firstLockPool,
       ADVISORY_LOCKS.scheduler,
       async () => {
         concurrent += 1;
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+        entered.resolve();
+        await released.promise;
       }
     );
-    // Give the first connection time to actually take the lock before the
-    // second asks for it; without that the race proves nothing either way.
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const contender = await withAdvisoryLock(
-      second,
-      ADVISORY_LOCKS.scheduler,
-      async () => {
-        concurrent += 1;
-      }
-    );
-    release();
-    await holder;
+    let contender;
+    let pinned = false;
+    try {
+      // Wait for actual acquisition, not a timing guess. An acquisition error
+      // rejects the race rather than leaving the fixture waiting forever.
+      await Promise.race([entered.promise, holder]);
+      pinned = firstLockPool.totalCount === 1 && firstLockPool.idleCount === 0;
+      await database.$queryRawUnsafe("SELECT 1");
+      contender = await withAdvisoryLock(
+        secondLockPool,
+        ADVISORY_LOCKS.scheduler,
+        async () => {
+          concurrent += 1;
+        }
+      );
+    } finally {
+      released.resolve();
+      await holder;
+    }
     check(
       "two schedulers cannot both hold the publication lock",
-      contender === null && concurrent === 1,
-      `contender: ${String(contender)}; ran: ${concurrent}`
+      contender === null && concurrent === 1 && pinned,
+      `contender: ${String(contender)}; ran: ${concurrent}; session pinned: ${pinned}`
     );
 
     const afterRelease = await withAdvisoryLock(
-      second,
+      secondLockPool,
       ADVISORY_LOCKS.scheduler,
       async () => "acquired"
     );
@@ -1187,8 +1263,115 @@ try {
       String(afterRelease)
     );
   } finally {
-    await second.$disconnect();
+    await Promise.all([firstLockPool.end(), secondLockPool.end()]);
   }
+
+  section("11. Portable export uses committed source only");
+  const exportPath = `/api/v1/admin/blog/posts/${discoveryPostId}/translations/en/export`;
+  const anonymousExport = await call(exportPath);
+  check(
+    "anonymous export is refused and never cacheable",
+    anonymousExport.status === 401 &&
+      anonymousExport.headers.get("cache-control")?.includes("no-store") ===
+        true
+  );
+
+  const exportBefore = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+  });
+  const draftExport = await call(
+    `/api/v1/admin/blog/posts/${discoveryPostId}/translations/en/draft`,
+    {
+      method: "PUT",
+      cookie: ownerCookie,
+      csrf: ownerCsrf,
+      body: {
+        body: "An autosaved change that must not escape through export.",
+        baseVersion: exportBefore.version,
+      },
+    }
+  );
+  if (draftExport.status !== 200)
+    throw new Error(`Export fixture autosave failed: ${draftExport.status}`);
+  const exportRevisionCount = await database.contentRevision.count();
+  const exportOutboxCount = await database.contentInvalidationOutbox.count();
+  const exportAuditCount = await database.auditEvent.count();
+  const exported = await call(exportPath, { cookie: ownerCookie });
+  const parsedExport = parseArticle(exported.body);
+  check(
+    "export is a private Markdown attachment of the saved metadata and body",
+    exported.status === 200 &&
+      exported.headers.get("content-type")?.includes("text/markdown") ===
+        true &&
+      exported.headers.get("content-disposition") ===
+        `attachment; filename="${discoveryPostId}.en.md"` &&
+      exported.headers.get("cache-control")?.includes("no-store") === true &&
+      exported.headers.get("x-robots-tag")?.includes("noindex") === true &&
+      parsedExport.body.trimEnd() === exportBefore.bodyMarkdown?.trimEnd() &&
+      parsedExport.frontmatter.title === exportBefore.title &&
+      parsedExport.frontmatter.status === "scheduled" &&
+      parsedExport.frontmatter.scheduledFor ===
+        exportBefore.scheduledFor?.toISOString()
+  );
+
+  const exportedAgain = await call(exportPath, { cookie: ownerCookie });
+  const roundTrip = await prepareArticleImport({
+    bytes: new TextEncoder().encode(exported.body),
+    filename: `${discoveryPostId}.en.md`,
+    expectedPostId: discoveryPostId,
+    inferredPostId: discoveryPostId,
+    locale: "en",
+  });
+  check(
+    "repeated exports are byte-stable and accepted by the import pipeline",
+    exportedAgain.status === 200 &&
+      exportedAgain.body === exported.body &&
+      serializeArticle(parsedExport) === exported.body &&
+      roundTrip.accepted
+  );
+
+  const missingExport = await call(
+    `/api/v1/admin/blog/posts/${discoveryPostId}/translations/fa/export`,
+    { cookie: ownerCookie }
+  );
+  check(
+    "export of a missing locale returns 404 without fallback",
+    missingExport.status === 404
+  );
+
+  await database.postTranslation.update({
+    where: { id: scheduled.id },
+    data: { bodySha256: "f".repeat(64) },
+  });
+  try {
+    const corruptExport = await call(exportPath, { cookie: ownerCookie });
+    check(
+      "export refuses a corrupt saved-source digest without serving Markdown",
+      corruptExport.status === 400 &&
+        !corruptExport.headers.has("content-disposition") &&
+        !corruptExport.body.includes(
+          exportBefore.bodyMarkdown ?? "must not be missing"
+        )
+    );
+  } finally {
+    await database.postTranslation.update({
+      where: { id: scheduled.id },
+      data: { bodySha256: exportBefore.bodySha256 },
+    });
+  }
+  const exportAfter = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+  });
+  check(
+    "export does not save, publish, or add revisions, invalidations, or audit writes",
+    exportAfter.version === exportBefore.version &&
+      exportAfter.bodyMarkdown === exportBefore.bodyMarkdown &&
+      exportAfter.status === exportBefore.status &&
+      (await database.contentRevision.count()) === exportRevisionCount &&
+      (await database.contentInvalidationOutbox.count()) ===
+        exportOutboxCount &&
+      (await database.auditEvent.count()) === exportAuditCount
+  );
 } catch (error) {
   failures += 1;
   process.stderr.write(
@@ -1202,5 +1385,5 @@ process.stdout.write(`\n${checks - failures}/${checks} checks passed.\n`);
 if (failures > 0) process.exitCode = 1;
 else
   process.stdout.write(
-    "ALL M8 AUTHORING, IMPORT, DISCOVERY, AND PUBLICATION CHECKS PASSED\n"
+    "ALL M8 AUTHORING, IMPORT, EXPORT, DISCOVERY, AND PUBLICATION CHECKS PASSED\n"
   );

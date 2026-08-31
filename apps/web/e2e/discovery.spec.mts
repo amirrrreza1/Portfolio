@@ -82,7 +82,14 @@ test.describe("robots and sitemaps", () => {
       ...(articleBlock ?? "").matchAll(/hreflang="([^"]+)"\s+href="([^"]+)"/g),
     ].map(([, hreflang, href]) => `${hreflang} ${href}`);
 
-    await page.goto(`${webOrigin}/en/blog/${ARTICLE_SLUG_EN}`);
+    const response = await page.goto(`${webOrigin}/en/blog/${ARTICLE_SLUG_EN}`);
+    expect(response?.status()).toBe(200);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Theme token matrix" })
+    ).toBeVisible();
+    await expect(
+      page.locator('head link[rel="alternate"][hreflang]')
+    ).toHaveCount(sitemapAlternates.length);
     const pageAlternates = await page
       .locator('head link[rel="alternate"][hreflang]')
       .evaluateAll((links) =>
@@ -126,7 +133,7 @@ test.describe("per-locale feeds", () => {
     page,
   }) => {
     const body = await textOf(page, "/fa/blog/feed.xml");
-    expect(body).toContain("<language>fa-IR</language>");
+    expect(body).toContain("<language>fa</language>");
     expect(body).toContain(encodeURIComponent(ARTICLE_SLUG_FA));
   });
 
