@@ -68,20 +68,22 @@ Stable codes include `VALIDATION_FAILED`, `AUTHENTICATION_REQUIRED`, `AUTHENTICA
 
 All public read paths are locale-scoped. `:locale` is validated against the allowlist in [I18N.md](I18N.md) §1.
 
-| Method | Path                                    | Purpose                                                                                    | Cache                                 |
-| ------ | --------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `GET`  | `/public/:locale/site`                  | Enabled settings, navigation, sections, social links, public GitHub statistics allowlist   | short ISR/public cache                |
-| `GET`  | `/public/:locale/appearance`            | Enabled site themes, blog typography options, and defaults for the settings modal          | long public cache                     |
-| `GET`  | `/public/:locale/projects`              | Enabled projects and associated skills                                                     | public cache                          |
-| `GET`  | `/public/:locale/projects/:slug`        | One public project                                                                         | public cache                          |
-| `GET`  | `/public/projects/:slug/image`          | Verified public image attached to one enabled project; `404` when absent                   | long public cache                     |
-| `GET`  | `/public/:locale/blog/posts`            | Published translation summaries, cursor pagination                                         | public cache                          |
-| `GET`  | `/public/:locale/blog/posts/:slug`      | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache                          |
-| `GET`  | `/public/:locale/blog/categories/:slug` | Published posts in category                                                                | public cache                          |
-| `GET`  | `/public/:locale/blog/tags/:slug`       | Published posts with tag                                                                   | public cache/noindex policy may apply |
-| `GET`  | `/public/:locale/blog/feed-index`       | Ordered published entries for RSS and sitemap generation                                   | public cache                          |
-| `GET`  | `/public/resume`                        | Active resume metadata/download location                                                   | short cache                           |
-| `POST` | `/contact`                              | Validate, persist, and queue contact delivery                                              | no-store, strict limit                |
+| Method | Path                                     | Purpose                                                                                    | Cache                                 |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `GET`  | `/public/:locale/site`                   | Enabled settings, navigation, sections, social links, public GitHub statistics allowlist   | short ISR/public cache                |
+| `GET`  | `/public/:locale/appearance`             | Enabled site themes, blog typography options, and defaults for the settings modal          | long public cache                     |
+| `GET`  | `/public/:locale/projects`               | Enabled projects and associated skills                                                     | public cache                          |
+| `GET`  | `/public/:locale/projects/:slug`         | One public project                                                                         | public cache                          |
+| `GET`  | `/public/projects/:slug/image`           | Verified public image attached to one enabled project; `404` when absent                   | long public cache                     |
+| `GET`  | `/public/:locale/blog/posts`             | Published translation summaries, cursor pagination                                         | public cache                          |
+| `GET`  | `/public/:locale/blog/posts/:slug`       | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache                          |
+| `GET`  | `/public/:locale/blog/posts/:slug/image` | Verified social or cover image for one published translation; `404` when absent            | long public cache                     |
+| `GET`  | `/public/:locale/blog/taxonomy`          | Enabled categories and tags that have at least one discoverable article, with counts       | public cache                          |
+| `GET`  | `/public/:locale/blog/categories/:slug`  | Published posts in category                                                                | public cache                          |
+| `GET`  | `/public/:locale/blog/tags/:slug`        | Published posts with tag                                                                   | public cache/noindex policy may apply |
+| `GET`  | `/public/:locale/blog/feed-index`        | Ordered published entries for RSS and sitemap generation                                   | public cache                          |
+| `GET`  | `/public/resume`                         | Active resume metadata/download location                                                   | short cache                           |
+| `POST` | `/contact`                               | Validate, persist, and queue contact delivery                                              | no-store, strict limit                |
 
 Rules:
 
@@ -92,6 +94,10 @@ Rules:
 - A translation with missing Markdown/source digest, an invalid digest, or stale renderer provenance is excluded from listings and feed indexes.
 - Locale is part of the cache key and the invalidation tag for every entry above.
 - RSS, sitemap, robots, and HTML routes are emitted by Next.js from these public read models; they are not alternate write paths.
+- A category or tag that is disabled, or that has no discoverable article in the requested locale, is `404` rather than an empty page. An empty page is crawlable and outlives the editorial decision to withdraw the term.
+- Taxonomy pages and feed entries carry the same `alternates` set the article detail response does, including the current locale, so a sitemap's `xhtml:link` group and a page's `hreflang` group are generated from one list rather than from two that happen to agree ([SEO.md](SEO.md)).
+- `/blog/taxonomy` counts only translations that pass the same integrity predicate the listing applies, which is why it is computed from the articles rather than with a SQL aggregate: a count that included a row the detail route refuses would advertise a page that renders empty. The scan is bounded; the listing, taxonomy, and feed-index reads paginate and are not.
+- `/blog/posts/:slug/image` resolves the translation's own social image first and the post-level cover second, and is gated on the _article_ being publicly readable — a cover attached to a draft is not published content.
 - The Next.js server client follows [ADR-014](DECISIONS.md#adr-014--bounded-last-known-good-public-reads-during-api-outages): it may reuse only a previously validated published DTO within the endpoint's maximum-stale window. Site/projects default to 60 minutes, article/taxonomy reads to 15 minutes, and resume metadata to 5 minutes. A cold or expired outage renders a localized controlled `503` state.
 - For the current home/project/site/appearance/article surfaces, the request proxy evaluates the exact route dependencies before streaming and emits that `503` with `Retry-After`, no-store/noindex controls, the locale catalog message, and no internal cause. Project/article `404` and explicit legacy rollback remain distinct from an outage; article reads use their shorter 15-minute maximum-stale ceiling.
 - Contact, preview, authentication, admin, and mutation requests never synthesize success from stale data. Unpublish/archive/resume-revoke changes enqueue high-priority invalidation and expose delivery failures to operations.

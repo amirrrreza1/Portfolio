@@ -11,7 +11,11 @@ import {
   withAdvisoryLock,
 } from "@portfolio/database";
 
-import { runContentScheduler, runContentWorker } from "./content-worker.js";
+import {
+  runContentScheduler,
+  runContentWorker,
+  runUnderExclusiveLock,
+} from "./content-worker.js";
 import { runInvalidationDrain } from "./invalidation-drain.js";
 import { createSignedInvalidationSender } from "./invalidation-sender.js";
 
@@ -143,12 +147,14 @@ async function withLockOrIdle(
   running: () => boolean,
   run: () => Promise<void>
 ): Promise<void> {
-  while (running()) {
-    const held = await withAdvisoryLock(database, key, run);
-    if (held !== null) return;
-    log({ event: "lock-held-elsewhere" });
-    await delay(DEFAULTS.lockRetryMs);
-  }
+  await runUnderExclusiveLock({
+    withLock: (work) => withAdvisoryLock(database, key, work),
+    work: run,
+    retryDelayMs: DEFAULTS.lockRetryMs,
+    sleep: (ms) => delay(ms),
+    running,
+    log: () => log({ event: "lock-held-elsewhere" }),
+  });
 }
 
 function parseMode(argv: readonly string[], fallback?: string): Mode {

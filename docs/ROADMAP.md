@@ -1,6 +1,6 @@
 # Project roadmap
 
-Status snapshot: **2026-08-27**
+Status snapshot: **2026-08-31**
 
 Active milestone: **M8**. M2–M7 are complete. M7 closed on 2026-08-28 against a running stack: every non-blog portfolio resource is manageable through the authenticated `/admin` surface and its workspace, media and resume replacement is atomic and verified, and the last authored copy has moved out of the source into the database. M0's repository-owned work is complete; its gate is held open by one owner action, see §6. Two decisions remain owed and are named in §6: the v1 editor-permission matrix, which keeps `EDITOR` unassignable, and the contact/audit retention ADR.
 
@@ -32,7 +32,7 @@ M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close be
 | Area                         | Current state                                                                                                                                                                                                                                                                                                                                                        | Roadmap implication                                                                                                                                                                                                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Workspace and specifications | pnpm monorepo, package boundaries, lockfile, environment template, and normative specifications exist                                                                                                                                                                                                                                                                | Preserve these boundaries; update specs and ADRs with each superseding decision                                                                                                                                    |
-| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Complete. Discovery surfaces — sitemap, feed, social images, pagination, slug redirects — are M8's, as this milestone's deliverables always said.                                                                  |
+| Public application           | Existing portfolio routes plus `/[locale]/blog` and locale-specific article detail render server-side with correct `lang`/`dir`; article `404` never falls back, article `503` uses a 15-minute validated ceiling, and published-only canonical/hreflang/JSON-LD metadata is implemented. Earlier portfolio/root/catalog/GitHub boundaries remain production-proven. | Complete. The discovery surfaces — category and tag pages, cursor pagination, per-locale RSS and sitemaps, `robots.txt`, social images — are implemented in M8 and await their live and browser runs.              |
 | API                          | NestJS/Fastify exposes health/contact plus strict public project, site, appearance, home, and cursor-paginated article list/detail endpoints with ETag/conditional-cache behavior. Article discovery is published and integrity-valid only; detail requires current render provenance.                                                                               | The PostgreSQL-native article repository and invalidation outbox are delivered and proven; exposing them needs the M6 auth/admin boundary                                                                          |
 | Contracts                    | `packages/contracts` exports strict portfolio and public article DTOs, including canonical locale slugs, sanitized render payloads, headings, published alternates, cursor envelopes, and bounded translation-missing errors; tests reject internal fields and cross-locale shapes.                                                                                  | Public read shapes are delivered; admin command DTOs remain M7/M8 work                                                                                                                                             |
 | Database                     | `packages/database` has a 41-model/19-enum Prisma schema, three schema migrations, separately ledgered content, page-section, and GitHub-statistics settings migrations, supplemental constraints, a pooled client, concurrency helpers, and deterministic seed                                                                                                      | M1/M2 apply/replay passed; content, media, exact Hero/About, private age, ordering, rollback, the GitHub repository allowlist, and the three reviewed colour replacements are proven.                              |
@@ -568,9 +568,25 @@ earlier version is replayed from its recorded source through the same validated
 save an author uses, re-rendered and re-digested by today's renderer, recorded
 as a new revision on the single `POST /admin/revisions/:id/restore` endpoint,
 refused when the snapshot no longer matches its digest or the translation is
-archived, and unable to change publication state. The discovery and SEO
-surfaces and the scheduled-publication test matrix remain open; see
-[`status/M8.md`](status/M8.md).
+archived, and unable to change publication state.
+
+The last two slices — the discovery and SEO surfaces, and the
+scheduled-publication test matrix — are **implemented but not yet proven**. The
+discovery slice adds three public read models from §4 plus one addition to that
+table (`/public/:locale/blog/taxonomy`, which the navigation index and the
+sitemap both need in order to enumerate terms), the category and tag routes,
+cursor pagination that keeps unstable cursor URLs out of the index and out of
+the sitemap, per-locale RSS and sitemaps behind a sitemap index, `robots.txt`,
+server-resolved social images, related content selected from declared taxonomy
+alone, and collection/breadcrumb structured data — with every discovery surface
+sharing one published-and-integrity-valid predicate, and one alternate list
+feeding both a page's `hreflang` and its sitemap entry's `xhtml:link`. The
+publication slice extracts the single-scheduler rule from the worker's process
+entrypoint so it can be asserted, and proves enqueue deduplication and
+retry-idempotency against real PostgreSQL. `verify:blog` grew from 41 to 56
+checks and a new `discovery` browser suite exists; neither has been run against
+a stack, so no evidence file is written for them and this milestone stays open.
+See [`status/M8.md`](status/M8.md).
 
 Deliverables:
 

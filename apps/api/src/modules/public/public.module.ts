@@ -79,10 +79,10 @@ import { PublicSiteService } from "./public-site.service.js";
     {
       provide: PUBLIC_ARTICLES_SERVICE,
       useFactory: (): PublicArticlesService => {
-        const connectionString = process.env.DATABASE_URL;
-        if (!connectionString) throw new Error("DATABASE_URL is required.");
+        const environment = parseApiEnvironment(process.env);
         return new PublicArticlesService(
-          getDatabaseClient({ connectionString })
+          getDatabaseClient({ connectionString: environment.databaseUrl }),
+          createPublicMediaReader(environment.media)
         );
       },
     },

@@ -1,3 +1,4 @@
+import type { PublicTaxonomyKind } from "@portfolio/contracts/blog";
 import { slugSchemaFor, type Locale } from "@portfolio/contracts/common";
 import { publicProjectSlugSchema } from "@portfolio/contracts/portfolio";
 
@@ -5,6 +6,7 @@ import {
   createPublicAppearanceClient,
   createPublicArticleDetailClient,
   createPublicArticleListClient,
+  createPublicArticleTaxonomyClient,
   createPublicHomeClient,
   createPublicProjectDetailClient,
   createPublicProjectsClient,
@@ -15,7 +17,12 @@ import {
 } from "./public-api-client";
 
 type PublicRouteResource =
-  "home" | "projects" | "project-detail" | "articles" | "article-detail";
+  | "home"
+  | "projects"
+  | "project-detail"
+  | "articles"
+  | "article-detail"
+  | "article-taxonomy";
 
 export type PublicRouteRequirement =
   | {
@@ -34,6 +41,12 @@ export type PublicRouteRequirement =
       readonly locale: Locale;
       readonly resource: "project-detail" | "article-detail";
       readonly slug: string;
+    }
+  | {
+      readonly locale: Locale;
+      readonly resource: "article-taxonomy";
+      readonly kind: PublicTaxonomyKind;
+      readonly slug: string;
     };
 
 export type PublicRouteAvailability = "available" | "unavailable";
@@ -50,6 +63,11 @@ export interface PublicRouteAvailabilityReaders {
   ) => Promise<unknown>;
   readonly readArticleDetail: (
     locale: Locale,
+    slug: string
+  ) => Promise<unknown>;
+  readonly readArticleTaxonomy: (
+    locale: Locale,
+    kind: PublicTaxonomyKind,
     slug: string
   ) => Promise<unknown>;
 }
@@ -87,6 +105,28 @@ export function classifyPublicRoute(
 
   const articles = /^\/(en|fa)\/blog$/.exec(pathname);
   if (articles) return { locale: articles[1] as Locale, resource: "articles" };
+
+  // Before the article-detail pattern: `category` and `tag` are static
+  // segments under `/blog`, and Next resolves them ahead of `[slug]`, so the
+  // gate has to agree with the router about which route a path names.
+  const taxonomy = /^\/(en|fa)\/blog\/(category|tag)\/([^/]+)$/.exec(pathname);
+  if (taxonomy) {
+    const locale = taxonomy[1] as Locale;
+    let decodedSlug: string;
+    try {
+      decodedSlug = decodeURIComponent(taxonomy[3] ?? "");
+    } catch {
+      return null;
+    }
+    const slug = slugSchemaFor(locale).safeParse(decodedSlug);
+    if (!slug.success) return null;
+    return {
+      locale,
+      resource: "article-taxonomy",
+      kind: taxonomy[2] === "category" ? "category" : "tag",
+      slug: slug.data,
+    };
+  }
 
   const articleDetail = /^\/(en|fa)\/blog\/([^/]+)$/.exec(pathname);
   if (articleDetail) {
@@ -157,6 +197,15 @@ export async function evaluatePublicRouteAvailability(
       kind: "project-detail",
       promise: readers.readProjectDetail(requirement.locale, requirement.slug),
     });
+  } else if (requirement.resource === "article-taxonomy") {
+    pending.push({
+      kind: "article-taxonomy",
+      promise: readers.readArticleTaxonomy(
+        requirement.locale,
+        requirement.kind,
+        requirement.slug
+      ),
+    });
   } else {
     pending.push({
       kind: "article-detail",
@@ -177,7 +226,8 @@ export async function evaluatePublicRouteAvailability(
     // Missing public content is a canonical 404, not a dependency outage.
     if (
       (failedRead?.kind === "project-detail" ||
-        failedRead?.kind === "article-detail") &&
+        failedRead?.kind === "article-detail" ||
+        failedRead?.kind === "article-taxonomy") &&
       error instanceof PublicApiResponseError &&
       error.status === 404
     ) {
@@ -214,6 +264,7 @@ export function createPublicRouteAvailabilityChecker(
   const readProjectDetail = createPublicProjectDetailClient(clientOptions);
   const readArticles = createPublicArticleListClient(clientOptions);
   const readArticleDetail = createPublicArticleDetailClient(clientOptions);
+  const readArticleTaxonomy = createPublicArticleTaxonomyClient(clientOptions);
 
   return async (pathname) => {
     const requirement = classifyPublicRoute(pathname);
@@ -226,6 +277,8 @@ export function createPublicRouteAvailabilityChecker(
       readProjectDetail,
       readArticles: (locale) => readArticles(locale, { limit: 20 }),
       readArticleDetail,
+      readArticleTaxonomy: (locale, kind, slug) =>
+        readArticleTaxonomy(locale, kind, slug, { limit: 20 }),
     });
   };
 }

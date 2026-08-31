@@ -6,8 +6,13 @@ import {
 } from "node:http";
 
 import { publicAppearanceEnvelopeSchema } from "@portfolio/contracts/appearance";
-import { publicArticleDetailEnvelopeSchema } from "@portfolio/contracts/blog";
-import { publicArticleListEnvelopeSchema } from "@portfolio/contracts/blog";
+import {
+  publicArticleDetailEnvelopeSchema,
+  publicArticleListEnvelopeSchema,
+  publicArticleTaxonomyEnvelopeSchema,
+  publicBlogTaxonomyIndexEnvelopeSchema,
+  publicFeedIndexEnvelopeSchema,
+} from "@portfolio/contracts/blog";
 import {
   publicHomeEnvelopeSchema,
   publicProjectsEnvelopeSchema,
@@ -213,6 +218,7 @@ async function articleDetailEnvelope(locale: "en" | "fa") {
         seoTitle: null,
         seoDescription: null,
         canonicalUrl: null,
+        socialImage: null,
         renderedHtml: rendered.html,
         headings: [],
         alternates: [
@@ -225,6 +231,102 @@ async function articleDetailEnvelope(locale: "en" | "fa") {
   });
 }
 
+const CATEGORY = { en: "engineering", fa: "مهندسی" } as const;
+const TAG = { en: "typescript", fa: "تایپ-اسکریپت" } as const;
+
+function termAlternates(term: { readonly en: string; readonly fa: string }) {
+  return [
+    { locale: "en", slug: term.en },
+    { locale: "fa", slug: term.fa },
+  ];
+}
+
+function taxonomyIndexEnvelope(locale: "en" | "fa") {
+  return publicBlogTaxonomyIndexEnvelopeSchema.parse({
+    data: {
+      locale,
+      categories: [
+        {
+          kind: "category",
+          key: "engineering",
+          slug: CATEGORY[locale],
+          name: locale === "fa" ? "مهندسی" : "Engineering",
+          description: null,
+          alternates: termAlternates(CATEGORY),
+          articleCount: 1,
+        },
+      ],
+      tags: [
+        {
+          kind: "tag",
+          key: "typescript",
+          slug: TAG[locale],
+          name: "TypeScript",
+          description: null,
+          alternates: termAlternates(TAG),
+          articleCount: 1,
+        },
+      ],
+    },
+    meta: { requestId: `taxonomy-${locale}` },
+  });
+}
+
+function taxonomyPageEnvelope(locale: "en" | "fa", kind: "category" | "tag") {
+  const term = kind === "category" ? CATEGORY : TAG;
+  return publicArticleTaxonomyEnvelopeSchema.parse({
+    data: {
+      locale,
+      taxonomy: {
+        kind,
+        key: kind === "category" ? "engineering" : "typescript",
+        slug: term[locale],
+        name:
+          kind === "category"
+            ? locale === "fa"
+              ? "مهندسی"
+              : "Engineering"
+            : "TypeScript",
+        description: null,
+        alternates: termAlternates(term),
+      },
+      posts: [
+        summary(locale === "fa" ? ARTICLE_SLUG_FA : ARTICLE_SLUG, locale),
+      ],
+    },
+    meta: { requestId: `${kind}-${locale}`, nextCursor: null },
+  });
+}
+
+function feedIndexEnvelope(locale: "en" | "fa") {
+  const article = summary(
+    locale === "fa" ? ARTICLE_SLUG_FA : ARTICLE_SLUG,
+    locale
+  );
+  return publicFeedIndexEnvelopeSchema.parse({
+    data: {
+      locale,
+      entries: [
+        {
+          slug: article.slug,
+          title: article.title,
+          excerpt: article.excerpt,
+          publishedAt: article.publishedAt,
+          updatedAt: article.updatedAt,
+          authorName: article.authorName,
+          categoryKey: article.categoryKey,
+          tagKeys: article.tagKeys,
+          alternates: [
+            { locale: "en", slug: ARTICLE_SLUG },
+            { locale: "fa", slug: ARTICLE_SLUG_FA },
+          ],
+        },
+      ],
+    },
+    meta: { requestId: `feed-${locale}`, nextCursor: null },
+  });
+}
+
 async function resolve(
   locale: "en" | "fa",
   resource: string
@@ -234,6 +336,20 @@ async function resolve(
   if (resource === "home") return homeEnvelope(locale);
   if (resource === "projects") return projectsEnvelope(locale);
   if (resource === "blog/posts") return articleListEnvelope(locale);
+  if (resource === "blog/taxonomy") return taxonomyIndexEnvelope(locale);
+  if (resource === "blog/feed-index") return feedIndexEnvelope(locale);
+  if (resource.startsWith("blog/categories/")) {
+    const slug = decodeURIComponent(resource.slice("blog/categories/".length));
+    return slug === CATEGORY[locale]
+      ? taxonomyPageEnvelope(locale, "category")
+      : undefined;
+  }
+  if (resource.startsWith("blog/tags/")) {
+    const slug = decodeURIComponent(resource.slice("blog/tags/".length));
+    return slug === TAG[locale]
+      ? taxonomyPageEnvelope(locale, "tag")
+      : undefined;
+  }
   if (resource.startsWith("blog/posts/")) {
     const slug = decodeURIComponent(resource.slice("blog/posts/".length));
     const expected = locale === "fa" ? ARTICLE_SLUG_FA : ARTICLE_SLUG;

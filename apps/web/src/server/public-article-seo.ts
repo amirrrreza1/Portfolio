@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 /** Build page metadata from the same published-alternate DTO used by the UI. */
 export function buildPublicArticleMetadata(
   locale: Locale,
-  article: PublicArticleDetailItem
+  article: PublicArticleDetailItem,
+  siteUrl: URL = getSiteUrl()
 ): Metadata {
   const localPath = articlePath(locale, article.slug);
   const alternateLanguages = Object.fromEntries(
@@ -22,6 +23,26 @@ export function buildPublicArticleMetadata(
   if (english) {
     alternateLanguages["x-default"] = articlePath("en", english.slug);
   }
+
+  // Absolute, because a social crawler does not resolve a site-relative
+  // `og:image` against the page it found it on reliably enough to depend on.
+  const socialImage =
+    article.socialImage === null
+      ? undefined
+      : [
+          {
+            url: new URL(article.socialImage.src, siteUrl).toString(),
+            alt: article.socialImage.altText,
+            type: article.socialImage.mimeType,
+            ...(article.socialImage.width === null ||
+            article.socialImage.height === null
+              ? {}
+              : {
+                  width: article.socialImage.width,
+                  height: article.socialImage.height,
+                }),
+          },
+        ];
 
   return {
     title: article.seoTitle ?? article.title,
@@ -44,11 +65,16 @@ export function buildPublicArticleMetadata(
       modifiedTime: article.updatedAt,
       authors: article.authorName ? [article.authorName] : undefined,
       tags: article.tagKeys,
+      ...(socialImage === undefined ? {} : { images: socialImage }),
     },
     twitter: {
-      card: "summary",
+      // `summary_large_image` only when there actually is one: the large card
+      // renders a broken frame rather than falling back when the image is
+      // missing, so the card type follows the content rather than the wish.
+      card: socialImage === undefined ? "summary" : "summary_large_image",
       title: article.seoTitle ?? article.title,
       description: article.seoDescription ?? article.excerpt,
+      ...(socialImage === undefined ? {} : { images: socialImage }),
     },
   };
 }
@@ -75,5 +101,8 @@ export function buildPublicArticleJsonLd(
       ? { author: { "@type": "Person", name: article.authorName } }
       : {}),
     ...(article.tagKeys.length > 0 ? { keywords: article.tagKeys } : {}),
+    ...(article.socialImage === null
+      ? {}
+      : { image: new URL(article.socialImage.src, siteUrl).toString() }),
   }).replaceAll("<", "\\u003c");
 }

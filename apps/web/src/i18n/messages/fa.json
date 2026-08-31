@@ -43,7 +43,22 @@
     "availableIn": "نسخه دیگر",
     "translationMissing": "این مقاله به فارسی منتشر نشده است.",
     "backToBlog": "بازگشت به وبلاگ",
-    "featured": "مقاله منتخب"
+    "featured": "مقاله منتخب",
+    "categoryLabel": "دسته‌بندی",
+    "tagLabel": "برچسب",
+    "categoryHeading": "مقاله‌های دسته",
+    "tagHeading": "مقاله‌های دارای برچسب",
+    "emptyTaxonomy": "هنوز مقاله منتشرشده‌ای با این عنوان وجود ندارد.",
+    "browseCategory": "مرور این دسته‌بندی",
+    "browseTag": "مرور این برچسب",
+    "newestArticles": "تازه‌ترین مقاله‌ها",
+    "olderArticles": "مقاله‌های قدیمی‌تر",
+    "pagination": "صفحه‌بندی وبلاگ",
+    "related": "مقاله‌های مرتبط",
+    "feedTitle": "خوراک وبلاگ",
+    "feedLink": "اشتراک از طریق RSS",
+    "breadcrumb": "مسیر راهنما",
+    "home": "خانه"
   },
   "notFound": {
     "title": "صفحه پیدا نشد",

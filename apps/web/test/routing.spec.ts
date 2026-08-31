@@ -8,6 +8,8 @@ import {
 } from "../src/i18n/locale-preference";
 import {
   articlePath,
+  blogIndexPath,
+  blogTaxonomyPath,
   decodeSlugParam,
   legacyLocaleRedirect,
   localePath,
@@ -211,5 +213,29 @@ describe("dynamic slug parameters", () => {
     // A route must answer 404 for this, not 500.
     expect(decodeSlugParam("%E0%A4%A")).toBe(null);
     expect(decodeSlugParam("%")).toBe(null);
+  });
+});
+
+describe("blog discovery paths", () => {
+  it("keeps the taxonomy segment ASCII while the slug stays localized", () => {
+    expect(blogTaxonomyPath("en", "category", "engineering")).toBe(
+      "/en/blog/category/engineering"
+    );
+    expect(blogTaxonomyPath("fa", "tag", "تایپ-اسکریپت")).toBe(
+      `/fa/blog/tag/${encodeURIComponent("تایپ-اسکریپت")}`
+    );
+  });
+
+  it("refuses a slug that is not canonical for the locale it is built for", () => {
+    // A path builder that normalized silently would publish a canonical URL
+    // the author never chose, which is the same reason `slugSchemaFor`
+    // rejects rather than fixes.
+    expect(() => blogTaxonomyPath("en", "tag", "Not-A-Slug")).toThrow();
+  });
+
+  it("leaves the first page of the index without a query string", () => {
+    expect(blogIndexPath("en")).toBe("/en/blog");
+    expect(blogIndexPath("en", null)).toBe("/en/blog");
+    expect(blogIndexPath("fa", "abc_-9")).toBe("/fa/blog?cursor=abc_-9");
   });
 });

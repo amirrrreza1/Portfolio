@@ -41,6 +41,20 @@ function securityPolicy(nonce: string): string {
   ].join("; ");
 }
 
+/**
+ * The public documents that are meant to be cached by shared caches.
+ *
+ * Every other public response carries `private, no-store` because the HTML
+ * shell is per-visitor: it embeds the appearance cookie's resolved theme in
+ * its first byte. Feeds, sitemaps and `robots.txt` embed nothing of the sort —
+ * they are identical for every visitor — and a crawler or feed reader polling
+ * them is exactly the traffic a shared cache should absorb. Their route
+ * handlers set the real policy; this list is what stops the blanket header
+ * from overwriting it.
+ */
+const PUBLIC_DISCOVERY_PATH =
+  /^\/(?:robots\.txt|sitemap\.xml|(?:en|fa)\/(?:sitemap\.xml|blog\/feed\.xml))$/;
+
 function secure(response: NextResponse, nonce: string): NextResponse {
   response.headers.set("Content-Security-Policy", securityPolicy(nonce));
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -256,8 +270,13 @@ export async function proxyWithDependencies(
   headers.set("x-portfolio-locale", locale === "fa" ? "fa" : "en");
   headers.set("x-portfolio-csp-nonce", nonce);
   headers.set("x-portfolio-pathname", pathname);
-  const response = NextResponse.next({ request: { headers } });
-  return secure(response, nonce);
+  const response = secure(NextResponse.next({ request: { headers } }), nonce);
+  if (PUBLIC_DISCOVERY_PATH.test(pathname)) {
+    // Deleted rather than replaced: the route handler already sent the policy
+    // it wants, and a second value here would be the one that wins.
+    response.headers.delete("Cache-Control");
+  }
+  return response;
 }
 
 function createUnavailableResponse(

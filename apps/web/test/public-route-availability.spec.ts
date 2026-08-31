@@ -125,6 +125,7 @@ function readers(
     readArticles: vi.fn().mockResolvedValue({}),
     readProjectDetail: vi.fn().mockResolvedValue({}),
     readArticleDetail: vi.fn().mockResolvedValue({}),
+    readArticleTaxonomy: vi.fn().mockResolvedValue({}),
     ...overrides,
   };
 }
@@ -153,6 +154,22 @@ describe("public route availability gate", () => {
       resource: "article-detail",
       slug: "مقاله-نمونه",
     });
+    expect(classifyPublicRoute("/en/blog/category/engineering")).toEqual({
+      locale: "en",
+      resource: "article-taxonomy",
+      kind: "category",
+      slug: "engineering",
+    });
+    // Static segments win over `[slug]` in the router, so the gate has to
+    // agree: `/en/blog/tag/x` is a taxonomy page, never an article called
+    // "tag" with a trailing segment.
+    expect(classifyPublicRoute("/fa/blog/tag/تایپ-اسکریپت")).toEqual({
+      locale: "fa",
+      resource: "article-taxonomy",
+      kind: "tag",
+      slug: "تایپ-اسکریپت",
+    });
+    expect(classifyPublicRoute("/en/blog/category/Not-A-Slug")).toBeNull();
     expect(classifyPublicRoute("/en/unknown")).toBeNull();
     expect(classifyPublicRoute("/en/projects/%2Fsecret")).toBeNull();
     expect(classifyPublicRoute("/de/projects")).toBeNull();
@@ -198,6 +215,26 @@ describe("public route availability gate", () => {
       "مقاله-نمونه"
     );
     expect(articleReaders.readArticles).not.toHaveBeenCalled();
+
+    const taxonomyReaders = readers();
+    await expect(
+      evaluatePublicRouteAvailability(
+        {
+          locale: "en",
+          resource: "article-taxonomy",
+          kind: "tag",
+          slug: "typescript",
+        },
+        taxonomyReaders
+      )
+    ).resolves.toBe("available");
+    expect(taxonomyReaders.readArticleTaxonomy).toHaveBeenCalledWith(
+      "en",
+      "tag",
+      "typescript"
+    );
+    expect(taxonomyReaders.readArticles).not.toHaveBeenCalled();
+    expect(taxonomyReaders.readArticleDetail).not.toHaveBeenCalled();
   });
 
   it("reports controlled outages but preserves missing-project 404 semantics", async () => {
@@ -228,6 +265,25 @@ describe("public route availability gate", () => {
         { locale: "en", resource: "project-detail", slug: "missing" },
         readers({
           readProjectDetail: async () => {
+            throw new PublicApiResponseError(404);
+          },
+        })
+      )
+    ).resolves.toBe("available");
+
+    // A withdrawn category is the same kind of answer as a missing project:
+    // the API replied, and its reply was "no". Treating it as an outage would
+    // answer a `404` page with a site-wide `503`.
+    await expect(
+      evaluatePublicRouteAvailability(
+        {
+          locale: "en",
+          resource: "article-taxonomy",
+          kind: "category",
+          slug: "withdrawn",
+        },
+        readers({
+          readArticleTaxonomy: async () => {
             throw new PublicApiResponseError(404);
           },
         })

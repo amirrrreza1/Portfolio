@@ -162,3 +162,44 @@ export async function runContentScheduler(
 
   return { enqueued, skipped };
 }
+
+export interface ExclusiveLockOptions {
+  /**
+   * Runs `work` while holding the lock, or resolves `null` without running it
+   * because someone else holds it. Injected rather than taken as a database
+   * handle so the topology rule can be asserted without a server.
+   */
+  readonly withLock: (work: () => Promise<void>) => Promise<void | null>;
+  readonly work: () => Promise<void>;
+  /** How long to wait before asking for a lock that was held elsewhere. */
+  readonly retryDelayMs: number;
+  readonly sleep: (ms: number) => Promise<void>;
+  readonly running: () => boolean;
+  readonly log?: (event: { readonly type: "held-elsewhere" }) => void;
+}
+
+/**
+ * Runs one job under a lock that only one process may hold.
+ *
+ * This is the shape of ADR-013's single-scheduler guarantee: a replica that
+ * cannot take the lock **does not run the work**, it waits and asks again. The
+ * distinction matters because the obvious alternative — queueing behind the
+ * lock — is what turns one slow run into a backlog that publishes an hour of
+ * scheduled articles in the same second.
+ *
+ * It returns as soon as the work completes, so a caller that wants the loop to
+ * continue puts the loop inside `work`, not around this.
+ */
+export async function runUnderExclusiveLock(
+  options: ExclusiveLockOptions
+): Promise<{ readonly ranWork: boolean; readonly waited: number }> {
+  let waited = 0;
+  while (options.running()) {
+    const held = await options.withLock(options.work);
+    if (held !== null) return { ranWork: true, waited };
+    waited += 1;
+    options.log?.({ type: "held-elsewhere" });
+    await options.sleep(options.retryDelayMs);
+  }
+  return { ranWork: false, waited };
+}

@@ -21,6 +21,7 @@ const basePost = {
   seoTitle: "Strict article metadata",
   seoDescription: "Metadata derived from published data only.",
   canonicalUrl: null,
+  socialImage: null,
   renderedHtml: '<h2 id="intro">Introduction</h2><p>Safe body.</p>',
   headings: [{ depth: 2, id: "intro", text: "Introduction" }],
   alternates: [

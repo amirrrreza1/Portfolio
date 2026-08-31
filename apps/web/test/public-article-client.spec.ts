@@ -59,6 +59,7 @@ function detailEnvelope() {
         seoTitle: null,
         seoDescription: null,
         canonicalUrl: null,
+        socialImage: null,
         renderedHtml: "<p>متن امن.</p>",
         headings: [],
         alternates: [{ locale: "en", slug: "typed-public-reads" }],

@@ -3,11 +3,12 @@ import type {
   ContentJobStore,
   ContentQueueMetrics,
 } from "@portfolio/database";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   runContentScheduler,
   runContentWorker,
+  runUnderExclusiveLock,
 } from "../src/worker/content-worker.js";
 
 /**
@@ -236,5 +237,69 @@ describe("runContentScheduler", () => {
       running: () => ticks++ < 2,
     });
     expect(summary).toEqual({ enqueued: 2, skipped: 1 });
+  });
+});
+
+describe("runUnderExclusiveLock", () => {
+  it("does not run the work when another process holds the lock", async () => {
+    // ADR-013's single-scheduler guarantee. Two replicas start; only the one
+    // that takes the lock enqueues anything, and duplicate publication is
+    // prevented by never running the second scanner rather than by
+    // deduplicating its output afterwards.
+    const work = vi.fn(async () => undefined);
+    let running = true;
+    const result = await runUnderExclusiveLock({
+      withLock: async () => null,
+      work,
+      retryDelayMs: 1,
+      sleep: async () => {
+        running = false;
+      },
+      running: () => running,
+    });
+
+    expect(work).not.toHaveBeenCalled();
+    expect(result).toEqual({ ranWork: false, waited: 1 });
+  });
+
+  it("waits and retries rather than queueing behind the holder", async () => {
+    // Queueing is what turns one slow run into a backlog that publishes an
+    // hour of scheduled articles in the same second, which is why the lock is
+    // `pg_try_advisory_lock` and this loop sleeps between attempts.
+    const work = vi.fn(async () => undefined);
+    const delays: number[] = [];
+    let attempts = 0;
+    const result = await runUnderExclusiveLock({
+      withLock: async (run) => {
+        attempts += 1;
+        if (attempts < 3) return null;
+        await run();
+        return undefined;
+      },
+      work,
+      retryDelayMs: 30_000,
+      sleep: async (ms) => {
+        delays.push(ms);
+      },
+      running: () => true,
+    });
+
+    expect(work).toHaveBeenCalledTimes(1);
+    expect(delays).toEqual([30_000, 30_000]);
+    expect(result).toEqual({ ranWork: true, waited: 2 });
+  });
+
+  it("stops waiting when the process is asked to shut down", async () => {
+    let running = true;
+    const result = await runUnderExclusiveLock({
+      withLock: async () => null,
+      work: async () => undefined,
+      retryDelayMs: 1,
+      sleep: async () => {
+        running = false;
+      },
+      running: () => running,
+    });
+    expect(result.ranWork).toBe(false);
   });
 });

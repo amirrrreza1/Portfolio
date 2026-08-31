@@ -43,7 +43,22 @@
     "availableIn": "Available in",
     "translationMissing": "This article is not published in English.",
     "backToBlog": "Back to blog",
-    "featured": "Featured article"
+    "featured": "Featured article",
+    "categoryLabel": "Category",
+    "tagLabel": "Tag",
+    "categoryHeading": "Articles in",
+    "tagHeading": "Articles tagged",
+    "emptyTaxonomy": "No published articles use this term yet.",
+    "browseCategory": "Browse this category",
+    "browseTag": "Browse this tag",
+    "newestArticles": "Newest articles",
+    "olderArticles": "Older articles",
+    "pagination": "Blog pagination",
+    "related": "Related articles",
+    "feedTitle": "Blog feed",
+    "feedLink": "Subscribe by RSS",
+    "breadcrumb": "Breadcrumb",
+    "home": "Home"
   },
   "notFound": {
     "title": "Page not found",

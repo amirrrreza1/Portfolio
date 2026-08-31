@@ -3,9 +3,9 @@ import { z } from "zod";
 import {
   hexColorSchema,
   httpsUrlSchema,
-  internalPathSchema,
   isoDateSchema,
   localeSchema,
+  publicImageSchema,
   projectIdSchema,
   slugSchemaFor,
   skillCategoryIdSchema,
@@ -46,22 +46,13 @@ export const publicProjectStatusSchema = z.enum([
 
 export const publicProjectSlugSchema = slugSchemaFor("en");
 
-export const publicProjectImageSchema = z
-  .object({
-    src: internalPathSchema.refine(
-      (value) => !value.includes("?"),
-      "Public image paths must not contain a query string."
-    ),
-    altText: z.string().trim().min(1).max(500),
-    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-    width: z.int().positive().max(20_000).nullable(),
-    height: z.int().positive().max(20_000).nullable(),
-  })
-  .strict()
-  .refine((value) => (value.width === null) === (value.height === null), {
-    message:
-      "Image width and height must either both be present or both be null.",
-  });
+/**
+ * The shared public image contract, named here for the callers that already
+ * import this symbol. The rule itself lives in `common/media.js` because
+ * articles publish cover and social images under exactly the same guarantees,
+ * and one of the two copies would eventually be the laxer one.
+ */
+export const publicProjectImageSchema = publicImageSchema;
 
 export const publicProjectSchema = z
   .object({

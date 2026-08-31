@@ -4,7 +4,11 @@ import {
   publicArticleDetailSchema,
   publicArticleListEnvelopeSchema,
   publicArticleListSchema,
+  publicArticleTaxonomyEnvelopeSchema,
+  publicArticleTaxonomyListSchema,
   publicArticleTranslationNotFoundSchema,
+  publicFeedIndexEnvelopeSchema,
+  publicFeedIndexSchema,
 } from "@portfolio/contracts/blog";
 import { Test } from "@nestjs/testing";
 import {
@@ -54,6 +58,39 @@ const articleList = publicArticleListSchema.parse({
   posts: [summary],
 });
 
+const taxonomyList = publicArticleTaxonomyListSchema.parse({
+  locale: "en",
+  taxonomy: {
+    kind: "category",
+    key: "engineering",
+    slug: "engineering",
+    name: "Engineering",
+    description: null,
+    alternates: [{ locale: "en", slug: "engineering" }],
+  },
+  posts: [summary],
+});
+
+const feedIndex = publicFeedIndexSchema.parse({
+  locale: "en",
+  entries: [
+    {
+      slug: summary.slug,
+      title: summary.title,
+      excerpt: summary.excerpt,
+      publishedAt: summary.publishedAt,
+      updatedAt: summary.updatedAt,
+      authorName: summary.authorName,
+      categoryKey: summary.categoryKey,
+      tagKeys: summary.tagKeys,
+      alternates: [
+        { locale: "en", slug: summary.slug },
+        { locale: "fa", slug: "خواندن-عمومی-نوعدار" },
+      ],
+    },
+  ],
+});
+
 const articleDetail = publicArticleDetailSchema.parse({
   locale: "en",
   post: {
@@ -61,6 +98,7 @@ const articleDetail = publicArticleDetailSchema.parse({
     seoTitle: "Typed public reads",
     seoDescription: "A strict public article.",
     canonicalUrl: null,
+    socialImage: null,
     renderedHtml: '<h2 id="intro">Introduction</h2><p>Safe body.</p>',
     headings: [{ depth: 2, id: "intro", text: "Introduction" }],
     alternates: [
@@ -90,6 +128,18 @@ describe("public articles API", () => {
         data: articleDetail,
         lastModified: updatedAt,
       }),
+      listByTaxonomy: vi.fn().mockResolvedValue({
+        kind: "found",
+        data: taxonomyList,
+        nextCursor: null,
+        lastModified: updatedAt,
+      }),
+      feedIndex: vi.fn().mockResolvedValue({
+        data: feedIndex,
+        nextCursor: null,
+        lastModified: updatedAt,
+      }),
+      readImage: vi.fn().mockResolvedValue(null),
       ...overrides,
     };
     const moduleRef = await withStubbedAuth(
@@ -197,6 +247,106 @@ describe("public articles API", () => {
     expect(missing.body).not.toContain("draft");
     expect(missing.body).not.toContain("renderedHtml");
   });
+
+  it("routes category and tag paths to the same read with different kinds", async () => {
+    const fixture = await createApp();
+    const category = await fixture.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/categories/engineering?limit=10",
+    });
+    expect(category.statusCode).toBe(200);
+    expect(
+      publicArticleTaxonomyEnvelopeSchema.safeParse(category.json()).success
+    ).toBe(true);
+    expect(category.headers["content-language"]).toBe("en");
+    expect(fixture.service.listByTaxonomy).toHaveBeenCalledWith(
+      "en",
+      "category",
+      "engineering",
+      { limit: 10 }
+    );
+
+    await fixture.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/tags/typescript",
+    });
+    expect(fixture.service.listByTaxonomy).toHaveBeenLastCalledWith(
+      "en",
+      "tag",
+      "typescript",
+      { limit: 20 }
+    );
+  });
+
+  it("answers a withdrawn or unknown term with 404 rather than an empty page", async () => {
+    const fixture = await createApp({
+      listByTaxonomy: vi.fn().mockResolvedValue({ kind: "missing" }),
+    });
+    const response = await fixture.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/categories/withdrawn",
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+    expect(response.body).not.toContain("disabled");
+  });
+
+  it("serves the feed index with the same conditional-cache contract", async () => {
+    const fixture = await createApp();
+    const first = await fixture.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/feed-index",
+    });
+    expect(first.statusCode).toBe(200);
+    expect(publicFeedIndexEnvelopeSchema.safeParse(first.json()).success).toBe(
+      true
+    );
+    expect(first.headers["cache-control"]).toContain("s-maxage=300");
+
+    const conditional = await fixture.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/feed-index",
+      headers: { "if-none-match": first.headers.etag },
+    });
+    expect(conditional.statusCode).toBe(304);
+  });
+
+  it("serves an article social image as immutable bytes, or 404", async () => {
+    const absent = await createApp();
+    const missing = await absent.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/posts/typed-public-reads/image",
+    });
+    expect(missing.statusCode).toBe(404);
+    await absent.app.close();
+    app = undefined;
+
+    const bytes = Uint8Array.from([1, 2, 3, 4]);
+    const present = await createApp({
+      readImage: vi.fn().mockResolvedValue({
+        mimeType: "image/png",
+        checksumSha256: "a".repeat(64),
+        lastModified: updatedAt,
+        readBytes: async () => bytes,
+      }),
+    });
+    const found = await present.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/posts/typed-public-reads/image",
+    });
+    expect(found.statusCode).toBe(200);
+    expect(found.headers["content-type"]).toBe("image/png");
+    expect(found.headers["x-content-type-options"]).toBe("nosniff");
+    expect(found.headers["cache-control"]).toContain("s-maxage=3600");
+    expect(found.headers.etag).toBe(`"sha256-${"a".repeat(64)}"`);
+
+    const conditional = await present.app.inject({
+      method: "GET",
+      url: "/api/v1/public/en/blog/posts/typed-public-reads/image",
+      headers: { "if-none-match": found.headers.etag },
+    });
+    expect(conditional.statusCode).toBe(304);
+  });
 });
 
 describe("PublicArticlesService", () => {
@@ -210,9 +360,7 @@ describe("PublicArticlesService", () => {
       ),
     ];
     const findMany = vi.fn().mockResolvedValue(rows);
-    const service = new PublicArticlesService({
-      postTranslation: { findMany },
-    } as unknown as Database);
+    const service = createService({ postTranslation: { findMany } });
 
     const first = await service.list("en", { limit: 1 });
     expect(first.data.posts).toHaveLength(1);
@@ -242,9 +390,7 @@ describe("PublicArticlesService", () => {
 
   it("serves only a published detail body and exposes only published alternates", async () => {
     const findUnique = vi.fn().mockResolvedValue(detailRow());
-    const service = new PublicArticlesService({
-      postTranslation: { findUnique },
-    } as unknown as Database);
+    const service = createService({ postTranslation: { findUnique } });
     const result = await service.detail("en", "typed-public-reads");
 
     expect(result.kind).toBe("found");
@@ -279,9 +425,7 @@ describe("PublicArticlesService", () => {
     for (const fault of faults) {
       findUnique.mockResolvedValueOnce(detailRow(fault));
     }
-    const service = new PublicArticlesService({
-      postTranslation: { findUnique },
-    } as unknown as Database);
+    const service = createService({ postTranslation: { findUnique } });
 
     for (const fault of faults) {
       const result = await service.detail("en", "typed-public-reads");
@@ -298,11 +442,11 @@ describe("PublicArticlesService", () => {
     const healthy = listRow(translationId, "typed-public-reads", publishedAt);
     const corrupted = listRow(secondTranslationId, "older-article", updatedAt);
     corrupted.bodySha256 = "f".repeat(64);
-    const service = new PublicArticlesService({
+    const service = createService({
       postTranslation: {
         findMany: vi.fn().mockResolvedValue([healthy, corrupted]),
       },
-    } as unknown as Database);
+    });
 
     const result = await service.list("en", { limit: 10 });
 
@@ -323,9 +467,7 @@ describe("PublicArticlesService", () => {
       .fn()
       .mockResolvedValueOnce(draft)
       .mockResolvedValueOnce(null);
-    const service = new PublicArticlesService({
-      postTranslation: { findUnique },
-    } as unknown as Database);
+    const service = createService({ postTranslation: { findUnique } });
 
     await expect(service.detail("fa", "مقاله-ناقص")).resolves.toEqual({
       kind: "missing",
@@ -336,7 +478,200 @@ describe("PublicArticlesService", () => {
       availableTranslations: [],
     });
   });
+
+  it("treats a disabled term as a page that does not exist", async () => {
+    // Not as a category with no articles. An empty page is crawlable, and an
+    // editor who disables a term is withdrawing the URL, not the contents.
+    const findMany = vi.fn();
+    const service = createService({
+      categoryTranslation: {
+        findUnique: vi.fn().mockResolvedValue({
+          name: "Engineering",
+          slug: "engineering",
+          description: null,
+          updatedAt,
+          category: {
+            key: "engineering",
+            enabled: false,
+            translations: [{ locale: "en", slug: "engineering" }],
+          },
+        }),
+      },
+      postTranslation: { findMany },
+    });
+
+    await expect(
+      service.listByTaxonomy("en", "category", "engineering", { limit: 10 })
+    ).resolves.toEqual({ kind: "missing" });
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("filters a taxonomy page on the post relation, not on the summary key", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValue([
+        listRow(translationId, "typed-public-reads", publishedAt),
+      ]);
+    const service = createService({
+      tagTranslation: {
+        findUnique: vi.fn().mockResolvedValue({
+          name: "TypeScript",
+          slug: "typescript",
+          description: null,
+          updatedAt,
+          tag: {
+            key: "typescript",
+            enabled: true,
+            translations: [
+              { locale: "fa", slug: "تایپ-اسکریپت" },
+              { locale: "en", slug: "typescript" },
+            ],
+          },
+        }),
+      },
+      postTranslation: { findMany },
+    });
+
+    const result = await service.listByTaxonomy("en", "tag", "typescript", {
+      limit: 10,
+    });
+    expect(result.kind).toBe("found");
+    if (result.kind !== "found") throw new Error("Expected a taxonomy page.");
+    expect(result.data.taxonomy).toMatchObject({
+      kind: "tag",
+      key: "typescript",
+      slug: "typescript",
+    });
+    expect(result.data.taxonomy.alternates).toEqual([
+      { locale: "en", slug: "typescript" },
+      { locale: "fa", slug: "تایپ-اسکریپت" },
+    ]);
+    expect(findMany.mock.calls[0]?.[0]).toMatchObject({
+      where: {
+        locale: "en",
+        status: "PUBLISHED",
+        post: {
+          archivedAt: null,
+          tags: { some: { tag: { is: { key: "typescript", enabled: true } } } },
+        },
+      },
+    });
+  });
+
+  it("builds feed entries that include themselves among their alternates", async () => {
+    // The sitemap's `xhtml:link` set has to match the page's `hreflang` set
+    // exactly, so the entry carries the whole group rather than the others.
+    const row = listRow(translationId, "typed-public-reads", publishedAt);
+    const corrupted = listRow(secondTranslationId, "older-article", updatedAt);
+    corrupted.bodySha256 = "f".repeat(64);
+    const service = createService({
+      postTranslation: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            ...row,
+            post: {
+              ...row.post,
+              translations: [
+                { locale: "fa", slug: "خواندن-عمومی-نوعدار", updatedAt },
+                { locale: "en", slug: "typed-public-reads", updatedAt },
+              ],
+            },
+          },
+          {
+            ...corrupted,
+            post: {
+              ...corrupted.post,
+              translations: [
+                { locale: "en", slug: "older-article", updatedAt },
+              ],
+            },
+          },
+        ]),
+      },
+    });
+
+    const result = await service.feedIndex("en", { limit: 10 });
+    expect(result.data.entries.map(({ slug }) => slug)).toEqual([
+      "typed-public-reads",
+    ]);
+    expect(result.data.entries[0]?.alternates).toEqual([
+      { locale: "en", slug: "typed-public-reads" },
+      { locale: "fa", slug: "خواندن-عمومی-نوعدار" },
+    ]);
+  });
+
+  it("prefers a translation's own social image over the shared cover", async () => {
+    const media = {
+      storageKey: "media/00000000-0000-4000-8000-000000000000.png",
+      mimeType: "image/png",
+      byteSize: 4n,
+      checksumSha256: "b".repeat(64),
+      updatedAt,
+      kind: "IMAGE",
+      processingState: "VERIFIED",
+      visibility: "PUBLIC",
+      archivedAt: null,
+    };
+    const service = new PublicArticlesService(
+      {
+        postTranslation: {
+          findFirst: vi.fn().mockResolvedValue({
+            updatedAt,
+            socialImage: media,
+            post: {
+              updatedAt,
+              coverMedia: { ...media, checksumSha256: "c".repeat(64) },
+            },
+          }),
+        },
+      } as unknown as Database,
+      { read: async () => Uint8Array.from([1, 2, 3, 4]) }
+    );
+
+    const image = await service.readImage("en", "typed-public-reads");
+    expect(image?.checksumSha256).toBe("b".repeat(64));
+    expect((await image?.readBytes())?.byteLength).toBe(4);
+  });
+
+  it("refuses to serve media that ingestion has not verified as public", async () => {
+    const service = createService({
+      postTranslation: {
+        findFirst: vi.fn().mockResolvedValue({
+          updatedAt,
+          socialImage: {
+            storageKey: "media/00000000-0000-4000-8000-000000000000.png",
+            mimeType: "image/png",
+            byteSize: 4n,
+            checksumSha256: "b".repeat(64),
+            updatedAt,
+            kind: "IMAGE",
+            processingState: "PENDING",
+            visibility: "PRIVATE",
+            archivedAt: null,
+          },
+          post: { updatedAt, coverMedia: null },
+        }),
+      },
+    });
+
+    await expect(
+      service.readImage("en", "typed-public-reads")
+    ).resolves.toBeNull();
+  });
 });
+
+/**
+ * The service takes a media reader as well as a database now. Every test in
+ * this file reads no bytes, so the stub throws rather than returning empty:
+ * a test that unexpectedly reaches storage should fail loudly.
+ */
+function createService(database: Readonly<Record<string, unknown>>) {
+  return new PublicArticlesService(database as unknown as Database, {
+    read: async () => {
+      throw new Error("This test must not read a media object.");
+    },
+  });
+}
 
 function listRow(id: string, slug: string, date: Date) {
   return {
@@ -384,6 +719,7 @@ function detailRow(
     bodySha256,
     updatedAt,
     archivedAt: null,
+    socialImage: null,
     post: {
       id: postId,
       featured: true,
@@ -391,6 +727,7 @@ function detailRow(
       archivedAt: null,
       author: { displayName: "Example Author" },
       category: { key: "engineering", enabled: true },
+      coverMedia: null,
       tags: [{ tag: { key: "typescript", enabled: true } }],
       translations: [
         { locale: "fa", slug: "خواندن-عمومی-نوعدار", updatedAt },

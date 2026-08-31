@@ -22,6 +22,37 @@ export function articlePath(locale: Locale, slugInput: string): string {
 }
 
 /**
+ * The taxonomy segment stays ASCII in both locales.
+ *
+ * `blog` and `projects` already do, and a localized path segment would make
+ * the two locales' URL shapes structurally different for no gain: the part a
+ * Persian reader actually reads is the slug, which *is* localized.
+ */
+export function blogTaxonomyPath(
+  locale: Locale,
+  kind: "category" | "tag",
+  slugInput: string
+): string {
+  const slug = slugSchemaFor(locale).parse(slugInput);
+  return localePath(locale, `blog/${kind}/${encodeSlugForUrl(slug)}`);
+}
+
+/**
+ * A page of the blog index.
+ *
+ * The cursor lives in the query string rather than in the path because it is
+ * opaque and impermanent: a keyset cursor names a row, not a page number, and
+ * baking one into a path would publish a URL that stops meaning the same thing
+ * as soon as an article is published above it. The first page has no query at
+ * all, so the index's canonical URL is stable.
+ */
+export function blogIndexPath(locale: Locale, cursor?: string | null): string {
+  const base = localePath(locale, "blog");
+  if (!cursor) return base;
+  return `${base}?cursor=${encodeURIComponent(cursor)}`;
+}
+
+/**
  * The slug a route param actually carries.
  *
  * Next.js hands a dynamic segment through **percent-encoded** when the segment

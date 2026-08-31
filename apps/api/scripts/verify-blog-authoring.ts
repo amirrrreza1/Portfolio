@@ -1,6 +1,15 @@
 /** M8 authoring/import proof against the authenticated live boundary. */
 import { hashPassword, issueRecoveryCodes } from "@portfolio/auth-core";
-import { createDatabaseClient, type Database } from "@portfolio/database";
+import {
+  ADVISORY_LOCKS,
+  createContentJobStore,
+  createDatabaseClient,
+  createPrismaSqlExecutor,
+  enqueueDuePublications,
+  publishDueTranslation,
+  withAdvisoryLock,
+  type Database,
+} from "@portfolio/database";
 import { RENDERER_VERSION } from "@portfolio/markdown";
 import { createHash } from "node:crypto";
 
@@ -866,6 +875,320 @@ try {
     ) && !JSON.stringify(lastRevision?.after ?? {}).includes("reason"),
     "reason in audit only"
   );
+
+  section("9. Discovery surfaces are published-and-valid only");
+  const discoveryPostId = `d${suffix.padEnd(23, "0").slice(0, 23)}`;
+  const tagSlug = `typescript-${suffix}`;
+  await call(`/api/v1/admin/blog/tags/${tag.id}/translations/en`, {
+    method: "PUT",
+    cookie: ownerCookie,
+    csrf: ownerCsrf,
+    ifMatch: tag.version,
+    body: { name: "TypeScript", slug: tagSlug, description: null },
+  });
+
+  const discoverySlug = `m8-discovery-${suffix}`;
+  const discoverySaved = data<any>(
+    await call(`/api/v1/admin/blog/posts/${discoveryPostId}/translations/en`, {
+      method: "PUT",
+      cookie: ownerCookie,
+      csrf: ownerCsrf,
+      body: {
+        frontmatter: {
+          ...frontmatter({ slug: discoverySlug }),
+          postId: discoveryPostId,
+          title: `The M8 discovery slice ${suffix}`,
+        },
+        body,
+        baseVersion: null,
+      },
+    })
+  );
+  const discoveryChecklist = data<any>(
+    await call(
+      `/api/v1/admin/blog/posts/${discoveryPostId}/translations/en/checklist`,
+      { cookie: ownerCookie }
+    )
+  );
+  const discoveryPublished = await call(
+    `/api/v1/admin/blog/posts/${discoveryPostId}/translations/en/publish`,
+    {
+      cookie: ownerCookie,
+      csrf: ownerCsrf,
+      body: {
+        version: discoverySaved.version,
+        acknowledgedWarnings: discoveryChecklist.warnings,
+      },
+    }
+  );
+  check(
+    "a second article is published for the discovery surfaces",
+    discoveryPublished.status === 201,
+    `HTTP ${discoveryPublished.status}`
+  );
+
+  const taxonomyIndex = await fetch(`${API}/api/v1/public/en/blog/taxonomy`);
+  const taxonomyBody = (await taxonomyIndex.json()) as any;
+  check(
+    "the navigation index lists the term with a count it can honour",
+    taxonomyIndex.status === 200 &&
+      taxonomyBody.data.categories.some(
+        (term: any) =>
+          term.slug === `engineering-${suffix}` && term.articleCount >= 1
+      ) &&
+      taxonomyBody.data.tags.some((term: any) => term.slug === tagSlug),
+    `HTTP ${taxonomyIndex.status}`
+  );
+
+  const categoryPage = await fetch(
+    `${API}/api/v1/public/en/blog/categories/engineering-${suffix}`
+  );
+  const categoryBody = (await categoryPage.json()) as any;
+  const tagPage = await fetch(`${API}/api/v1/public/en/blog/tags/${tagSlug}`);
+  check(
+    "the category and tag pages list the published article",
+    categoryPage.status === 200 &&
+      tagPage.status === 200 &&
+      categoryBody.data.posts.some((post: any) => post.slug === discoverySlug),
+    `${categoryPage.status}/${tagPage.status}`
+  );
+  check(
+    "a taxonomy page carries the reciprocal alternates its page will emit",
+    categoryBody.data.taxonomy.alternates.some(
+      (alternate: any) =>
+        alternate.locale === "en" && alternate.slug === `engineering-${suffix}`
+    ),
+    JSON.stringify(categoryBody.data.taxonomy.alternates)
+  );
+
+  const unknownTerm = await fetch(
+    `${API}/api/v1/public/en/blog/categories/never-existed-${suffix}`
+  );
+  check(
+    "an unknown term is 404, never an empty page",
+    unknownTerm.status === 404,
+    `HTTP ${unknownTerm.status}`
+  );
+
+  // Re-read rather than reusing the version captured in §2: saving the
+  // translation above bumped the parent row, and an `If-Match` is meant to
+  // fail when the screen is stale.
+  const tagRow = await database.tag.findUniqueOrThrow({
+    where: { id: tag.id },
+    select: { key: true, version: true },
+  });
+  await call(`/api/v1/admin/blog/tags/${tag.id}`, {
+    method: "PUT",
+    cookie: ownerCookie,
+    csrf: ownerCsrf,
+    ifMatch: tagRow.version,
+    body: { key: tagRow.key, enabled: false, sortOrder: 10 },
+  });
+  const disabledTerm = await fetch(
+    `${API}/api/v1/public/en/blog/tags/${tagSlug}`
+  );
+  check(
+    "a withdrawn term stops being a page rather than becoming an empty one",
+    disabledTerm.status === 404,
+    `HTTP ${disabledTerm.status}`
+  );
+
+  const feed = await fetch(`${API}/api/v1/public/en/blog/feed-index`);
+  const feedBody = (await feed.json()) as any;
+  const feedEntry = feedBody.data.entries.find(
+    (entry: any) => entry.slug === discoverySlug
+  );
+  const detailForFeed = await fetch(
+    `${API}/api/v1/public/en/blog/posts/${discoverySlug}`
+  );
+  const detailBody = (await detailForFeed.json()) as any;
+  check(
+    "the feed index and the article page agree on the alternate set exactly",
+    JSON.stringify(feedEntry?.alternates) ===
+      JSON.stringify(detailBody.data.post.alternates),
+    `${JSON.stringify(feedEntry?.alternates)} vs ${JSON.stringify(detailBody.data.post.alternates)}`
+  );
+  check(
+    "the feed index never carries a rendered body",
+    !JSON.stringify(feedBody).includes("renderedHtml"),
+    "no render in the feed"
+  );
+
+  const feedConditional = await fetch(
+    `${API}/api/v1/public/en/blog/feed-index`,
+    { headers: { "if-none-match": feed.headers.get("etag") ?? "" } }
+  );
+  check(
+    "the feed index answers a conditional request with 304",
+    feedConditional.status === 304,
+    `HTTP ${feedConditional.status}`
+  );
+
+  await database.postTranslation.update({
+    where: { postId_locale: { postId: discoveryPostId, locale: "en" } },
+    data: { bodySha256: "f".repeat(64) },
+  });
+  const feedAfterCorruption = await fetch(
+    `${API}/api/v1/public/en/blog/feed-index`
+  );
+  const corruptedFeed = (await feedAfterCorruption.json()) as any;
+  const categoryAfterCorruption = await fetch(
+    `${API}/api/v1/public/en/blog/categories/engineering-${suffix}`
+  );
+  const corruptedCategory = (await categoryAfterCorruption.json()) as any;
+  check(
+    "a translation whose digest no longer matches leaves every discovery surface",
+    !corruptedFeed.data.entries.some(
+      (entry: any) => entry.slug === discoverySlug
+    ) &&
+      !corruptedCategory.data.posts.some(
+        (post: any) => post.slug === discoverySlug
+      ),
+    "excluded from feed and taxonomy"
+  );
+  // Restored from the stored source rather than from the local string, so the
+  // digest matches whatever normalization the save path actually applied.
+  const storedSource = await database.postTranslation.findUniqueOrThrow({
+    where: { postId_locale: { postId: discoveryPostId, locale: "en" } },
+    select: { bodyMarkdown: true },
+  });
+  await database.postTranslation.update({
+    where: { postId_locale: { postId: discoveryPostId, locale: "en" } },
+    data: {
+      bodySha256: createHash("sha256")
+        .update(storedSource.bodyMarkdown ?? "", "utf8")
+        .digest("hex"),
+    },
+  });
+
+  section("10. Scheduled publication commits exactly once");
+  const scheduledFor = new Date(Date.now() - 60_000);
+  await database.postTranslation.update({
+    where: { postId_locale: { postId: discoveryPostId, locale: "en" } },
+    data: { status: "SCHEDULED", publishedAt: null, scheduledFor },
+  });
+  const scheduled = await database.postTranslation.findUniqueOrThrow({
+    where: { postId_locale: { postId: discoveryPostId, locale: "en" } },
+    select: { id: true },
+  });
+
+  const jobs = createContentJobStore(createPrismaSqlExecutor(database));
+  const firstTick = await enqueueDuePublications(database, jobs);
+  const secondTick = await enqueueDuePublications(database, jobs);
+  check(
+    "a repeated scheduler tick queues no second job for the same translation",
+    firstTick >= 1 && secondTick === 0,
+    `${firstTick} then ${secondTick}`
+  );
+
+  const revisionsBefore = await database.contentRevision.count({
+    where: { entityType: "PostTranslation", entityId: scheduled.id },
+  });
+  const outboxBefore = await database.contentInvalidationOutbox.count();
+  const firstPublish = await publishDueTranslation(database, scheduled.id);
+  const secondPublish = await publishDueTranslation(database, scheduled.id);
+  const afterPublish = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+    select: { status: true, publishedAt: true, scheduledFor: true },
+  });
+  const revisionsAfter = await database.contentRevision.count({
+    where: { entityType: "PostTranslation", entityId: scheduled.id },
+  });
+  const outboxAfter = await database.contentInvalidationOutbox.count();
+  check(
+    "a retried publication job publishes once and records one revision",
+    firstPublish === "published" &&
+      secondPublish === "skipped" &&
+      afterPublish.status === "PUBLISHED" &&
+      afterPublish.scheduledFor === null &&
+      revisionsAfter === revisionsBefore + 1 &&
+      outboxAfter === outboxBefore + 1,
+    `${firstPublish}/${secondPublish}; +${revisionsAfter - revisionsBefore} revisions`
+  );
+
+  await database.postTranslation.update({
+    where: { id: scheduled.id },
+    data: {
+      status: "SCHEDULED",
+      publishedAt: null,
+      scheduledFor,
+      bodySha256: "f".repeat(64),
+    },
+  });
+  const revisionsBeforeRollback = await database.contentRevision.count({
+    where: { entityType: "PostTranslation", entityId: scheduled.id },
+  });
+  const outboxBeforeRollback = await database.contentInvalidationOutbox.count();
+  let rolledBack = false;
+  try {
+    await publishDueTranslation(database, scheduled.id);
+  } catch {
+    rolledBack = true;
+  }
+  const afterRollback = await database.postTranslation.findUniqueOrThrow({
+    where: { id: scheduled.id },
+    select: { status: true, publishedAt: true },
+  });
+  check(
+    "a publication that fails inside its transaction commits nothing at all",
+    rolledBack &&
+      afterRollback.status === "SCHEDULED" &&
+      afterRollback.publishedAt === null &&
+      (await database.contentRevision.count({
+        where: { entityType: "PostTranslation", entityId: scheduled.id },
+      })) === revisionsBeforeRollback &&
+      (await database.contentInvalidationOutbox.count()) ===
+        outboxBeforeRollback,
+    `rolled back: ${rolledBack}; ${afterRollback.status}`
+  );
+
+  const second: Database = createDatabaseClient({
+    connectionString: required("DATABASE_URL"),
+  });
+  try {
+    let concurrent = 0;
+    let release = (): void => {};
+    const holder = withAdvisoryLock(
+      database,
+      ADVISORY_LOCKS.scheduler,
+      async () => {
+        concurrent += 1;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      }
+    );
+    // Give the first connection time to actually take the lock before the
+    // second asks for it; without that the race proves nothing either way.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const contender = await withAdvisoryLock(
+      second,
+      ADVISORY_LOCKS.scheduler,
+      async () => {
+        concurrent += 1;
+      }
+    );
+    release();
+    await holder;
+    check(
+      "two schedulers cannot both hold the publication lock",
+      contender === null && concurrent === 1,
+      `contender: ${String(contender)}; ran: ${concurrent}`
+    );
+
+    const afterRelease = await withAdvisoryLock(
+      second,
+      ADVISORY_LOCKS.scheduler,
+      async () => "acquired"
+    );
+    check(
+      "the lock is released when the holder finishes, not when it exits",
+      afterRelease === "acquired",
+      String(afterRelease)
+    );
+  } finally {
+    await second.$disconnect();
+  }
 } catch (error) {
   failures += 1;
   process.stderr.write(
@@ -877,4 +1200,7 @@ try {
 
 process.stdout.write(`\n${checks - failures}/${checks} checks passed.\n`);
 if (failures > 0) process.exitCode = 1;
-else process.stdout.write("ALL M8 AUTHORING AND IMPORT CHECKS PASSED\n");
+else
+  process.stdout.write(
+    "ALL M8 AUTHORING, IMPORT, DISCOVERY, AND PUBLICATION CHECKS PASSED\n"
+  );

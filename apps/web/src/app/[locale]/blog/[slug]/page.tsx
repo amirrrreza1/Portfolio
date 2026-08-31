@@ -1,9 +1,24 @@
+import {
+  ArticleSummaryList,
+  buildTaxonomySlugs,
+} from "@/features/blog/ArticleSummaryList";
 import { formatNumber, formatPublicTimestamp } from "@/i18n/format";
 import { getMessages } from "@/i18n/messages";
-import { articlePath, decodeSlugParam, localePath } from "@/i18n/routing";
+import {
+  articlePath,
+  blogTaxonomyPath,
+  decodeSlugParam,
+  localePath,
+} from "@/i18n/routing";
 import { blogFontPreloadHref } from "@/server/font-delivery";
 import { getPortfolioAppearance } from "@/server/portfolio-appearance";
 import { getPortfolioArticleDetail } from "@/server/portfolio-article-detail";
+import { getPortfolioArticlePage } from "@/server/portfolio-articles";
+import { getPortfolioTaxonomyIndex } from "@/server/portfolio-blog-discovery";
+import {
+  buildBreadcrumbJsonLd,
+  selectRelatedArticles,
+} from "@/server/public-blog-seo";
 import { PublicDataUnavailableError } from "@/server/public-api-client";
 import {
   buildPublicArticleJsonLd,
@@ -73,12 +88,51 @@ export default async function LocaleArticlePage({
   const otherTranslations = article.alternates.filter(
     ({ locale: alternateLocale }) => alternateLocale !== locale
   );
-  const [requestHeaders, preferenceCookie, appearanceSettings] =
-    await Promise.all([
+  // Inside the same guard as the article itself. The route gate ahead of this
+  // page only evaluates the article's own dependencies, so a discovery read
+  // that fails here would otherwise turn a controlled `503` into a `500`.
+  let reads;
+  try {
+    reads = await Promise.all([
       headers(),
       cookies().then((store) => store.get(PREFERENCES_COOKIE_NAME)),
       getPortfolioAppearance(locale),
+      // Related articles come from the recent listing rather than from a query
+      // of their own: the selection is a pure function of declared category
+      // and tags (PRODUCT_SPEC.md §—discovery forbids visitor profiling), so
+      // the candidate set only has to be published articles in this locale.
+      getPortfolioArticlePage(locale),
+      getPortfolioTaxonomyIndex(locale),
     ]);
+  } catch (error) {
+    if (!(error instanceof PublicDataUnavailableError)) throw error;
+    return <UnavailableArticle locale={locale} />;
+  }
+  const [
+    requestHeaders,
+    preferenceCookie,
+    appearanceSettings,
+    recent,
+    taxonomy,
+  ] = reads;
+  const related = selectRelatedArticles(article, recent.list.posts);
+  const slugs = buildTaxonomySlugs(taxonomy);
+  // Only terms with a slug in this locale become links. A key is an internal
+  // handle, not a URL, and linking one that has no localized slug would
+  // publish a 404 under a name the reader can plainly see on the page.
+  const categoryTerm =
+    article.categoryKey === null
+      ? undefined
+      : slugs.categories[article.categoryKey];
+  const articleTerms = [
+    ...(categoryTerm === undefined
+      ? []
+      : [{ kind: "category" as const, ...categoryTerm }]),
+    ...article.tagKeys.flatMap((key) => {
+      const tag = slugs.tags[key];
+      return tag === undefined ? [] : [{ kind: "tag" as const, ...tag }];
+    }),
+  ];
   const appearance = resolvePublicAppearance(
     parseAppearanceCookie(preferenceCookie?.value),
     appearanceSettings
@@ -138,6 +192,29 @@ export default async function LocaleArticlePage({
         </dl>
       </header>
 
+      {articleTerms.length === 0 ? null : (
+        <nav
+          aria-label={messages.categoryLabel}
+          className="flex flex-wrap gap-3"
+        >
+          {articleTerms.map((term) => (
+            <Link
+              key={`${term.kind}:${term.slug}`}
+              href={blogTaxonomyPath(locale, term.kind, term.slug)}
+              className="border-border border px-2 py-1 text-sm underline-offset-4 hover:underline"
+            >
+              <span className="sr-only">
+                {term.kind === "category"
+                  ? messages.categoryLabel
+                  : messages.tagLabel}
+                :{" "}
+              </span>
+              {term.name}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       {otherTranslations.length === 0 ? null : (
         <nav aria-label={messages.availableIn} className="flex flex-wrap gap-3">
           <span>{messages.availableIn}:</span>
@@ -181,11 +258,36 @@ export default async function LocaleArticlePage({
         dangerouslySetInnerHTML={{ __html: article.renderedHtml }}
       />
 
+      {related.length === 0 ? null : (
+        <section aria-labelledby="related-articles" className="space-y-4">
+          <h2 id="related-articles" className="text-2xl font-semibold">
+            {messages.related}
+          </h2>
+          <ArticleSummaryList
+            locale={locale}
+            posts={related}
+            headingLevel="h3"
+            taxonomy={slugs}
+          />
+        </section>
+      )}
+
       <script
         type="application/ld+json"
         nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: buildPublicArticleJsonLd(locale, article),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{
+          __html: buildBreadcrumbJsonLd([
+            { name: messages.home, path: localePath(locale) },
+            { name: messages.title, path: localePath(locale, "blog") },
+            { name: article.title, path: articlePath(locale, article.slug) },
+          ]),
         }}
       />
     </article>

@@ -6,6 +6,7 @@ import {
   isoTimestampSchema,
   localeSchema,
   postIdSchema,
+  publicImageSchema,
   responseMetaSchema,
   stableKeySchema,
   successEnvelopeSchema,
@@ -78,6 +79,18 @@ export const publicArticleDetailItemSchema = z
       max: SEO_DESCRIPTION_MAX_LENGTH,
     }).nullable(),
     canonicalUrl: httpsUrlSchema.nullable(),
+    /**
+     * The image a social card should use, already resolved.
+     *
+     * Two database columns can supply it — the translation's own
+     * `socialImage` and the post's shared `coverMedia` — and the choice
+     * between them is editorial, not presentational, so it is made once on the
+     * server rather than in every consumer that wants an `og:image`. A
+     * translation that names neither, or whose media is not verified and
+     * public, carries `null`; the page then falls back to the site image
+     * rather than emitting a card pointing at nothing.
+     */
+    socialImage: publicImageSchema.nullable(),
     renderedHtml: z.string().min(1).max(MAX_PUBLIC_ARTICLE_HTML_LENGTH),
     headings: z.array(publicArticleHeadingSchema).max(100),
     alternates: z.array(publicArticleAlternateSchema).max(2),

@@ -7,10 +7,17 @@ import {
 import {
   publicArticleDetailEnvelopeSchema,
   publicArticleListEnvelopeSchema,
+  publicArticleTaxonomyEnvelopeSchema,
   publicArticleTranslationNotFoundSchema,
+  publicBlogTaxonomyIndexEnvelopeSchema,
+  publicFeedIndexEnvelopeSchema,
   type PublicArticleAlternate,
   type PublicArticleDetailEnvelope,
   type PublicArticleListEnvelope,
+  type PublicArticleTaxonomyEnvelope,
+  type PublicBlogTaxonomyIndexEnvelope,
+  type PublicFeedIndexEnvelope,
+  type PublicTaxonomyKind,
 } from "@portfolio/contracts/blog";
 import {
   publicAppearanceEnvelopeSchema,
@@ -87,6 +94,9 @@ export type PublicAppearanceClientOptions = PublicClientOptions;
 export type PublicHomeClientOptions = PublicClientOptions;
 export type PublicArticleListClientOptions = PublicClientOptions;
 export type PublicArticleDetailClientOptions = PublicClientOptions;
+export type PublicArticleTaxonomyClientOptions = PublicClientOptions;
+export type PublicBlogTaxonomyIndexClientOptions = PublicClientOptions;
+export type PublicFeedIndexClientOptions = PublicClientOptions;
 
 export interface PublicProjectsClientResult {
   readonly envelope: PublicProjectsEnvelope;
@@ -120,6 +130,21 @@ export interface PublicArticleListClientResult {
 
 export interface PublicArticleDetailClientResult {
   readonly envelope: PublicArticleDetailEnvelope;
+  readonly stale: boolean;
+}
+
+export interface PublicArticleTaxonomyClientResult {
+  readonly envelope: PublicArticleTaxonomyEnvelope;
+  readonly stale: boolean;
+}
+
+export interface PublicBlogTaxonomyIndexClientResult {
+  readonly envelope: PublicBlogTaxonomyIndexEnvelope;
+  readonly stale: boolean;
+}
+
+export interface PublicFeedIndexClientResult {
+  readonly envelope: PublicFeedIndexEnvelope;
   readonly stale: boolean;
 }
 
@@ -326,6 +351,94 @@ export function createPublicArticleDetailClient(
         resourcePath: `blog/posts/${encodeURIComponent(slug)}`,
         envelopeSchema: publicArticleDetailEnvelopeSchema,
         mapResponseError: mapArticleDetailResponseError,
+      });
+      readers.set(key, reader);
+    }
+    return reader(locale);
+  };
+}
+
+/**
+ * One reader per (kind, slug, page), memoized like the listing reader.
+ *
+ * Taxonomy pages share the collective article tag rather than owning one:
+ * publishing an article changes which category and tag pages mention it, and
+ * the publisher cannot know which terms a reader happens to have warmed.
+ */
+export function createPublicArticleTaxonomyClient(
+  options: PublicArticleTaxonomyClientOptions
+): (
+  locale: Locale,
+  kind: PublicTaxonomyKind,
+  slug: string,
+  query?: Partial<PaginationQuery>
+) => Promise<PublicArticleTaxonomyClientResult> {
+  const readers = new Map<
+    string,
+    (locale: Locale) => Promise<PublicArticleTaxonomyClientResult>
+  >();
+
+  return (locale, kind, slugInput, queryInput = {}) => {
+    const slug = slugSchemaFor(locale).parse(slugInput);
+    const query = paginationQuerySchema.parse(queryInput);
+    const key = `${locale}:${kind}:${slug}:${query.limit}:${query.cursor ?? "first"}`;
+    let reader = readers.get(key);
+    if (reader === undefined) {
+      const parameters = new URLSearchParams({ limit: String(query.limit) });
+      if (query.cursor !== undefined) parameters.set("cursor", query.cursor);
+      const segment = kind === "category" ? "categories" : "tags";
+      reader = createLocalizedPublicClient({
+        ...options,
+        maxStaleMs: options.maxStaleMs ?? ARTICLE_MAX_STALE_MS,
+        cacheNamespace: `articles:${segment}:${slug}:${query.limit}:${query.cursor ?? "first"}`,
+        collectiveTags: (readLocale) => [articleListCacheTag(readLocale)],
+        resourcePath: `blog/${segment}/${encodeURIComponent(slug)}?${parameters.toString()}`,
+        envelopeSchema: publicArticleTaxonomyEnvelopeSchema,
+      });
+      readers.set(key, reader);
+    }
+    return reader(locale);
+  };
+}
+
+export function createPublicBlogTaxonomyIndexClient(
+  options: PublicBlogTaxonomyIndexClientOptions
+): (locale: Locale) => Promise<PublicBlogTaxonomyIndexClientResult> {
+  return createLocalizedPublicClient({
+    ...options,
+    maxStaleMs: options.maxStaleMs ?? ARTICLE_MAX_STALE_MS,
+    cacheNamespace: "articles:taxonomy",
+    collectiveTags: (readLocale) => [articleListCacheTag(readLocale)],
+    resourcePath: "blog/taxonomy",
+    envelopeSchema: publicBlogTaxonomyIndexEnvelopeSchema,
+  });
+}
+
+export function createPublicFeedIndexClient(
+  options: PublicFeedIndexClientOptions
+): (
+  locale: Locale,
+  query?: Partial<PaginationQuery>
+) => Promise<PublicFeedIndexClientResult> {
+  const readers = new Map<
+    string,
+    (locale: Locale) => Promise<PublicFeedIndexClientResult>
+  >();
+
+  return (locale, queryInput = {}) => {
+    const query = paginationQuerySchema.parse(queryInput);
+    const key = `${query.limit}:${query.cursor ?? "first"}`;
+    let reader = readers.get(key);
+    if (reader === undefined) {
+      const parameters = new URLSearchParams({ limit: String(query.limit) });
+      if (query.cursor !== undefined) parameters.set("cursor", query.cursor);
+      reader = createLocalizedPublicClient({
+        ...options,
+        maxStaleMs: options.maxStaleMs ?? ARTICLE_MAX_STALE_MS,
+        cacheNamespace: `articles:feed-index:${key}`,
+        collectiveTags: (readLocale) => [articleListCacheTag(readLocale)],
+        resourcePath: `blog/feed-index?${parameters.toString()}`,
+        envelopeSchema: publicFeedIndexEnvelopeSchema,
       });
       readers.set(key, reader);
     }
