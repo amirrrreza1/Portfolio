@@ -84,7 +84,7 @@ export function SaveButton({
     <button
       type="submit"
       disabled={busy}
-      className="bg-primary text-bg focus-visible:ring-accent self-start px-4 py-2 text-sm font-semibold disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="bg-primary text-bg focus-visible:ring-accent self-start px-4 py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60"
     >
       {busy ? "Saving…" : children}
     </button>

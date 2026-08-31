@@ -207,10 +207,16 @@ export const adminSectionTranslationSchema = z.discriminatedUnion("key", [
   ...(["skills", "projects", "certificates", "contact"] as const).map((key) =>
     key === "contact"
       ? z
-          .object({ key: z.literal("contact"), translation: contactTranslationSchema })
+          .object({
+            key: z.literal("contact"),
+            translation: contactTranslationSchema,
+          })
           .strict()
       : z
-          .object({ key: z.literal(key), translation: collectionTranslationSchema })
+          .object({
+            key: z.literal(key),
+            translation: collectionTranslationSchema,
+          })
           .strict()
   ),
 ]);
@@ -468,8 +474,6 @@ export type AdminMediaUploadFields = z.infer<
   typeof adminMediaUploadFieldsSchema
 >;
 export type AdminResumeUpdate = z.infer<typeof adminResumeUpdateSchema>;
-export type AdminRevisionRestore = z.infer<
-  typeof adminRevisionRestoreSchema
->;
+export type AdminRevisionRestore = z.infer<typeof adminRevisionRestoreSchema>;
 export type AdminUserUpdate = z.infer<typeof adminUserUpdateSchema>;
 export type AdminUserCreate = z.infer<typeof adminUserCreateSchema>;

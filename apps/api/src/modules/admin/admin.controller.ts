@@ -58,7 +58,10 @@ import {
   type AuthRuntimeConfig,
 } from "../auth/auth.controller.js";
 import type { Permission } from "../auth/authorization.js";
-import type { AuthenticatedRequest, AuthService } from "../auth/auth.service.js";
+import type {
+  AuthenticatedRequest,
+  AuthService,
+} from "../auth/auth.service.js";
 import { AdminRequestBoundary } from "./admin-request.js";
 import {
   AdminInvariantError,
@@ -165,230 +168,534 @@ export class AdminPortfolioController {
   private readonly boundary: AdminRequestBoundary;
 
   @Get("dashboard")
-  async dashboard(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async dashboard(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "audit.read");
     this.noStore(reply);
     return this.envelope(await this.portfolio.dashboard());
   }
 
   @Get("settings")
-  async settings(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async settings(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "settings.manage");
     this.noStore(reply);
     return this.envelope(await this.portfolio.readSettings());
   }
 
   @Patch("settings")
-  async updateSettings(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateSettings(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "settings.manage");
     const requestId = randomUUID();
     const input = this.parse(adminSiteSettingsUpdateSchema, body, requestId);
-    const value = await this.portfolio.updateSettings(actor.user.userId, this.ifMatch(request, requestId), input);
+    const value = await this.portfolio.updateSettings(
+      actor.user.userId,
+      this.ifMatch(request, requestId),
+      input
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Patch("settings/translations/:locale")
-  async updateSettingsTranslation(@Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateSettingsTranslation(
+    @Param("locale") locale: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "settings.manage");
     const requestId = randomUUID();
     const parsedLocale = this.locale(locale, requestId);
-    const input = this.parse(adminSiteSettingsTranslationSchema, body, requestId);
-    const value = await this.portfolio.updateSettingsTranslation(actor.user.userId, parsedLocale, this.ifMatch(request, requestId), input);
+    const input = this.parse(
+      adminSiteSettingsTranslationSchema,
+      body,
+      requestId
+    );
+    const value = await this.portfolio.updateSettingsTranslation(
+      actor.user.userId,
+      parsedLocale,
+      this.ifMatch(request, requestId),
+      input
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Get("appearance")
-  async appearance(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async appearance(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "content.draft.read");
     this.noStore(reply);
     return this.envelope(await this.portfolio.readAppearance());
   }
 
   @Patch("appearance")
-  async updateAppearance(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateAppearance(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "appearance.write");
     const requestId = randomUUID();
     const input = this.parse(adminAppearanceUpdateSchema, body, requestId);
-    const value = await this.portfolio.updateAppearance(actor.user.userId, this.ifMatch(request, requestId), input);
+    const value = await this.portfolio.updateAppearance(
+      actor.user.userId,
+      this.ifMatch(request, requestId),
+      input
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Get("sections")
-  async sections(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async sections(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "content.draft.read");
     this.noStore(reply);
     return this.envelope(await this.portfolio.listSections());
   }
 
   @Patch("sections/:id")
-  async updateSection(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateSection(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
     const input = this.parse(adminSectionUpdateSchema, body, requestId);
-    const value = await this.portfolio.updateSection(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), input);
+    const value = await this.portfolio.updateSection(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      input
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Patch("sections/:id/translations/:locale")
-  async updateSectionTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateSectionTranslation(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
     const input = this.parse(adminSectionTranslationSchema, body, requestId);
-    const value = await this.portfolio.updateSectionTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), input);
+    const value = await this.portfolio.updateSectionTranslation(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.locale(locale, requestId),
+      this.ifMatch(request, requestId),
+      input
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Get("nav-items")
-  async navigation(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async navigation(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "content.draft.read");
     this.noStore(reply);
     return this.envelope(await this.portfolio.listNavigation());
   }
 
   @Post("nav-items")
-  async createNavigation(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async createNavigation(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
-    const value = await this.portfolio.createNavigation(actor.user.userId, this.parse(adminNavItemCreateSchema, body, requestId));
+    const value = await this.portfolio.createNavigation(
+      actor.user.userId,
+      this.parse(adminNavItemCreateSchema, body, requestId)
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Patch("nav-items/:id")
-  async updateNavigation(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateNavigation(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
-    const value = await this.portfolio.updateNavigation(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminNavItemCreateSchema, body, requestId));
+    const value = await this.portfolio.updateNavigation(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminNavItemCreateSchema, body, requestId)
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Get("social-links")
-  async socialLinks(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async socialLinks(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     await this.require(request, "content.draft.read");
     this.noStore(reply);
     return this.envelope(await this.portfolio.listSocialLinks());
   }
 
   @Post("social-links")
-  async createSocialLink(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async createSocialLink(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
-    const value = await this.portfolio.createSocialLink(actor.user.userId, this.parse(adminSocialLinkCreateSchema, body, requestId));
+    const value = await this.portfolio.createSocialLink(
+      actor.user.userId,
+      this.parse(adminSocialLinkCreateSchema, body, requestId)
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Patch("social-links/:id")
-  async updateSocialLink(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async updateSocialLink(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "content.draft.write");
     const requestId = randomUUID();
-    const value = await this.portfolio.updateSocialLink(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSocialLinkCreateSchema, body, requestId));
+    const value = await this.portfolio.updateSocialLink(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminSocialLinkCreateSchema, body, requestId)
+    );
     this.noStore(reply);
     return this.envelope(value, requestId);
   }
 
   @Get("skill-categories")
-  async skillCategories(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listSkillCategories());
+  async skillCategories(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "content.draft.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listSkillCategories());
   }
 
   @Post("skill-categories")
-  async createSkillCategory(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.createSkillCategory(actor.user.userId, this.parse(adminSkillCategorySchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async createSkillCategory(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createSkillCategory(
+      actor.user.userId,
+      this.parse(adminSkillCategorySchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Patch("skill-categories/:id")
-  async updateSkillCategory(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateSkillCategory(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSkillCategorySchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateSkillCategory(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateSkillCategory(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminSkillCategorySchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Patch("skill-categories/:id/translations/:locale")
-  async updateSkillCategoryTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateSkillCategoryTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminSkillCategoryTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateSkillCategoryTranslation(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateSkillCategoryTranslation(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.locale(locale, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminSkillCategoryTranslationSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Post("skills")
-  async createSkill(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.createSkill(actor.user.userId, this.parse(adminSkillSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async createSkill(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createSkill(
+      actor.user.userId,
+      this.parse(adminSkillSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Patch("skills/:id")
-  async updateSkill(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateSkill(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminSkillSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateSkill(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateSkill(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminSkillSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Get("projects")
-  async projects(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listProjects());
+  async projects(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "content.draft.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listProjects());
   }
 
   @Post("projects")
-  async createProject(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.createProject(actor.user.userId, this.parse(adminProjectSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async createProject(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createProject(
+      actor.user.userId,
+      this.parse(adminProjectSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Patch("projects/:id")
-  async updateProject(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateProject(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminProjectSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateProject(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateProject(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminProjectSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Patch("projects/:id/translations/:locale")
-  async updateProjectTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateProjectTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminProjectTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateProjectTranslation(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateProjectTranslation(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.locale(locale, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminProjectTranslationSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Get("certificates")
-  async certificates(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listCertificates());
+  async certificates(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "content.draft.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listCertificates());
   }
   @Post("certificates")
-  async createCertificate(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.createCertificate(actor.user.userId, this.parse(adminCertificateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async createCertificate(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createCertificate(
+      actor.user.userId,
+      this.parse(adminCertificateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
   @Patch("certificates/:id")
-  async updateCertificate(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateCertificate(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminCertificateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateCertificate(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateCertificate(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminCertificateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
   @Patch("certificates/:id/translations/:locale")
-  async updateCertificateTranslation(@Param("id") id: string, @Param("locale") locale: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID();
-    const value = await this.portfolio.updateCertificateTranslation(actor.user.userId, this.id(id, requestId), this.locale(locale, requestId), this.ifMatch(request, requestId), this.parse(adminCertificateTranslationSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId);
+  async updateCertificateTranslation(
+    @Param("id") id: string,
+    @Param("locale") locale: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateCertificateTranslation(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.locale(locale, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminCertificateTranslationSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
   @Get("quotes")
-  async quotes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listQuotes()); }
+  async quotes(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "content.draft.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listQuotes());
+  }
   @Post("quotes")
-  async createQuote(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.createQuote(actor.user.userId, this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async createQuote(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createQuote(
+      actor.user.userId,
+      this.parse(adminQuoteSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
   @Patch("quotes/:id")
-  async updateQuote(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "content.draft.write"); const requestId = randomUUID(); const value = await this.portfolio.updateQuote(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminQuoteSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async updateQuote(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "content.draft.write");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateQuote(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminQuoteSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
 
   @Get("media")
-  async media(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.read"); this.noStore(reply); return this.envelope(await this.portfolio.listMedia()); }
+  async media(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "media.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listMedia());
+  }
 
   @Post("media")
-  async uploadMedia(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async uploadMedia(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
     const actor = await this.requireMutation(request, "media.upload");
     const requestId = randomUUID();
     const part = await request.file({
       limits: { fileSize: MAX_MEDIA_BYTES, files: 1, fields: 4, parts: 5 },
     });
     if (part === undefined) {
-      throw this.fail("VALIDATION_FAILED", requestId, { file: ["Choose one file."] });
+      throw this.fail("VALIDATION_FAILED", requestId, {
+        file: ["Choose one file."],
+      });
     }
     const chunks: Buffer[] = [];
     let total = 0;
@@ -422,54 +729,233 @@ export class AdminPortfolioController {
   }
 
   @Patch("media/:id")
-  async updateMedia(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID();
-    const value = await this.portfolio.updateMedia(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminMediaUpdateSchema, body, requestId));
-    this.noStore(reply); return this.envelope(value, requestId);
+  async updateMedia(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "media.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateMedia(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminMediaUpdateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Get("resumes")
-  async resumes(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "media.read"); this.noStore(reply); return this.envelope(await this.portfolio.listResumes()); }
+  async resumes(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "media.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listResumes());
+  }
   @Post("resumes")
-  async createResume(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.createResume(actor.user.userId, this.parse(adminResumeSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async createResume(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "media.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createResume(
+      actor.user.userId,
+      this.parse(adminResumeSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
   @Patch("resumes/:id")
-  async updateResume(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.updateResume(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminResumeUpdateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async updateResume(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "media.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateResume(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminResumeUpdateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
   @Post("resumes/:id/activate")
-  async activateResume(@Param("id") id: string, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "media.manage"); const requestId = randomUUID(); const value = await this.portfolio.activateResume(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async activateResume(
+    @Param("id") id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "media.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.activateResume(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
 
   @Post("resources/:resource/:id/archive")
-  async archive(@Param("resource") resource: string, @Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, resource === "media" ? "media.manage" : "content.draft.write");
-    const requestId = randomUUID(); const parsed = this.parseArchiveResource(resource, requestId); const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
-    const value = parsed === "media" ? await this.portfolio.archiveMedia(actor.user.userId, this.id(id, requestId), confirmation.version) : await this.portfolio.archiveResource(actor.user.userId, parsed, this.id(id, requestId), confirmation.version);
-    this.noStore(reply); return this.envelope(value, requestId);
+  async archive(
+    @Param("resource") resource: string,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(
+      request,
+      resource === "media" ? "media.manage" : "content.draft.write"
+    );
+    const requestId = randomUUID();
+    const parsed = this.parseArchiveResource(resource, requestId);
+    const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
+    const value =
+      parsed === "media"
+        ? await this.portfolio.archiveMedia(
+            actor.user.userId,
+            this.id(id, requestId),
+            confirmation.version
+          )
+        : await this.portfolio.archiveResource(
+            actor.user.userId,
+            parsed,
+            this.id(id, requestId),
+            confirmation.version
+          );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Post("resources/:resource/:id/restore")
-  async restore(@Param("resource") resource: string, @Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const actor = await this.requireMutation(request, resource === "media" ? "media.manage" : "revision.restore");
-    const requestId = randomUUID(); const parsed = this.parseArchiveResource(resource, requestId); const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
-    const value = parsed === "media" ? await this.portfolio.restoreMedia(actor.user.userId, this.id(id, requestId), confirmation.version) : await this.portfolio.restoreResource(actor.user.userId, parsed, this.id(id, requestId), confirmation.version);
-    this.noStore(reply); return this.envelope(value, requestId);
+  async restore(
+    @Param("resource") resource: string,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(
+      request,
+      resource === "media" ? "media.manage" : "revision.restore"
+    );
+    const requestId = randomUUID();
+    const parsed = this.parseArchiveResource(resource, requestId);
+    const confirmation = this.parse(archiveConfirmationSchema, body, requestId);
+    const value =
+      parsed === "media"
+        ? await this.portfolio.restoreMedia(
+            actor.user.userId,
+            this.id(id, requestId),
+            confirmation.version
+          )
+        : await this.portfolio.restoreResource(
+            actor.user.userId,
+            parsed,
+            this.id(id, requestId),
+            confirmation.version
+          );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
   }
 
   @Get("revisions")
-  async revisions(@Query("entityType") entityType: string | undefined, @Query("entityId") entityId: string | undefined, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "content.draft.read"); this.noStore(reply); return this.envelope(await this.portfolio.listRevisions(entityType, entityId)); }
+  async revisions(
+    @Query("entityType") entityType: string | undefined,
+    @Query("entityId") entityId: string | undefined,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "content.draft.read");
+    this.noStore(reply);
+    return this.envelope(
+      await this.portfolio.listRevisions(entityType, entityId)
+    );
+  }
 
   @Post("revisions/:id/restore")
-  async restoreRevision(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "revision.restore"); const requestId = randomUUID(); this.parse(adminRevisionRestoreSchema, body, requestId); const value = await this.portfolio.restoreRevision(actor.user.userId, this.id(id, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async restoreRevision(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "revision.restore");
+    const requestId = randomUUID();
+    this.parse(adminRevisionRestoreSchema, body, requestId);
+    const value = await this.portfolio.restoreRevision(
+      actor.user.userId,
+      this.id(id, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
 
   @Get("audit-events")
-  async auditEvents(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "audit.read"); this.noStore(reply); return this.envelope(await this.portfolio.listAuditEvents()); }
+  async auditEvents(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "audit.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listAuditEvents());
+  }
 
   @Get("users")
-  async users(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { await this.require(request, "users.manage"); this.noStore(reply); return this.envelope(await this.portfolio.listUsers()); }
+  async users(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "users.manage");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.listUsers());
+  }
 
   @Post("users")
-  async createUser(@Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "users.manage"); const requestId = randomUUID(); const value = await this.portfolio.createUser(actor.user.userId, this.parse(adminUserCreateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async createUser(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "users.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.createUser(
+      actor.user.userId,
+      this.parse(adminUserCreateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
 
   @Patch("users/:id")
-  async updateUser(@Param("id") id: string, @Body() body: unknown, @Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) { const actor = await this.requireMutation(request, "users.manage"); const requestId = randomUUID(); const value = await this.portfolio.updateUser(actor.user.userId, this.id(id, requestId), this.ifMatch(request, requestId), this.parse(adminUserUpdateSchema, body, requestId)); this.noStore(reply); return this.envelope(value, requestId); }
+  async updateUser(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "users.manage");
+    const requestId = randomUUID();
+    const value = await this.portfolio.updateUser(
+      actor.user.userId,
+      this.id(id, requestId),
+      this.ifMatch(request, requestId),
+      this.parse(adminUserUpdateSchema, body, requestId)
+    );
+    this.noStore(reply);
+    return this.envelope(value, requestId);
+  }
 
   private envelope(data: unknown, requestId = randomUUID()) {
     return { data, meta: { requestId } };
@@ -478,7 +964,11 @@ export class AdminPortfolioController {
   private parse<T>(schema: z.ZodType<T>, body: unknown, requestId: string): T {
     const result = schema.safeParse(body);
     if (!result.success) {
-      throw this.fail("VALIDATION_FAILED", requestId, toFieldErrors(result.error));
+      throw this.fail(
+        "VALIDATION_FAILED",
+        requestId,
+        toFieldErrors(result.error)
+      );
     }
     return result.data;
   }
@@ -517,11 +1007,17 @@ export class AdminPortfolioController {
     return this.boundary.ifMatch(request, requestId);
   }
 
-  private async require(request: FastifyRequest, permission: Permission): Promise<AuthenticatedRequest> {
+  private async require(
+    request: FastifyRequest,
+    permission: Permission
+  ): Promise<AuthenticatedRequest> {
     return this.boundary.require(request, permission);
   }
 
-  private async requireMutation(request: FastifyRequest, permission: Permission): Promise<AuthenticatedRequest> {
+  private async requireMutation(
+    request: FastifyRequest,
+    permission: Permission
+  ): Promise<AuthenticatedRequest> {
     return this.boundary.requireMutation(request, permission);
   }
 
@@ -529,7 +1025,11 @@ export class AdminPortfolioController {
     this.boundary.noStore(reply);
   }
 
-  private fail(code: ErrorCode, requestId: string, fields: FieldErrors = {}): HttpException {
+  private fail(
+    code: ErrorCode,
+    requestId: string,
+    fields: FieldErrors = {}
+  ): HttpException {
     return this.boundary.fail(code, requestId, fields);
   }
 }

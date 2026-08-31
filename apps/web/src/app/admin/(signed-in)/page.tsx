@@ -81,7 +81,13 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
       </section>
 
       <section className="flex flex-col gap-4">
-        <div><h2 className="text-lg font-semibold">Content health</h2><p className="text-text-muted text-sm">Drafts, delivery state, recent edits, and failed security events. Content bodies and credentials are never shown here.</p></div>
+        <div>
+          <h2 className="text-lg font-semibold">Content health</h2>
+          <p className="text-text-muted text-sm">
+            Drafts, delivery state, recent edits, and failed security events.
+            Content bodies and credentials are never shown here.
+          </p>
+        </div>
         <AdminDashboard />
       </section>
     </div>

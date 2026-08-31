@@ -37,10 +37,14 @@ describe("portfolio admin contracts", () => {
 
     expect(adminSiteSettingsSchema.safeParse(base).success).toBe(true);
     expect(
-      adminSiteSettingsSchema.safeParse({ ...base, defaultLocale: "fa" }).success
+      adminSiteSettingsSchema.safeParse({ ...base, defaultLocale: "fa" })
+        .success
     ).toBe(false);
     expect(
-      adminSiteSettingsSchema.safeParse({ ...base, githubRepoAllowlist: ["portfolio"] }).success
+      adminSiteSettingsSchema.safeParse({
+        ...base,
+        githubRepoAllowlist: ["portfolio"],
+      }).success
     ).toBe(false);
   });
 
@@ -86,16 +90,66 @@ describe("portfolio admin contracts", () => {
 
   it("requires canonical project relationships and a valid skill colour", () => {
     expect(
-      adminSkillSchema.safeParse({ categoryId: "category", name: "TypeScript", color: "#0070f3", iconMediaId: null, enabled: true, sortOrder: 1 }).success
+      adminSkillSchema.safeParse({
+        categoryId: "category",
+        name: "TypeScript",
+        color: "#0070f3",
+        iconMediaId: null,
+        enabled: true,
+        sortOrder: 1,
+      }).success
     ).toBe(true);
     expect(
-      adminProjectSchema.safeParse({ slug: "portfolio", status: "COMPLETED", demoUrl: null, repositoryUrl: null, imageId: null, featured: false, enabled: true, sortOrder: 0, startedAt: null, completedAt: null, skills: [{ skillId: "skill", sortOrder: 0 }, { skillId: "skill", sortOrder: 1 }] }).success
+      adminProjectSchema.safeParse({
+        slug: "portfolio",
+        status: "COMPLETED",
+        demoUrl: null,
+        repositoryUrl: null,
+        imageId: null,
+        featured: false,
+        enabled: true,
+        sortOrder: 0,
+        startedAt: null,
+        completedAt: null,
+        skills: [
+          { skillId: "skill", sortOrder: 0 },
+          { skillId: "skill", sortOrder: 1 },
+        ],
+      }).success
     ).toBe(false);
   });
 
   it("keeps certificates and daily quote data within their safe public shapes", () => {
-    expect(adminCertificateSchema.safeParse({ issuerName: "Institute", issuerUrl: null, instructorName: null, instructorUrl: null, scoreText: "98/100", issuedAt: "2026-08-27", credentialUrl: null, mediaId: null, enabled: true, sortOrder: 0 }).success).toBe(true);
-    expect(adminQuoteSchema.safeParse({ textByLocale: { en: "A durable quote." }, author: "Anonymous", sourceUrl: null, enabled: true, pinned: false, sortOrder: 0 }).success).toBe(true);
-    expect(adminResumeSchema.safeParse({ mediaAssetId: "media", label: "CV", publicFilename: "cv.pdf" }).success).toBe(true);
+    expect(
+      adminCertificateSchema.safeParse({
+        issuerName: "Institute",
+        issuerUrl: null,
+        instructorName: null,
+        instructorUrl: null,
+        scoreText: "98/100",
+        issuedAt: "2026-08-27",
+        credentialUrl: null,
+        mediaId: null,
+        enabled: true,
+        sortOrder: 0,
+      }).success
+    ).toBe(true);
+    expect(
+      adminQuoteSchema.safeParse({
+        textByLocale: { en: "A durable quote." },
+        author: "Anonymous",
+        sourceUrl: null,
+        enabled: true,
+        pinned: false,
+        sortOrder: 0,
+      }).success
+    ).toBe(true);
+    expect(
+      adminResumeSchema.safeParse({
+        mediaAssetId: "media",
+        label: "CV",
+        publicFilename: "cv.pdf",
+      }).success
+    ).toBe(true);
   });
 });
