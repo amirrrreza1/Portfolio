@@ -478,7 +478,7 @@ export class PublicArticlesService {
             sortOrder: row.category.sortOrder,
           }))
           .sort(compareTerms)
-          .map(({ sortOrder: _sortOrder, ...term }) => term),
+          .map(stripSortOrder),
         tags: tags
           .map((row) => ({
             kind: "tag" as const,
@@ -491,7 +491,7 @@ export class PublicArticlesService {
             sortOrder: row.tag.sortOrder,
           }))
           .sort(compareTerms)
-          .map(({ sortOrder: _sortOrder, ...term }) => term),
+          .map(stripSortOrder),
       }),
       lastModified: latestDate([
         ...rows.map((row) => row.updatedAt),
@@ -941,6 +941,20 @@ function toTermAlternates(
 }
 
 /** Editor order first, then the localized name, so the list is stable. */
+/**
+ * Sort order decides the order and then leaves.
+ *
+ * It is an editorial field on the taxonomy row, not something a public reader
+ * has any use for, so it travels only as far as the comparison that needs it.
+ */
+function stripSortOrder<Term extends { readonly sortOrder: number }>(
+  term: Term
+): Omit<Term, "sortOrder"> {
+  const copy: Record<string, unknown> = { ...term };
+  delete copy["sortOrder"];
+  return copy as Omit<Term, "sortOrder">;
+}
+
 function compareTerms(
   left: { readonly sortOrder: number; readonly name: string },
   right: { readonly sortOrder: number; readonly name: string }

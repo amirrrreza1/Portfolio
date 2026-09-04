@@ -43,6 +43,10 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 - [`M6-admin-shell-live.md`](M6-admin-shell-live.md) records the shell in a real browser with a Chrome virtual authenticator — 10 checks, and the two defects only a browser could find.
 - [`M6-recovery-revocation-drill.md`](M6-recovery-revocation-drill.md) records the owner recovery and credential-revocation drill, 11 steps executed against [the runbook](../../runbooks/owner-recovery-and-revocation.md).
 
+## M7 — portfolio CMS
+
+- [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.
+
 ## M8 — blog authoring, publishing, and SEO
 
 - [`M8-blog-authoring-live.md`](M8-blog-authoring-live.md) records the first M8 slice — 25 checks over the authenticated authoring boundary, taxonomy, save and autosave, the publish checklist, withdrawal, slug moves that collapse their own chains, archiving, and the revision/audit/invalidation evidence each transition leaves. It also records the defect it found: an invalidation reason the signed-event contract does not define, which failed every archive.
@@ -53,6 +57,4 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 
 - [`M8-restore-live.md`](M8-restore-live.md) records the fourth M8 slice — 41/41 live API checks and the extended real-browser flow proving that an earlier article version is restored by replaying its recorded source through the normal validated save: re-rendered and re-digested, recorded as a new revision, refused when the snapshot no longer matches its digest or the translation is archived, and never able to change publication state. It also records the defect it found: moving a slug back to a path that already redirected away collapsed the old rule into a redirect to itself, which the check constraint refused mid-transaction.
 
-## M7 — portfolio CMS
-
-- [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.
+- [`M8-discovery-live.md`](M8-discovery-live.md) records the run that closed M8 — the discovery and SEO surfaces and the scheduled-publication matrix against a real stack: 56/56 live API checks, 45/45 public browser checks, the admin editor flow, and the M7 regression. It records five defects the run found (two that only `next build` and `eslint` see, three assertions written against locale tags the contract does not define, a sitemap `loc` derived from the wrong slug, and articles with no `og:image` at all), the generated share card that closed the last of them, and the one limitation it declines to hide: satori cannot shape Persian, so an RTL card is refused rather than rendered broken.

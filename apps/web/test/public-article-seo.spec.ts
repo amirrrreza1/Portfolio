@@ -36,7 +36,11 @@ describe("public article SEO", () => {
       locale: "en",
       post: basePost,
     }).post;
-    const metadata = buildPublicArticleMetadata("en", article);
+    const metadata = buildPublicArticleMetadata(
+      "en",
+      article,
+      new URL("https://example.test")
+    );
 
     expect(metadata.alternates).toEqual({
       canonical: "/en/blog/typed-public-reads",
@@ -74,6 +78,106 @@ describe("public article SEO", () => {
       locale: "fa",
       alternateLocale: [],
     });
+  });
+
+  it("advertises a generated share card when the author chose no image", () => {
+    // SEO.md §3 asks for an Open Graph image with alt text on every indexable
+    // page. An article whose author picked neither a social image nor a cover
+    // is the ordinary case, so the card it points at is one this site renders
+    // from the article itself — with the declared size the renderer produces.
+    const article = publicArticleDetailSchema.parse({
+      locale: "en",
+      post: { ...basePost, socialImage: null },
+    }).post;
+
+    const metadata = buildPublicArticleMetadata(
+      "en",
+      article,
+      new URL("https://example.test")
+    );
+    const images = metadata.openGraph?.images as
+      | readonly {
+          url: string;
+          alt: string;
+          type: string;
+          width: number;
+          height: number;
+        }[]
+      | undefined;
+
+    expect(images?.[0]?.url).toBe(
+      "https://example.test/en/blog/typed-public-reads/share-image"
+    );
+    expect(images?.[0]?.alt).toBe("Strict article metadata");
+    expect(images?.[0]).toMatchObject({
+      type: "image/png",
+      width: 1200,
+      height: 630,
+    });
+    // The card is the article's image everywhere it is claimed, structured
+    // data included, so a consumer cannot be shown two different pictures.
+    const json = JSON.parse(
+      buildPublicArticleJsonLd("en", article, new URL("https://example.test"))
+    ) as { image?: string };
+    expect(json.image).toBe(
+      "https://example.test/en/blog/typed-public-reads/share-image"
+    );
+  });
+
+  it("prefers the author's own image over the generated card", () => {
+    const article = publicArticleDetailSchema.parse({
+      locale: "en",
+      post: {
+        ...basePost,
+        socialImage: {
+          src: "/api/v1/public/en/blog/posts/typed-public-reads/image",
+          altText: "A diagram of the read path",
+          mimeType: "image/png",
+          width: 1600,
+          height: 900,
+        },
+      },
+    }).post;
+
+    const images = buildPublicArticleMetadata(
+      "en",
+      article,
+      new URL("https://example.test")
+    ).openGraph?.images as readonly { url: string; alt: string }[] | undefined;
+    expect(images?.[0]?.url).toBe(
+      "https://example.test/api/v1/public/en/blog/posts/typed-public-reads/image"
+    );
+    expect(images?.[0]?.alt).toBe("A diagram of the read path");
+  });
+
+  it("declines to generate a Persian card rather than shipping a broken one", () => {
+    // satori has no Arabic shaper: Persian would render as disconnected
+    // letters in visual order. A Persian article therefore advertises the
+    // author's image or no image at all, and the route agrees — the metadata
+    // and the renderer read the same predicate.
+    const article = publicArticleDetailSchema.parse({
+      locale: "fa",
+      post: {
+        ...basePost,
+        slug: "خواندن-عمومی-نوعدار",
+        socialImage: null,
+        alternates: [{ locale: "fa", slug: "خواندن-عمومی-نوعدار" }],
+      },
+    }).post;
+
+    const metadata = buildPublicArticleMetadata(
+      "fa",
+      article,
+      new URL("https://example.test")
+    );
+    expect(metadata.openGraph?.images).toBeUndefined();
+    expect((metadata.twitter as { card?: string } | null)?.card).toBe(
+      "summary"
+    );
+    const json = JSON.parse(
+      buildPublicArticleJsonLd("fa", article, new URL("https://example.test"))
+    ) as { image?: string };
+    expect(json.image).toBeUndefined();
   });
 
   it("uses an absolute canonical in safe BlogPosting JSON-LD", () => {

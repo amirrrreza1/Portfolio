@@ -111,7 +111,7 @@ describe("structured data", () => {
     ) as Record<string, unknown>;
 
     expect(json["@type"]).toBe("Blog");
-    expect(json.inLanguage).toBe("en-US");
+    expect(json.inLanguage).toBe("en");
     expect(json.url).toBe("https://example.test/en/blog");
     expect((json.blogPost as { url: string }[])[0]?.url).toBe(
       "https://example.test/en/blog/typed-public-reads"

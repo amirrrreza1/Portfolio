@@ -192,7 +192,7 @@ export class BlogAdminService {
    * `restorable` is computed here, by the same validation the restore runs, so
    * the editor never offers a button that is guaranteed to fail.
    */
-  async listRevisions(postId: string, locale: Locale): Promise<unknown | null> {
+  async listRevisions(postId: string, locale: Locale): Promise<unknown> {
     const translation = await this.database.postTranslation.findUnique({
       where: { postId_locale: { postId, locale } },
       select: { id: true, version: true, status: true },
@@ -248,7 +248,7 @@ export class BlogAdminService {
     postId: string,
     locale: Locale,
     revisionId: string
-  ): Promise<unknown | null> {
+  ): Promise<unknown> {
     const target = await readArticleRestoreTarget(this.database, revisionId);
     // The path addresses the article; a revision belonging to a different
     // translation is not found here, whatever its id resolves to elsewhere.

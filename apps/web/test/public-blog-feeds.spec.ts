@@ -65,7 +65,10 @@ describe("buildRssFeed", () => {
       description: "مقاله‌ها",
       entries: feed.entries,
     });
-    expect(xml).toContain("<language>fa-IR</language>");
+    // `en` and `fa`, from LOCALE_DEFINITIONS: the site declares one language
+    // tag per locale (I18N.md §6) and a feed is not the place to invent a
+    // regional variant of it.
+    expect(xml).toContain("<language>fa</language>");
     expect(xml).toContain(
       '<atom:link href="https://example.test/fa/blog/feed.xml" rel="self" type="application/rss+xml" />'
     );
