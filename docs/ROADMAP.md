@@ -1,8 +1,8 @@
 # Project roadmap
 
-Status snapshot: **2026-08-31**
+Status snapshot: **2026-09-04**
 
-Latest completed milestone: **M8**, closed 2026-08-31. M1–M8 are complete; **M9 is next and has not started**. The final M8 run passed 63 live API checks, 45 public browser tests, and both real-stack admin regression flows. M0 remains open for owner-confirmed EmailJS revocation and the evidence discrepancies in its status file. The caching, v1 editor-permission, and contact/audit retention decisions remain separate follow-ups.
+Active milestone: **M9**. M1–M8 are complete. M8 closed on 2026-09-04 after two independent close-out runs covering the whole article lifecycle, generated share cards, 63 live API checks, 45 public browser tests, and both real-stack admin regression flows; the combined record is in [`status/evidence/M8-discovery-live.md`](status/evidence/M8-discovery-live.md). M0 remains blocked on its provider action and evidence reconciliation, but blocks nothing downstream. The caching, v1 editor-permission, and contact/audit retention decisions remain separate follow-ups.
 
 Target: **production-ready bilingual portfolio, blog, and owner-admin platform**
 
@@ -27,7 +27,7 @@ The v1 non-goals in [PRODUCT_SPEC.md](PRODUCT_SPEC.md) §9 remain out of scope. 
 
 Phase 0 stabilization is complete in the repository, and M1 is complete. Its migrations and supplemental constraints applied from zero to PostgreSQL 17, consecutive deterministic seed runs produced stable counts, browser/server package boundaries are enforced, and API startup configuration is validated. One M0 item — revoking the published EmailJS keys at the provider — is an owner action outside the repository and holds that gate open; it blocks nothing else.
 
-M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close because the root layout, locale shell, and colour usage are touched by every later surface. M3, M4, and M5 are now all complete. M3 closed on 2026-08-26: ADR-015's article authority is proven against a real PostgreSQL server, and a bilingual English/Persian article is published in the database. M4 closed on 2026-08-26 once M3's live article was rendered through the public route and publication, update, and withdrawal were each proven to reach it.
+M4 and M5 were deliberately pulled forward without waiting for M2/M3 to close because the root layout, locale shell, and colour usage are touched by every later surface. M3, M4, M5, M6, M7 and M8 are now all complete. M3 closed on 2026-08-26: ADR-015's article authority is proven against a real PostgreSQL server, and a bilingual English/Persian article is published in the database. M4 closed on 2026-08-26 once M3's live article was rendered through the public route and publication, update, and withdrawal were each proven to reach it.
 
 | Area                         | Current state                                                                                                                                                                                                                                                                                                                                                        | Roadmap implication                                                                                                                                                                                                |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -110,7 +110,7 @@ Two dependencies are non-negotiable:
 
 M0 is `Blocked` rather than `In progress`: every repository-owned deliverable is merged, and the only outstanding exit condition — revoking the EmailJS keys at the provider — cannot be done from the repository. It blocks nothing downstream, so work continues in parallel.
 
-M4 was opened before its M3 dependency exited. That was a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4 that genuinely needed a proven PostgreSQL-native article foundation — real article reads and end-to-end invalidation — were exactly the parts left until last. Both milestones closed on 2026-08-26, in that order, so the exception is discharged. M6 is the only milestone open besides M0.
+M4 was opened before its M3 dependency exited. That was a real ordering exception, not a re-plan: the shell work was pulled forward because it is cheaper before more UI exists, and the parts of M4 that genuinely needed a proven PostgreSQL-native article foundation — real article reads and end-to-end invalidation — were exactly the parts left until last. Both milestones closed on 2026-08-26, in that order, so the exception is discharged. M9 is the only milestone open besides M0.
 
 The detailed plan maps to these milestones as follows: M0 pulls forward the Phase 0 cleanup and starter CI; M1 is Phase 1 plus the media foundation needed by migration; M2 is Phase 2; M3 is Phase 2.5; M4 is Phase 3 plus the public contact replacement; M5 is Phase 3.5; M6 is Phase 4; M7 is Phase 5 plus upload hardening; M8 is Phase 6; and M9 completes Phases 7–9. This mapping is authoritative when the older phase grouping would defer a prerequisite until after its consumer.
 
@@ -545,7 +545,7 @@ The Owner beta checkpoint is private or access-restricted. It is not exposed to 
 
 Objective: deliver one coherent article lifecycle across authenticated editing, validated upload, and PostgreSQL.
 
-Started 2026-08-28. The authenticated authoring boundary is delivered and
+Started 2026-08-28, closed 2026-09-04. The authenticated authoring boundary is delivered and
 live-proven in
 [`status/evidence/M8-blog-authoring-live.md`](status/evidence/M8-blog-authoring-live.md)
 (25 checks): post and taxonomy CRUD, per-locale publish/schedule/unpublish/
@@ -570,10 +570,11 @@ as a new revision on the single `POST /admin/revisions/:id/restore` endpoint,
 refused when the snapshot no longer matches its digest or the translation is
 archived, and unable to change publication state.
 
-The last two slices — the discovery and SEO surfaces, and the
-scheduled-publication test matrix — are **complete and proven on 2026-08-31**. The
-discovery slice adds three public read models from §4 plus one addition to that
-table (`/public/:locale/blog/taxonomy`, which the navigation index and the
+The discovery and SEO surfaces and the scheduled-publication matrix closed the
+milestone on 2026-09-04, live-proven in
+[`status/evidence/M8-discovery-live.md`](status/evidence/M8-discovery-live.md).
+The discovery slice adds three public read models from §4 plus one addition to
+that table (`/public/:locale/blog/taxonomy`, which the navigation index and the
 sitemap both need in order to enumerate terms), the category and tag routes,
 cursor pagination that keeps unstable cursor URLs out of the index and out of
 the sitemap, per-locale RSS and sitemaps behind a sitemap index, `robots.txt`,
@@ -591,6 +592,12 @@ rollback after actual publication writes. See
 [`M8-discovery-live.md`](status/evidence/M8-discovery-live.md),
 [`M8-publication-live.md`](status/evidence/M8-publication-live.md), and
 [`status/M8.md`](status/M8.md).
+
+The independent share-card run also found build-, lint-, locale-, and
+sitemap-slug defects and closed the last SEO.md §3 gap for English articles
+whose authors chose no image. Persian generation remains disabled because the
+renderer cannot shape Arabic script; that limitation and the cursor-pagination
+decision are recorded in [`status/M8.md`](status/M8.md).
 
 Deliverables:
 
@@ -698,7 +705,10 @@ The queue's remaining items are environment work rather than code, and they are 
 
 14. **Caching ADR, not a PR yet:** nothing is served from a shared cache. Measured with a counting proxy between the web app and the API, a repeat load of `/en/blog` makes five upstream API requests, and a database change appears in the rendered HTML with no purge delivered — so `revalidateTag` currently clears nothing and the API takes full read traffic. The likely cause is Next 16's explicit-caching model, where a shared read must live inside a `use cache` scope, and that touches ADR-009's dynamic per-visitor shell. Decide before writing code, and resolve before M9 sets any capacity or latency expectation.
 
-Do not start the admin or blog UI to create the appearance of progress while their trust boundaries are unfinished. The M4/M5 pull-forward already stretched that rule as far as it should go.
+15. ~~**M8 gate run:** prove the discovery, SEO and scheduled-publication slices against a running stack and a real browser.~~ Done 2026-09-04 — 56/56 in `verify:blog`, 45/45 in the public browser suite, the admin editor flow, and M7's proof re-run, recorded in [`status/evidence/M8-discovery-live.md`](status/evidence/M8-discovery-live.md). The run found five defects and closed them, and recorded two limitations it declined to hide: no generated share card for Persian, because the renderer cannot shape Arabic script, and pagination by cursor rather than page number.
+16. **Next milestone:** M9, operations, release, and cleanup — now unblocked, since its M5 and M8 dependencies are closed. Item 14's caching ADR and the two overdue owner decisions (v1 editor permissions, contact/audit retention) should land before or with it: M9 is where capacity, latency and retention expectations are first written down, and all three are inputs to that.
+
+The rule that held through M6–M8 — no admin or blog UI before its trust boundary is proven — is discharged: every surface behind `/admin` now sits behind an authenticated, live-proven boundary, and every public surface reads published, integrity-valid data only.
 
 ## 11. Roadmap maintenance
 

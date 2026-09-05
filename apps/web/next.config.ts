@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: fileURLToPath(new URL("../..", import.meta.url)),
 
   /**
+   * The generated share card reads two font files from disk at request time.
+   *
+   * Tracing cannot see a path built at runtime, so without this the standalone
+   * output ships the route and not the fonts it needs: every generated
+   * `og:image` would fail in production while working in development.
+   */
+  outputFileTracingIncludes: {
+    "/[locale]/blog/[slug]/share-image": ["./src/assets/og/*.ttf"],
+  },
+
+  /**
    * `poweredByHeader` leaks the framework for no benefit. The full security
    * header and CSP policy lands in M5 (ROADMAP.md §6); this is the part that
    * costs nothing now.

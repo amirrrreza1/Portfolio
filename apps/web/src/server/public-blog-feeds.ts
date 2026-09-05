@@ -211,8 +211,17 @@ export function toArticleSitemapUrl(
       href: new URL(articlePath("en", english.slug), siteUrl).toString(),
     });
   }
+  // The entry's slug in *this* locale, taken from the alternate group rather
+  // than from `entry.slug`. In normal use they are the same value — a feed
+  // carries its own locale's entries — but pairing a locale with another
+  // locale's entry would otherwise publish a `loc` whose language does not
+  // match the sitemap it appears in, silently.
+  const own =
+    entry.alternates.find(
+      ({ locale: alternateLocale }) => alternateLocale === locale
+    )?.slug ?? entry.slug;
   return {
-    loc: new URL(articlePath(locale, entry.slug), siteUrl).toString(),
+    loc: new URL(articlePath(locale, own), siteUrl).toString(),
     lastmod: toLastmod(entry.updatedAt),
     alternates,
   };

@@ -133,6 +133,9 @@ test.describe("per-locale feeds", () => {
     page,
   }) => {
     const body = await textOf(page, "/fa/blog/feed.xml");
+    // The site declares one language tag per locale (I18N.md §6), and it is
+    // the same `bcp47` value the page's `lang` attribute and its `hreflang`
+    // links carry. A feed is not the place to invent a regional variant.
     expect(body).toContain("<language>fa</language>");
     expect(body).toContain(encodeURIComponent(ARTICLE_SLUG_FA));
   });
