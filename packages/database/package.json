@@ -12,14 +12,14 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm --filter @portfolio/tooling exec tsc -p ../../packages/database/tsconfig.json",
+    "typecheck": "pnpm --filter @portfolio/tooling exec tsc -p ../../packages/database/tsconfig.json --noEmit",
     "test": "vitest run",
-    "db:generate": "prisma generate",
-    "db:validate": "prisma validate",
-    "db:format": "prisma format",
-    "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset --force",
+    "db:generate": "pnpm --filter @portfolio/tooling exec prisma generate --config ../../packages/database/prisma.config.ts",
+    "db:validate": "pnpm --filter @portfolio/tooling exec prisma validate --config ../../packages/database/prisma.config.ts",
+    "db:format": "pnpm --filter @portfolio/tooling exec prisma format --config ../../packages/database/prisma.config.ts",
+    "db:migrate": "pnpm --filter @portfolio/tooling exec prisma migrate dev --config ../../packages/database/prisma.config.ts",
+    "db:reset": "pnpm --filter @portfolio/tooling exec prisma migrate reset --force --config ../../packages/database/prisma.config.ts",
     "db:constraints": "node scripts/stage-constraints.mjs",
     "db:seed": "tsx prisma/seed.ts",
     "verify:articles": "tsx scripts/verify-article-authority.ts --apply",
@@ -45,9 +45,7 @@
     "@electric-sql/pglite": "0.5.4",
     "@types/pg": "8.20.4",
     "dotenv": "17.2.4",
-    "prisma": "7.9.1",
     "tsx": "4.23.7",
-    "typescript": "5.9.3",
     "vitest": "4.1.10"
   }
 }

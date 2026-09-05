@@ -194,7 +194,7 @@ Exit: public source maps/bundles contain no provider credentials; malicious uplo
 3. CI: frozen install, format, lint, typecheck, unit/integration/e2e, builds, migration validation, OpenAPI drift check, audit, secret scanning on the content branch as well as code, SBOM, and image scan.
 4. Add PostgreSQL/MinIO backup and restore automation plus deployment/incident runbooks covering article integrity and signing-secret rotation.
 
-Exit: a clean checkout starts locally; staging deploys reproducibly; production database is not publicly exposed; the image contains no `content/` copy; restore drill from database backup plus repository clone succeeds.
+Exit: a clean checkout starts locally; staging deploys reproducibly; production database is not publicly exposed; the image contains no `content/` copy; restore drill from one PostgreSQL/MinIO backup set succeeds and the independent code mirror is clone-tested separately.
 
 ## Phase 9 — Launch and cleanup
 

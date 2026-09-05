@@ -21,6 +21,7 @@
     "verify:cms": "tsx scripts/verify-portfolio-cms.ts --apply",
     "verify:blog": "tsx scripts/verify-blog-authoring.ts --apply",
     "verify:restore": "tsx scripts/verify-restore.ts",
+    "rerender:articles": "tsx src/operations/rerender-articles.ts",
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "provision:cms-browser": "tsx scripts/provision-cms-browser.ts --apply"
   },
@@ -48,6 +49,7 @@
     "nestjs-pino": "4.6.1",
     "nodemailer": "9.0.4",
     "pino": "10.3.1",
+    "pino-http": "11.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"

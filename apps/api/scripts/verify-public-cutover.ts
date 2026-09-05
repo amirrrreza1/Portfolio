@@ -263,7 +263,7 @@ async function seedState(
       bodyMarkdown: body,
       bodySha256: state.corruptDigest ? "f".repeat(64) : digest,
       renderedHtml: `<h2>${title}</h2>`,
-      rendererVersion: "1",
+      rendererVersion: "2",
       readingMinutes: 1,
       headingTree: [],
       frontmatterSchemaVersion: 1,

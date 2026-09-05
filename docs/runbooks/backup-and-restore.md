@@ -4,7 +4,7 @@ The backup is one encrypted set: a PostgreSQL custom-format dump, a private-buck
 
 ## Back up
 
-Build the operations image from `infrastructure/docker/ops.Dockerfile`, mount a root-owned passphrase file read-only, and mount the backup destination. Run `/opt/portfolio/bin/backup.sh` with `DATABASE_URL`, the `MINIO_*` adapter settings, `BACKUP_PASSPHRASE_FILE`, and `BACKUP_DIR=/backups`.
+Build the operations image from `infrastructure/docker/ops.Dockerfile`, mount a root-owned passphrase file read-only, and mount a backup destination writable by container UID/GID `10001:10001`. Run `/opt/portfolio/bin/backup.sh` with `DATABASE_URL`, the `MINIO_*` adapter settings, `BACKUP_PASSPHRASE_FILE`, and `BACKUP_DIR=/backups`. The image pins the PostgreSQL 17 client to the server major and keeps the MinIO client configuration in an ephemeral private directory.
 
 Copy the resulting `.tar.gz.gpg` and `.sha256` files to access-controlled off-site storage with lifecycle retention. Keep the passphrase in a different secret system. Alert if the job fails, produces an empty archive, or misses its schedule.
 

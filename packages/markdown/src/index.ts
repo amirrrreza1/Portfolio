@@ -22,7 +22,7 @@ import { visit } from "unist-util-visit";
 import YAML from "yaml";
 
 /** Bump this when the parser, sanitizer, or highlighted output changes. */
-export const RENDERER_VERSION = "1";
+export const RENDERER_VERSION = "2";
 
 const MAX_DOCUMENT_BYTES = 512 * 1024;
 const MAX_FRONTMATTER_BYTES = 32 * 1024;
@@ -1093,6 +1093,7 @@ async function highlightChildren(parent: Node): Promise<void> {
         })) as unknown as Node;
         const replacement = highlighted.children?.[0] as Node | undefined;
         if (replacement !== undefined) {
+          replaceShikiInlineStyles(replacement);
           replacement.properties = {
             ...(replacement.properties ?? {}),
             className: [
@@ -1115,6 +1116,102 @@ async function highlightChildren(parent: Node): Promise<void> {
     }
     await highlightChildren(child);
   }
+}
+
+const SHIKI_COLOR = /^#[0-9a-f]{6}$/i;
+const SHIKI_CLASS_VALUE = /^[a-z0-9-]+$/i;
+const SHIKI_COLORS = {
+  light: new Set<string>([
+    "#005cc5",
+    "#032f62",
+    "#22863a",
+    "#24292e",
+    "#586069",
+    "#6a737d",
+    "#6f42c1",
+    "#b31d28",
+    "#d73a49",
+    "#e36209",
+    "#f0fff4",
+    "#f6f8fa",
+    "#fafbfc",
+    "#ffebda",
+    "#ffeef0",
+  ]),
+  dark: new Set<string>([
+    "#144620",
+    "#24292e",
+    "#2f363d",
+    "#6a737d",
+    "#79b8ff",
+    "#85e89d",
+    "#86181d",
+    "#9ecbff",
+    "#b392f0",
+    "#c24e00",
+    "#d1d5da",
+    "#dbedff",
+    "#e1e4e8",
+    "#f97583",
+    "#fdaeb7",
+    "#ffab70",
+  ]),
+} as const;
+
+/**
+ * Shiki normally carries dual-theme colours in inline custom properties.
+ * Inline style attributes would force the public CSP to allow
+ * `style-src 'unsafe-inline'`, so turn the finite GitHub theme palette into
+ * stylesheet-backed classes instead. An unexpected declaration fails closed
+ * rather than silently widening the rendering boundary.
+ */
+function replaceShikiInlineStyles(node: Node): void {
+  if (node.type === "element") {
+    const style = node.properties?.style;
+    if (typeof style === "string" && style.length > 0) {
+      const classNames = Array.isArray(node.properties?.className)
+        ? node.properties.className.map(String)
+        : [];
+      for (const declaration of style.split(";")) {
+        if (declaration.length === 0) continue;
+        const separator = declaration.indexOf(":");
+        if (separator < 1) {
+          throw new MarkdownValidationError(
+            "The syntax highlighter emitted an invalid style declaration."
+          );
+        }
+        const property = declaration.slice(0, separator);
+        const value = declaration.slice(separator + 1);
+        const color = /^--shiki-(light|dark)$/.exec(property);
+        const normalizedColor = value.toLowerCase();
+        if (
+          color !== null &&
+          SHIKI_COLOR.test(value) &&
+          SHIKI_COLORS[color[1] as "light" | "dark"].has(normalizedColor)
+        ) {
+          classNames.push(`shiki-${color[1]}-${normalizedColor.slice(1)}`);
+          continue;
+        }
+        if (/^--shiki-(?:light|dark)-bg$/.test(property)) continue;
+        const typography =
+          /^--shiki-(light|dark)-(font-style|font-weight|text-decoration)$/.exec(
+            property
+          );
+        if (typography !== null && SHIKI_CLASS_VALUE.test(value)) {
+          classNames.push(`shiki-${typography[1]}-${typography[2]}-${value}`);
+          continue;
+        }
+        throw new MarkdownValidationError(
+          "The syntax highlighter emitted an unsupported style declaration."
+        );
+      }
+      delete node.properties?.style;
+      if (classNames.length > 0) {
+        node.properties = { ...(node.properties ?? {}), className: classNames };
+      }
+    }
+  }
+  for (const child of node.children ?? []) replaceShikiInlineStyles(child);
 }
 
 function addHeadingAnchorsAndExternalLinkPolicy() {

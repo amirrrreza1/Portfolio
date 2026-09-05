@@ -613,6 +613,7 @@ test.describe("security headers — THEMING.md §8", () => {
       expect(headers[name], name).toMatch(pattern);
     }
     expect(headers["content-security-policy"]).not.toContain("'unsafe-eval'");
+    expect(headers["content-security-policy"]).not.toContain("'unsafe-inline'");
     expect(headers["content-security-policy"]).toMatch(/script-src[^;]*nonce-/);
   });
 

@@ -33,7 +33,7 @@ function securityPolicy(nonce: string): string {
     "object-src 'none'",
     "frame-ancestors 'none'",
     `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
     "img-src 'self' data: blob: https:",
     "font-src 'self'",
     "connect-src 'self'",
@@ -86,10 +86,9 @@ function secure(response: NextResponse, nonce: string): NextResponse {
  * than left to `default-src`, so that a later `default-src` relaxation cannot
  * silently widen them.
  *
- * `style-src` still carries `'unsafe-inline'`. That is inherited, not chosen:
- * component-level inline styles are removed repository-wide rather than
- * allowed (SECURITY.md §10), and until that cleanup lands the admin policy
- * cannot be tighter than the stylesheet it shares.
+ * `style-src` is self-only. Syntax highlighting converts Shiki's finite
+ * dual-theme palette to static classes before sanitized HTML is persisted, so
+ * neither public content nor the shared admin preview needs inline styles.
  */
 function adminSecurityPolicy(nonce: string): string {
   const development = process.env.NODE_ENV === "development";
@@ -103,7 +102,7 @@ function adminSecurityPolicy(nonce: string): string {
     "manifest-src 'none'",
     "media-src 'none'",
     `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",

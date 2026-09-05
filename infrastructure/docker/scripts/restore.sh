@@ -16,11 +16,14 @@ fi
 test -r "$RESTORE_ARCHIVE"
 test -r "$RESTORE_ARCHIVE.sha256"
 test -r "$BACKUP_PASSPHRASE_FILE"
-sha256sum -c "$RESTORE_ARCHIVE.sha256"
+expected_archive_sha=$(awk 'NR == 1 { print $1 }' "$RESTORE_ARCHIVE.sha256")
+printf '%s  %s\n' "$expected_archive_sha" "$RESTORE_ARCHIVE" | sha256sum -c -
 
 umask 077
 work_dir=$(mktemp -d /tmp/portfolio-restore.XXXXXX)
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
+HOME="$work_dir"
+export HOME
 gpg --batch --yes --quiet --pinentry-mode loopback \
   --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
   --decrypt --output "$work_dir/payload.tar.gz" "$RESTORE_ARCHIVE"
@@ -30,7 +33,10 @@ tar -xzf "$work_dir/payload.tar.gz" -C "$work_dir"
   sha256sum -c MANIFEST.sha256
 )
 
-pg_restore --dbname="$RESTORE_DATABASE_URL" --clean --if-exists --no-owner --no-privileges "$work_dir/postgres.dump"
+# `schema` is a Prisma adapter option, not a libpq URI parameter. Preserve any
+# real libpq options while removing it before invoking PostgreSQL tooling.
+restore_database_url=$(printf '%s' "$RESTORE_DATABASE_URL" | sed -E 's/([?&])schema=[^&]*&?/\1/; s/[?&]$//')
+pg_restore --dbname="$restore_database_url" --clean --if-exists --no-owner --no-privileges "$work_dir/postgres.dump"
 mc alias set restore-store "$RESTORE_MINIO_ENDPOINT" "$RESTORE_MINIO_ACCESS_KEY_ID" "$RESTORE_MINIO_SECRET_ACCESS_KEY" >/dev/null
 mc mb --ignore-existing "restore-store/$RESTORE_MINIO_BUCKET" >/dev/null
 if [ "${RESTORE_ALLOW_OBJECT_DELETE:-}" = "true" ]; then

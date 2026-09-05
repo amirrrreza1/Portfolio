@@ -54,7 +54,7 @@ beforeAll(async () => {
   const ddl = execFileSync(
     "node",
     [
-      path.join(packageRoot, "node_modules/prisma/build/index.js"),
+      path.join(packageRoot, "../tooling/node_modules/prisma/build/index.js"),
       "migrate",
       "diff",
       "--from-empty",
@@ -109,7 +109,7 @@ function scheduledRow(overrides: Readonly<Record<string, unknown>> = {}) {
     bodyMarkdown,
     bodySha256,
     renderedHtml: "<h2>Scheduled</h2>",
-    rendererVersion: "1",
+    rendererVersion: "2",
     version: 3,
     ...overrides,
   };

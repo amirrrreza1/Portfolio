@@ -17,6 +17,6 @@ This directory contains evidence-backed snapshots for every milestone that has s
 
 M9 is in progress. Its repository-owned operational foundation is implemented; environment-dependent deployment, restore, independent-review, and rollout gates remain open.
 
-M0 is the only open milestone. Its repository-owned work is finished; the gate is held by one owner action at the EmailJS provider plus two evidence discrepancies, all recorded in [M0.md](M0.md).
+M0 is the other open milestone. Its repository-owned work is finished; the gate is held by one owner action at the EmailJS provider plus two evidence discrepancies, all recorded in [M0.md](M0.md).
 
 The summary is [STATUS.md](../STATUS.md); milestone definitions and exit gates are in [ROADMAP.md](../ROADMAP.md).

@@ -13,11 +13,12 @@
 1. Render the final topology with `docker compose --env-file <secret-env> -f infrastructure/docker/compose.yaml -f infrastructure/docker/compose.production.yaml --profile full config` and inspect it for published data-service ports or unexpected mounts.
 2. Build by digest. CI must have produced clean Trivy scans and retained SPDX SBOMs for the same revision.
 3. Run only the `migrate` service. It applies `prisma migrate deploy` once and must finish successfully before application services start.
-4. Start `api`; wait for `/api/v1/health/ready` to report database and storage `ok`.
-5. Start one logical `publication`, `scheduler`, and `maintenance` service. PostgreSQL advisory locks are the second line of defense against accidental duplication.
-6. Start `web`, then `edge`.
-7. Run `RELEASE_BASE_URL=https://target.example pnpm release:smoke`, the bilingual browser suite, and the article/media integrity verifier.
-8. Observe error rate, contact delivery failures, publication dead letters, invalidation failures, database saturation, storage capacity, and latency throughout the agreed rollback window.
+4. Run `docker compose run --rm --no-deps api node dist/operations/rerender-articles.js` and review the plan. Run it again with `--apply`; renderer migrations are source-digest guarded, optimistic, and idempotent.
+5. Start `api`; wait for `/api/v1/health/ready` to report database and storage `ok`.
+6. Start one logical `publication`, `scheduler`, and `maintenance` service. PostgreSQL advisory locks are the second line of defense against accidental duplication.
+7. Start `web`, then `edge`.
+8. Run `RELEASE_BASE_URL=https://target.example pnpm release:smoke`, the bilingual browser suite, and the article/media integrity verifier.
+9. Observe error rate, contact delivery failures, publication dead letters, invalidation failures, database saturation, storage capacity, and latency throughout the agreed rollback window.
 
 ## Roll back application code
 

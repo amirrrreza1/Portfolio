@@ -11,6 +11,7 @@ export interface MaintenanceRuntimeOptions {
   readonly delivery: ContactDelivery;
   readonly now?: () => Date;
   readonly maxContactAttempts: number;
+  readonly draftRetentionDays: number;
   readonly mediaRetentionDays: number;
   readonly quarantineRetentionDays: number;
 }
@@ -36,6 +37,102 @@ export function createMaintenanceOperations(
         },
       });
       return deleted.count;
+    },
+
+    async purgeRetentionArtifacts(limit) {
+      const at = now();
+      const settings = await options.database.siteSettings.findUnique({
+        where: { id: 1 },
+        select: { auditRetentionDays: true },
+      });
+      if (settings === null) {
+        return {
+          auditEvents: 0,
+          webAuthnChallenges: 0,
+          sessions: 0,
+          recoveryCodes: 0,
+          drafts: 0,
+        };
+      }
+
+      const auditCutoff = daysBefore(at, settings.auditRetentionDays);
+      const draftCutoff = daysBefore(at, options.draftRetentionDays);
+      const [auditEvents, challenges, sessions, recoveryCodes, drafts] =
+        await Promise.all([
+          ids(
+            options.database.auditEvent,
+            {
+              createdAt: { lte: auditCutoff },
+            },
+            limit
+          ),
+          ids(
+            options.database.webAuthnChallenge,
+            {
+              expiresAt: { lte: at },
+            },
+            limit
+          ),
+          ids(
+            options.database.session,
+            {
+              OR: [
+                { expiresAt: { lte: auditCutoff } },
+                { revokedAt: { lte: auditCutoff } },
+              ],
+            },
+            limit
+          ),
+          ids(
+            options.database.recoveryCode,
+            {
+              usedAt: { lte: auditCutoff },
+            },
+            limit
+          ),
+          ids(
+            options.database.postDraft,
+            {
+              updatedAt: { lte: draftCutoff },
+            },
+            limit
+          ),
+        ]);
+
+      const [
+        deletedAuditEvents,
+        deletedChallenges,
+        deletedSessions,
+        deletedCodes,
+        deletedDrafts,
+      ] = await Promise.all([
+        deleteSelected(options.database.auditEvent, auditEvents, {
+          createdAt: { lte: auditCutoff },
+        }),
+        deleteSelected(options.database.webAuthnChallenge, challenges, {
+          expiresAt: { lte: at },
+        }),
+        deleteSelected(options.database.session, sessions, {
+          OR: [
+            { expiresAt: { lte: auditCutoff } },
+            { revokedAt: { lte: auditCutoff } },
+          ],
+        }),
+        deleteSelected(options.database.recoveryCode, recoveryCodes, {
+          usedAt: { lte: auditCutoff },
+        }),
+        deleteSelected(options.database.postDraft, drafts, {
+          updatedAt: { lte: draftCutoff },
+        }),
+      ]);
+
+      return {
+        auditEvents: deletedAuditEvents,
+        webAuthnChallenges: deletedChallenges,
+        sessions: deletedSessions,
+        recoveryCodes: deletedCodes,
+        drafts: deletedDrafts,
+      };
     },
 
     async retryFailedContacts(limit) {
@@ -189,4 +286,35 @@ function retryDelayMs(attempts: number): number {
 
 function daysBefore(value: Date, days: number): Date {
   return new Date(value.getTime() - days * 24 * 60 * 60 * 1_000);
+}
+
+interface DeleteDelegate {
+  findMany(args: unknown): Promise<readonly { readonly id: string }[]>;
+  deleteMany(args: unknown): Promise<{ readonly count: number }>;
+}
+
+async function ids(
+  delegate: DeleteDelegate,
+  where: unknown,
+  limit: number
+): Promise<readonly string[]> {
+  const rows = await delegate.findMany({
+    where,
+    orderBy: { id: "asc" },
+    take: limit,
+    select: { id: true },
+  });
+  return rows.map(({ id }) => id);
+}
+
+async function deleteSelected(
+  delegate: DeleteDelegate,
+  selected: readonly string[],
+  eligibility: unknown
+): Promise<number> {
+  if (selected.length === 0) return 0;
+  const deleted = await delegate.deleteMany({
+    where: { AND: [{ id: { in: selected } }, eligibility] },
+  });
+  return deleted.count;
 }

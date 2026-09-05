@@ -13,7 +13,6 @@ import {
 } from "@portfolio/database";
 import { createS3MediaObjectStore } from "@portfolio/media";
 
-import { parseApiEnvironment } from "../config/environment.js";
 import { createSmtpContactDelivery } from "../modules/contact/contact.runtime.js";
 import {
   runContentScheduler,
@@ -22,7 +21,10 @@ import {
 } from "./content-worker.js";
 import { runInvalidationDrain } from "./invalidation-drain.js";
 import { createSignedInvalidationSender } from "./invalidation-sender.js";
-import { runMaintenanceLoop } from "./maintenance.js";
+import {
+  maintenanceNeedsAttention,
+  runMaintenanceLoop,
+} from "./maintenance.js";
 import { createMaintenanceOperations } from "./maintenance.runtime.js";
 
 type Mode = "maintenance" | "publication" | "scheduler";
@@ -39,6 +41,7 @@ const DEFAULTS = {
   maintenanceBatchSize: 100,
   maintenanceIntervalMs: 15 * 60 * 1_000,
   maxContactAttempts: 5,
+  draftRetentionDays: 30,
   mediaRetentionDays: 30,
   quarantineRetentionDays: 14,
 } as const;
@@ -61,7 +64,6 @@ async function main(): Promise<void> {
 
   try {
     if (mode === "maintenance") {
-      const environment = parseApiEnvironment(process.env);
       await withLockOrIdle(
         lockPool,
         ADVISORY_LOCKS.maintenance,
@@ -70,14 +72,26 @@ async function main(): Promise<void> {
           await runMaintenanceLoop({
             operations: createMaintenanceOperations({
               database,
-              media: createS3MediaObjectStore(environment.media),
+              media: createS3MediaObjectStore({
+                endpoint: required("MINIO_ENDPOINT"),
+                region: process.env.MINIO_REGION?.trim() || "us-east-1",
+                bucket: required("MINIO_BUCKET"),
+                accessKeyId: required("MINIO_ACCESS_KEY_ID"),
+                secretAccessKey: required("MINIO_SECRET_ACCESS_KEY"),
+                forcePathStyle:
+                  process.env.MINIO_FORCE_PATH_STYLE?.trim() !== "false",
+              }),
               delivery: createSmtpContactDelivery(
-                environment.smtpUrl,
-                environment.contactFromEmail
+                required("SMTP_URL"),
+                required("CONTACT_FROM_EMAIL")
               ),
               maxContactAttempts: number(
                 process.env.CONTACT_DELIVERY_MAX_ATTEMPTS,
                 DEFAULTS.maxContactAttempts
+              ),
+              draftRetentionDays: number(
+                process.env.DRAFT_RETENTION_DAYS,
+                DEFAULTS.draftRetentionDays
               ),
               mediaRetentionDays: number(
                 process.env.MEDIA_RETENTION_DAYS,
@@ -99,7 +113,12 @@ async function main(): Promise<void> {
               ) * 1_000,
             sleep: (ms) => delay(ms),
             running: () => running,
-            log: (summary) => log({ event: "maintenance-pass", ...summary }),
+            log: (summary) =>
+              log({
+                level: maintenanceNeedsAttention(summary) ? "error" : "info",
+                event: "maintenance-pass",
+                ...summary,
+              }),
           });
         }
       );
@@ -248,4 +267,11 @@ function log(fields: Readonly<Record<string, unknown>>): void {
   );
 }
 
-await main();
+await main().catch((error: unknown) => {
+  log({
+    level: "fatal",
+    event: "worker-failed",
+    errorType: error instanceof Error ? error.name : "UnknownError",
+  });
+  process.exitCode = 1;
+});

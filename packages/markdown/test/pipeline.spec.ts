@@ -111,6 +111,9 @@ describe("full article renderer", () => {
 
     expect(result.html).toContain("language-known");
     expect(result.html).toContain("language-unknown");
+    expect(result.html).toContain("shiki-light-");
+    expect(result.html).toContain("shiki-dark-");
+    expect(result.html).not.toContain("style=");
   });
 });
 

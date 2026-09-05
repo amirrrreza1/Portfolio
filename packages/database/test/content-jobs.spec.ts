@@ -44,7 +44,7 @@ beforeAll(async () => {
   const ddl = execFileSync(
     "node",
     [
-      path.join(packageRoot, "node_modules/prisma/build/index.js"),
+      path.join(packageRoot, "../tooling/node_modules/prisma/build/index.js"),
       "migrate",
       "diff",
       "--from-empty",

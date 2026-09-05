@@ -30,13 +30,24 @@ const result = spawnSync(
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 const report = JSON.parse(result.stdout);
-const found = Object.keys(report);
+// pnpm's injected-workspace deployment mode reports private first-party
+// packages as `Unknown`; they are repository source, not third-party license
+// intake. Keep the gate focused on shipped external dependencies.
+const reviewedReport = Object.fromEntries(
+  Object.entries(report)
+    .map(([license, entries]) => [
+      license,
+      entries.filter(({ name }) => !name.startsWith("@portfolio/")),
+    ])
+    .filter(([, entries]) => entries.length > 0)
+);
+const found = Object.keys(reviewedReport);
 const unapproved = found.filter((license) => !approved.has(license));
 if (unapproved.length > 0) {
   console.error(`Unreviewed production licenses: ${unapproved.join(", ")}`);
   process.exit(1);
 }
-const packages = Object.values(report).reduce(
+const packages = Object.values(reviewedReport).reduce(
   (count, entries) => count + entries.length,
   0
 );

@@ -23,11 +23,9 @@
  *
  * `unicode-range` is what keeps the two scripts apart (THEMING.md §4). The
  * JetBrains Mono faces declare no Arabic block, so a Persian page never fetches
- * six Latin faces to render text they cannot show, and Vazir Code is requested
- * only once Persian-range text is actually on the page. Vazir Code is a single
- * dual-script file, so its range bounds WHEN it is requested rather than what
- * it contains; splitting it into per-script files needs re-encoding the binary
- * and is recorded as deferred in docs/status/M5.md.
+ * six Latin faces to render text they cannot show. M9 also re-encodes Vazir
+ * Code into disjoint Latin and Arabic/Persian binaries, so browsers no longer
+ * download glyph payload for a script that is absent from the rendered text.
  *
  * apps/web/test/font-delivery.spec.ts holds this file and public/Fonts to each
  * other: a face declared here must exist on disk, a file on disk must be
@@ -114,14 +112,23 @@
 
 @font-face {
   font-family: "VazirCode";
-  src: url("/Fonts/Vazir-Code.woff2") format("woff2");
+  src: url("/Fonts/Vazir-Code-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: u+0000-00ff;
+}
+
+@font-face {
+  font-family: "VazirCode";
+  src: url("/Fonts/Vazir-Code-arabic.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
   unicode-range:
-    u+0000-00ff, u+0600-06ff, u+0750-077f, u+200c-200f, u+2010-2011,
-    u+2018-201f, u+2020-2021, u+2026, u+202a-202e, u+2070-209f, u+20a0-20cf,
-    u+fb8a, u+fbfc-fbff, u+fd3e-fd3f, u+fdf2, u+fdfc, u+fe70-feff, u+fffd;
+    u+0600-06ff, u+0750-077f, u+200c-200f, u+2010-2011, u+2018-201f,
+    u+2020-2021, u+2026, u+202a-202e, u+2070-209f, u+20a0-20cf, u+fb8a,
+    u+fbfc-fbff, u+fd3e-fd3f, u+fdf2, u+fdfc, u+fe70-feff, u+fffd;
 }
 
 /*
@@ -557,6 +564,124 @@
  * both GitHub themes are authored against a background at least as light (light)
  * or as dark (dark) as ours, so no token loses contrast against it.
  */
+.shiki-light-005cc5 {
+  --shiki-light: #005cc5;
+}
+.shiki-light-032f62 {
+  --shiki-light: #032f62;
+}
+.shiki-light-22863a {
+  --shiki-light: #22863a;
+}
+.shiki-light-24292e {
+  --shiki-light: #24292e;
+}
+.shiki-light-586069 {
+  --shiki-light: #586069;
+}
+.shiki-light-6a737d {
+  --shiki-light: #6a737d;
+}
+.shiki-light-6f42c1 {
+  --shiki-light: #6f42c1;
+}
+.shiki-light-b31d28 {
+  --shiki-light: #b31d28;
+}
+.shiki-light-d73a49 {
+  --shiki-light: #d73a49;
+}
+.shiki-light-e36209 {
+  --shiki-light: #e36209;
+}
+.shiki-light-f0fff4 {
+  --shiki-light: #f0fff4;
+}
+.shiki-light-f6f8fa {
+  --shiki-light: #f6f8fa;
+}
+.shiki-light-fafbfc {
+  --shiki-light: #fafbfc;
+}
+.shiki-light-ffebda {
+  --shiki-light: #ffebda;
+}
+.shiki-light-ffeef0 {
+  --shiki-light: #ffeef0;
+}
+.shiki-dark-144620 {
+  --shiki-dark: #144620;
+}
+.shiki-dark-24292e {
+  --shiki-dark: #24292e;
+}
+.shiki-dark-2f363d {
+  --shiki-dark: #2f363d;
+}
+.shiki-dark-6a737d {
+  --shiki-dark: #6a737d;
+}
+.shiki-dark-79b8ff {
+  --shiki-dark: #79b8ff;
+}
+.shiki-dark-85e89d {
+  --shiki-dark: #85e89d;
+}
+.shiki-dark-86181d {
+  --shiki-dark: #86181d;
+}
+.shiki-dark-9ecbff {
+  --shiki-dark: #9ecbff;
+}
+.shiki-dark-b392f0 {
+  --shiki-dark: #b392f0;
+}
+.shiki-dark-c24e00 {
+  --shiki-dark: #c24e00;
+}
+.shiki-dark-d1d5da {
+  --shiki-dark: #d1d5da;
+}
+.shiki-dark-dbedff {
+  --shiki-dark: #dbedff;
+}
+.shiki-dark-e1e4e8 {
+  --shiki-dark: #e1e4e8;
+}
+.shiki-dark-f97583 {
+  --shiki-dark: #f97583;
+}
+.shiki-dark-fdaeb7 {
+  --shiki-dark: #fdaeb7;
+}
+.shiki-dark-ffab70 {
+  --shiki-dark: #ffab70;
+}
+.shiki-light-font-style-italic {
+  --shiki-light-font-style: italic;
+}
+.shiki-dark-font-style-italic {
+  --shiki-dark-font-style: italic;
+}
+.shiki-light-font-weight-bold {
+  --shiki-light-font-weight: 700;
+}
+.shiki-dark-font-weight-bold {
+  --shiki-dark-font-weight: 700;
+}
+.shiki-light-text-decoration-underline {
+  --shiki-light-text-decoration: underline;
+}
+.shiki-dark-text-decoration-underline {
+  --shiki-dark-text-decoration: underline;
+}
+.shiki-light-text-decoration-line-through {
+  --shiki-light-text-decoration: line-through;
+}
+.shiki-dark-text-decoration-line-through {
+  --shiki-dark-text-decoration: line-through;
+}
+
 .code-block {
   background-color: var(--color-code-bg) !important;
   color: var(--color-code-text) !important;
@@ -566,22 +691,34 @@
 :root[data-theme="light"] .code-block span,
 :root[data-theme="system"][data-system-theme="light"] .code-block span {
   color: var(--shiki-light) !important;
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  text-decoration: var(--shiki-light-text-decoration, inherit);
 }
 
 :root[data-theme="dark"] .code-block span,
 :root[data-theme="system"][data-system-theme="dark"] .code-block span {
   color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  text-decoration: var(--shiki-dark-text-decoration, inherit);
 }
 
 @media (prefers-color-scheme: light) {
   :root[data-theme="system"]:not([data-system-theme]) .code-block span {
     color: var(--shiki-light) !important;
+    font-style: var(--shiki-light-font-style, inherit);
+    font-weight: var(--shiki-light-font-weight, inherit);
+    text-decoration: var(--shiki-light-text-decoration, inherit);
   }
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"]:not([data-system-theme]) .code-block span {
     color: var(--shiki-dark) !important;
+    font-style: var(--shiki-dark-font-style, inherit);
+    font-weight: var(--shiki-dark-font-weight, inherit);
+    text-decoration: var(--shiki-dark-text-decoration, inherit);
   }
 }
 

@@ -1,28 +1,28 @@
 {
-  admin off
-  auto_https disable_redirects
+	admin off
+	auto_https disable_redirects
 }
 
 {$SITE_ADDRESS:https://localhost} {
-  encode zstd gzip
+	encode zstd gzip
 
-  header {
-    -Server
-    Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    X-Content-Type-Options nosniff
-    Referrer-Policy strict-origin-when-cross-origin
-  }
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
 
-  request_body {
-    max_size 12MB
-  }
+	request_body {
+		max_size 12MB
+	}
 
-  reverse_proxy web:3000 {
-    health_uri /robots.txt
-    health_interval 30s
-    transport http {
-      dial_timeout 3s
-      response_header_timeout 15s
-    }
-  }
+	reverse_proxy web:3000 {
+		health_uri /robots.txt
+		health_interval 30s
+		transport http {
+			dial_timeout 3s
+			response_header_timeout 15s
+		}
+	}
 }

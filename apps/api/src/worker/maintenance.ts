@@ -7,6 +7,13 @@
  */
 export interface MaintenanceOperations {
   purgeExpiredContacts(limit: number): Promise<number>;
+  purgeRetentionArtifacts(limit: number): Promise<{
+    readonly auditEvents: number;
+    readonly webAuthnChallenges: number;
+    readonly sessions: number;
+    readonly recoveryCodes: number;
+    readonly drafts: number;
+  }>;
   retryFailedContacts(limit: number): Promise<{
     readonly sent: number;
     readonly failed: number;
@@ -21,6 +28,11 @@ export interface MaintenanceOperations {
 
 export interface MaintenanceSummary {
   readonly expiredContacts: number;
+  readonly expiredAuditEvents: number;
+  readonly expiredWebAuthnChallenges: number;
+  readonly expiredSessions: number;
+  readonly usedRecoveryCodes: number;
+  readonly staleDrafts: number;
   readonly contactsSent: number;
   readonly contactsFailed: number;
   readonly contactsExhausted: number;
@@ -38,6 +50,7 @@ export async function runMaintenancePass(
   }
 
   const expiredContacts = await operations.purgeExpiredContacts(limit);
+  const retention = await operations.purgeRetentionArtifacts(limit);
   const contactRetry = await operations.retryFailedContacts(limit);
   const expiredImportReports =
     await operations.purgeExpiredImportReports(limit);
@@ -45,6 +58,11 @@ export async function runMaintenancePass(
 
   return {
     expiredContacts,
+    expiredAuditEvents: retention.auditEvents,
+    expiredWebAuthnChallenges: retention.webAuthnChallenges,
+    expiredSessions: retention.sessions,
+    usedRecoveryCodes: retention.recoveryCodes,
+    staleDrafts: retention.drafts,
     contactsSent: contactRetry.sent,
     contactsFailed: contactRetry.failed,
     contactsExhausted: contactRetry.exhausted,
@@ -52,6 +70,17 @@ export async function runMaintenancePass(
     mediaDeleted: media.deleted,
     mediaDeleteFailures: media.failed,
   };
+}
+
+/** Signals that a collector should route this pass to the incident destination. */
+export function maintenanceNeedsAttention(
+  summary: MaintenanceSummary
+): boolean {
+  return (
+    summary.contactsFailed > 0 ||
+    summary.contactsExhausted > 0 ||
+    summary.mediaDeleteFailures > 0
+  );
 }
 
 export async function runMaintenanceLoop(options: {

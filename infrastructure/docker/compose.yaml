@@ -32,6 +32,7 @@ x-api-environment: &api-environment
   WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:?WEBAUTHN_ORIGIN is required}
   CACHE_INVALIDATION_SECRET: ${CACHE_INVALIDATION_SECRET:?CACHE_INVALIDATION_SECRET is required}
   CACHE_INVALIDATION_URL: http://web:3000/api/invalidate
+  PUBLICATION_QUEUE_MAX_AGE_SECONDS: ${PUBLICATION_QUEUE_MAX_AGE_SECONDS:-300}
 
 services:
   postgres:
@@ -78,11 +79,18 @@ services:
       - >-
         mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
         mc mb --ignore-existing "local/$${MINIO_BUCKET}";
-        mc anonymous set none "local/$${MINIO_BUCKET}"
+        mc anonymous set none "local/$${MINIO_BUCKET}";
+        mc version enable "local/$${MINIO_BUCKET}";
+        printf '%s\n' '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetBucketLocation","s3:ListBucket"],"Resource":["arn:aws:s3:::'"$${MINIO_BUCKET}"'"]},{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject"],"Resource":["arn:aws:s3:::'"$${MINIO_BUCKET}"'/*"]}]}' > /tmp/portfolio-app-policy.json;
+        mc admin user add local "$${MINIO_ACCESS_KEY_ID}" "$${MINIO_SECRET_ACCESS_KEY}";
+        mc admin policy create local portfolio-app /tmp/portfolio-app-policy.json;
+        mc admin policy attach local portfolio-app --user "$${MINIO_ACCESS_KEY_ID}"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY_ID:?MINIO_ACCESS_KEY_ID is required}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_ACCESS_KEY:?MINIO_SECRET_ACCESS_KEY is required}
     networks: [data]
     restart: "no"
 
@@ -119,7 +127,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       minio-init: { condition: service_completed_successfully }
-    networks: [app, data, services]
+    networks: [app, data, services, egress]
     mem_limit: 768m
     cpus: 1.0
 
@@ -131,7 +139,12 @@ services:
       dockerfile: apps/api/Dockerfile
       target: worker
     command: [node, dist/worker/main.js, --mode=publication]
-    environment: *api-environment
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      CACHE_INVALIDATION_SECRET: ${CACHE_INVALIDATION_SECRET:?CACHE_INVALIDATION_SECRET is required}
+      CACHE_INVALIDATION_URL: http://web:3000/api/invalidate
+      PUBLICATION_WORKER_LEASE_SECONDS: ${PUBLICATION_WORKER_LEASE_SECONDS:-300}
+      PUBLICATION_WORKER_IDLE_MS: ${PUBLICATION_WORKER_IDLE_MS:-2000}
     depends_on:
       migrate: { condition: service_completed_successfully }
       minio-init: { condition: service_completed_successfully }
@@ -147,7 +160,9 @@ services:
       dockerfile: apps/api/Dockerfile
       target: worker
     command: [node, dist/worker/main.js, --mode=scheduler]
-    environment: *api-environment
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      SCHEDULER_POLL_SECONDS: ${SCHEDULER_POLL_SECONDS:-60}
     depends_on:
       migrate: { condition: service_completed_successfully }
     networks: [data]
@@ -162,11 +177,26 @@ services:
       dockerfile: apps/api/Dockerfile
       target: worker
     command: [node, dist/worker/main.js, --mode=maintenance]
-    environment: *api-environment
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_REGION: us-east-1
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY_ID:?MINIO_ACCESS_KEY_ID is required}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_ACCESS_KEY:?MINIO_SECRET_ACCESS_KEY is required}
+      MINIO_FORCE_PATH_STYLE: "true"
+      SMTP_URL: ${SMTP_URL:?SMTP_URL is required}
+      CONTACT_FROM_EMAIL: ${CONTACT_FROM_EMAIL:?CONTACT_FROM_EMAIL is required}
+      CONTACT_DELIVERY_MAX_ATTEMPTS: ${CONTACT_DELIVERY_MAX_ATTEMPTS:-5}
+      MAINTENANCE_INTERVAL_SECONDS: ${MAINTENANCE_INTERVAL_SECONDS:-900}
+      MAINTENANCE_BATCH_SIZE: ${MAINTENANCE_BATCH_SIZE:-100}
+      DRAFT_RETENTION_DAYS: ${DRAFT_RETENTION_DAYS:-30}
+      MEDIA_RETENTION_DAYS: ${MEDIA_RETENTION_DAYS:-30}
+      QUARANTINE_RETENTION_DAYS: ${QUARANTINE_RETENTION_DAYS:-14}
     depends_on:
       migrate: { condition: service_completed_successfully }
       minio-init: { condition: service_completed_successfully }
-    networks: [data, services]
+    networks: [data, services, egress]
     mem_limit: 512m
     cpus: 0.5
 
@@ -186,7 +216,7 @@ services:
       CACHE_INVALIDATION_SECRET: ${CACHE_INVALIDATION_SECRET:?CACHE_INVALIDATION_SECRET is required}
     depends_on:
       api: { condition: service_healthy }
-    networks: [app]
+    networks: [app, egress]
     mem_limit: 768m
     cpus: 1.0
 
@@ -204,7 +234,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
-    networks: [app]
+    networks: [app, egress]
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
     security_opt: [no-new-privileges:true]
@@ -214,6 +244,7 @@ networks:
   app: { internal: true }
   data: { internal: true }
   services: { internal: true }
+  egress: {}
 
 volumes:
   postgres-data:

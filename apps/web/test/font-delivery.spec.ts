@@ -131,14 +131,16 @@ describe("web font declarations — THEMING.md §4", () => {
         `${face.href} declares an Arabic range`
       ).toBe(false);
     }
-    for (const face of persian) {
-      expect(
-        arabicBlock.test(face.unicodeRange ?? ""),
-        `${face.href} declares no Arabic range`
-      ).toBe(true);
-      // Zero-width non-joiner. Persian word forms are wrong without it.
-      expect(face.unicodeRange).toContain("u+200c");
-    }
+    const vazirLatin = persian.filter((face) => face.href.includes("-latin."));
+    const vazirArabic = persian.filter((face) =>
+      face.href.includes("-arabic.")
+    );
+    expect(vazirLatin).toHaveLength(1);
+    expect(vazirArabic).toHaveLength(1);
+    expect(arabicBlock.test(vazirLatin[0].unicodeRange ?? "")).toBe(false);
+    expect(arabicBlock.test(vazirArabic[0].unicodeRange ?? "")).toBe(true);
+    // Zero-width non-joiner. Persian word forms are wrong without it.
+    expect(vazirArabic[0].unicodeRange).toContain("u+200c");
   });
 });
 

@@ -4,8 +4,12 @@ ARG NODE_IMAGE=node:24.13.0-bookworm-slim
 FROM ${NODE_IMAGE} AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
-RUN corepack enable
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json prettier.config.mjs tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
@@ -15,10 +19,14 @@ ARG PUBLIC_SITE_URL=https://example.invalid
 ARG API_INTERNAL_ORIGIN=http://api:4000
 ENV PUBLIC_SITE_URL=${PUBLIC_SITE_URL}
 ENV API_INTERNAL_ORIGIN=${API_INTERNAL_ORIGIN}
-RUN pnpm db:generate && pnpm build:packages && pnpm --filter @portfolio/web build
+RUN pnpm db:generate \
+    && pnpm build:packages \
+    && pnpm --filter @portfolio/web build \
+    && find /workspace/apps/web/.next/standalone -type f -name '*.map' -delete
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 WORKDIR /app

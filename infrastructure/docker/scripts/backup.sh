@@ -14,9 +14,14 @@ mkdir -p "$backup_dir"
 umask 077
 work_dir=$(mktemp -d /tmp/portfolio-backup.XXXXXX)
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
+HOME="$work_dir"
+export HOME
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 
-pg_dump --dbname="$DATABASE_URL" --format=custom --compress=9 --file="$work_dir/postgres.dump"
+# `schema` is a Prisma adapter option, not a libpq URI parameter. Preserve any
+# real libpq options while removing it before invoking PostgreSQL tooling.
+database_url=$(printf '%s' "$DATABASE_URL" | sed -E 's/([?&])schema=[^&]*&?/\1/; s/[?&]$//')
+pg_dump --dbname="$database_url" --format=custom --compress=9 --file="$work_dir/postgres.dump"
 mc alias set backup-store "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY_ID" "$MINIO_SECRET_ACCESS_KEY" >/dev/null
 mkdir -p "$work_dir/objects"
 mc mirror --overwrite "backup-store/$MINIO_BUCKET" "$work_dir/objects" >/dev/null
@@ -27,9 +32,10 @@ mc mirror --overwrite "backup-store/$MINIO_BUCKET" "$work_dir/objects" >/dev/nul
   tar -czf payload.tar.gz MANIFEST.sha256 postgres.dump objects
 )
 
-archive="$backup_dir/portfolio-$stamp.tar.gz.gpg"
+archive_name="portfolio-$stamp.tar.gz.gpg"
+archive="$backup_dir/$archive_name"
 gpg --batch --yes --quiet --pinentry-mode loopback \
   --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
   --symmetric --cipher-algo AES256 --output "$archive" "$work_dir/payload.tar.gz"
-sha256sum "$archive" > "$archive.sha256"
+(cd "$backup_dir" && sha256sum "$archive_name" > "$archive_name.sha256")
 printf '%s\n' "$archive"

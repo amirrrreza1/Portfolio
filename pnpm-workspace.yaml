@@ -2,6 +2,15 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# pnpm's dedicated deploy lockfile requires injected workspace packages. This
+# keeps production images isolated from the monorepo's development dependency
+# graph instead of copying the shared virtual store into every runtime image.
+injectWorkspacePackages: true
+autoInstallPeers: false
+resolvePeersFromWorkspaceRoot: false
+syncInjectedDepsAfterScripts:
+  - build
+
 # pnpm blocks dependency lifecycle scripts unless they are explicitly allowed.
 allowBuilds:
   "@prisma/engines": true

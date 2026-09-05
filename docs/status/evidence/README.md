@@ -61,6 +61,10 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 
 - [`M8-publication-live.md`](M8-publication-live.md) closes the scheduler/publication gate: deduplicated scheduling, idempotent publication, real post-write rollback, and a dedicated checked-out PostgreSQL session for leadership. Together these two reports close M8 on 2026-08-31.
 
+## M9 — operations, release, and cleanup
+
+- [`M9-local-release-proof.md`](M9-local-release-proof.md) records the clean production build and policy matrix, the complete local Compose topology, strict readiness and runtime hardening checks, and an encrypted PostgreSQL/MinIO restore into isolated targets. It is repository evidence, not a substitute for the independent security review or production rollout window.
+
 ## M7 — portfolio CMS
 
 - [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.

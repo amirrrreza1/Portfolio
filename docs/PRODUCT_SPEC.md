@@ -179,7 +179,7 @@ The authenticated owner dashboard MUST show scheduled publication, pending/dead-
 | Internationalization | Both locales render with correct `lang`/`dir`; `hreflang` reciprocal for published pairs; no untranslated UI string reaches production                                    |
 | Appearance           | Every enabled theme passes AA contrast; correct theme and blog typography in the first HTML byte; blog typography never affects non-blog UI; no layout shift on font swap |
 | Content integrity    | Every published translation has authoritative PostgreSQL Markdown, a matching SHA-256 source digest, and current sanitized renderer output                                |
-| Recovery             | Automated encrypted backups plus an independent content-repository clone; restore drill documented and tested before production launch                                    |
+| Recovery             | Automated encrypted PostgreSQL and MinIO backups plus an independent code-repository mirror; restore drill documented and tested before production launch                 |
 | Observability        | Structured redacted logs, request IDs, health metrics, and actionable error reporting                                                                                     |
 | Browser support      | Current and previous major versions of evergreen browsers; progressive enhancement for public reading                                                                     |
 
@@ -219,4 +219,4 @@ The release is acceptable when:
 8. A scheduled article publishes on time through one idempotent database transaction and delivers signed cache invalidation without an external content provider.
 9. Both locales render with correct `lang`/`dir`, a missing translation returns `404` rather than falling back, and `hreflang` is reciprocal for every published pair.
 10. Every enabled theme passes AA contrast, appearance is correct in the first HTML byte, and public responses do not vary on the preferences cookie.
-11. Containers start from a clean checkout, migrations run once, and a restore drill reproduces the site from a database backup plus a repository clone.
+11. Containers start from a clean checkout, migrations run once, and a restore drill reproduces the site from one encrypted PostgreSQL/MinIO backup set; the code mirror is verified separately.

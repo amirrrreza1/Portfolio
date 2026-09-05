@@ -252,6 +252,15 @@ jobs:
             API_INTERNAL_ORIGIN=http://api:4000
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
+      - name: Build operations image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/ops.Dockerfile
+          load: true
+          tags: portfolio-ops:ci
+          cache-from: type=gha,scope=ops
+          cache-to: type=gha,mode=max,scope=ops
       - name: Scan API image
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -268,6 +277,14 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
+      - name: Scan operations image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: portfolio-ops:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
       - name: Generate API SBOM
         uses: anchore/sbom-action@v0.17.2
         with:
@@ -280,6 +297,12 @@ jobs:
           image: portfolio-web:ci
           format: spdx-json
           output-file: web.spdx.json
+      - name: Generate operations SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          image: portfolio-ops:ci
+          format: spdx-json
+          output-file: ops.spdx.json
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:
