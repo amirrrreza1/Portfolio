@@ -4,7 +4,7 @@
 
 Docker artifacts are delivered after the application/database contracts are implemented. This document fixes the expected topology and hardening so Docker is not added as an unreviewed afterthought.
 
-**Nothing in this document is built yet.** `infrastructure/docker/` contains only a README. The two pieces that already depend on it are in place — `output: "standalone"` in the Next.js config, set in M0 precisely so the image work would not discover a wrong build shape late, and the `MINIO_*` and `DATABASE_URL` contracts in `.env.example`. Everything else lands in M9.
+The M9 repository-owned topology is implemented in `apps/*/Dockerfile` and `infrastructure/docker/`. Image execution, production sizing, digest selection, the restore drill, and rollout evidence remain environment-dependent gates tracked in `status/M9.md`.
 
 ## 2. Images and services
 
@@ -122,7 +122,7 @@ Only the local dependency profile may publish PostgreSQL/MinIO console ports to 
 - Upgrade one dependency class at a time: database engine, Prisma migration, API, then web when coupling requires it.
 - Rollback deploys the previous compatible images; database rollback uses a reviewed forward-fix/restore plan, never an automatic destructive downgrade.
 
-## 11. Files to add in the Docker phase
+## 11. Implemented files
 
 ```text
 apps/web/Dockerfile
@@ -130,8 +130,10 @@ apps/api/Dockerfile
 infrastructure/docker/compose.yaml
 infrastructure/docker/compose.production.yaml
 infrastructure/docker/Caddyfile (or selected edge config)
-infrastructure/docker/.dockerignore source at repository root  # must exclude .git and local secrets
-infrastructure/docker/scripts/ (non-secret health/entrypoint helpers only)
+.dockerignore
+infrastructure/docker/ops.Dockerfile
+infrastructure/docker/scripts/backup.sh
+infrastructure/docker/scripts/restore.sh
 ```
 
 Final file placement may adapt to the hosting provider, but the security and migration rules above remain mandatory.

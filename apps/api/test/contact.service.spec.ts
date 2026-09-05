@@ -71,6 +71,9 @@ describe("ContactSubmissionService", () => {
       service.submit(submission, "client-key")
     ).resolves.toBeUndefined();
 
-    expect(store.markFailed).toHaveBeenCalledWith("message-1");
+    expect(store.markFailed).toHaveBeenCalledWith("message-1", {
+      code: "smtp_delivery_failed",
+      nextAttemptAt: new Date("2026-08-10T00:05:05.000Z"),
+    });
   });
 });

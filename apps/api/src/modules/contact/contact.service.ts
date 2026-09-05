@@ -13,7 +13,10 @@ export interface ContactMessageStore {
     deletionDueAt: Date
   ): Promise<string>;
   markSent(id: string, providerMessageRef: string | null): Promise<void>;
-  markFailed(id: string): Promise<void>;
+  markFailed(
+    id: string,
+    failure: { readonly code: string; readonly nextAttemptAt: Date }
+  ): Promise<void>;
 }
 
 export interface ContactDelivery {
@@ -67,7 +70,11 @@ export class ContactSubmissionService {
     } catch {
       // Retain durable evidence for the owner/retry path without exposing a
       // provider failure to a public sender.
-      await this.store.markFailed(messageId);
+      const nextAttemptAt = new Date(this.now().getTime() + 5 * 60 * 1_000);
+      await this.store.markFailed(messageId, {
+        code: "smtp_delivery_failed",
+        nextAttemptAt,
+      });
     }
   }
 

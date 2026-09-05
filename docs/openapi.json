@@ -1,0 +1,1243 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Health"]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "operationId": "HealthController_live_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Health"]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Health"]
+      }
+    },
+    "/api/v1/auth/csrf": {
+      "get": {
+        "operationId": "AuthController_csrf_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/login/password": {
+      "post": {
+        "operationId": "AuthController_password_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/webauthn/options": {
+      "post": {
+        "operationId": "AuthController_options_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/webauthn/verify": {
+      "post": {
+        "operationId": "AuthController_verify_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/recovery/verify": {
+      "post": {
+        "operationId": "AuthController_recovery_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/webauthn/enroll/options": {
+      "post": {
+        "operationId": "AuthController_enrolOptions_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/webauthn/enroll": {
+      "post": {
+        "operationId": "AuthController_enrol_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "operationId": "AuthController_session_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/reauthenticate": {
+      "post": {
+        "operationId": "AuthController_reauthenticate_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout_v1",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "operationId": "AuthController_sessions_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "operationId": "AuthController_revoke_v1",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/contact": {
+      "post": {
+        "operationId": "ContactController_submit_v1",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": ["Contact"]
+      }
+    },
+    "/api/v1/public/{locale}/projects": {
+      "get": {
+        "operationId": "PublicProjectsController_list_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicProjects"]
+      }
+    },
+    "/api/v1/public/{locale}/projects/{slug}": {
+      "get": {
+        "operationId": "PublicProjectsController_detail_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicProjects"]
+      }
+    },
+    "/api/v1/public/projects/{slug}/image": {
+      "get": {
+        "operationId": "PublicProjectsController_image_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicProjects"]
+      }
+    },
+    "/api/v1/public/{locale}/site": {
+      "get": {
+        "operationId": "PublicSiteController_read_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicSite"]
+      }
+    },
+    "/api/v1/public/{locale}/appearance": {
+      "get": {
+        "operationId": "PublicAppearanceController_read_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicAppearance"]
+      }
+    },
+    "/api/v1/public/{locale}/home": {
+      "get": {
+        "operationId": "PublicHomeController_read_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicHome"]
+      }
+    },
+    "/api/v1/public/certificates/{certificateId}/file": {
+      "get": {
+        "operationId": "PublicHomeController_certificateFile_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicHome"]
+      }
+    },
+    "/api/v1/public/resume/file": {
+      "get": {
+        "operationId": "PublicHomeController_resumeFile_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicHome"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/posts": {
+      "get": {
+        "operationId": "PublicArticlesController_list_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/taxonomy": {
+      "get": {
+        "operationId": "PublicArticlesController_taxonomyIndex_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/feed-index": {
+      "get": {
+        "operationId": "PublicArticlesController_feedIndex_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/categories/{slug}": {
+      "get": {
+        "operationId": "PublicArticlesController_category_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/tags/{slug}": {
+      "get": {
+        "operationId": "PublicArticlesController_tag_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/posts/{slug}/image": {
+      "get": {
+        "operationId": "PublicArticlesController_image_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/public/{locale}/blog/posts/{slug}": {
+      "get": {
+        "operationId": "PublicArticlesController_detail_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["PublicArticles"]
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "operationId": "AdminPortfolioController_dashboard_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "operationId": "AdminPortfolioController_settings_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSettings_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/contacts": {
+      "get": {
+        "operationId": "AdminPortfolioController_contacts_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/contacts/{id}/retry": {
+      "post": {
+        "operationId": "AdminPortfolioController_retryContact_v1",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/contacts/{id}": {
+      "delete": {
+        "operationId": "AdminPortfolioController_deleteContact_v1",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/settings/translations/{locale}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSettingsTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/appearance": {
+      "get": {
+        "operationId": "AdminPortfolioController_appearance_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "patch": {
+        "operationId": "AdminPortfolioController_updateAppearance_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/sections": {
+      "get": {
+        "operationId": "AdminPortfolioController_sections_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/sections/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSection_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/sections/{id}/translations/{locale}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSectionTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/nav-items": {
+      "get": {
+        "operationId": "AdminPortfolioController_navigation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createNavigation_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/nav-items/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateNavigation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/social-links": {
+      "get": {
+        "operationId": "AdminPortfolioController_socialLinks_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createSocialLink_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/social-links/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSocialLink_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/skill-categories": {
+      "get": {
+        "operationId": "AdminPortfolioController_skillCategories_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createSkillCategory_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/skill-categories/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSkillCategory_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/skill-categories/{id}/translations/{locale}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSkillCategoryTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/skills": {
+      "post": {
+        "operationId": "AdminPortfolioController_createSkill_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/skills/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateSkill_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/projects": {
+      "get": {
+        "operationId": "AdminPortfolioController_projects_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createProject_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/projects/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateProject_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/projects/{id}/translations/{locale}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateProjectTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/certificates": {
+      "get": {
+        "operationId": "AdminPortfolioController_certificates_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createCertificate_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/certificates/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateCertificate_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/certificates/{id}/translations/{locale}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateCertificateTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/quotes": {
+      "get": {
+        "operationId": "AdminPortfolioController_quotes_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createQuote_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/quotes/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateQuote_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/media": {
+      "get": {
+        "operationId": "AdminPortfolioController_media_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_uploadMedia_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/media/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateMedia_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/resumes": {
+      "get": {
+        "operationId": "AdminPortfolioController_resumes_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createResume_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/resumes/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateResume_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/resumes/{id}/activate": {
+      "post": {
+        "operationId": "AdminPortfolioController_activateResume_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/resources/{resource}/{id}/archive": {
+      "post": {
+        "operationId": "AdminPortfolioController_archive_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/resources/{resource}/{id}/restore": {
+      "post": {
+        "operationId": "AdminPortfolioController_restore_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/revisions": {
+      "get": {
+        "operationId": "AdminPortfolioController_revisions_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/revisions/{id}/restore": {
+      "post": {
+        "operationId": "AdminPortfolioController_restoreRevision_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/audit-events": {
+      "get": {
+        "operationId": "AdminPortfolioController_auditEvents_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "operationId": "AdminPortfolioController_users_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      },
+      "post": {
+        "operationId": "AdminPortfolioController_createUser_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "patch": {
+        "operationId": "AdminPortfolioController_updateUser_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["AdminPortfolio"]
+      }
+    },
+    "/api/v1/admin/blog/posts": {
+      "get": {
+        "operationId": "BlogAdminController_listPosts_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}": {
+      "get": {
+        "operationId": "BlogAdminController_readTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      },
+      "put": {
+        "operationId": "BlogAdminController_saveTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/export": {
+      "get": {
+        "operationId": "BlogAdminController_exportTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/checklist": {
+      "get": {
+        "operationId": "BlogAdminController_checklist_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/revisions": {
+      "get": {
+        "operationId": "BlogAdminController_listRevisions_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/revisions/{revisionId}": {
+      "get": {
+        "operationId": "BlogAdminController_readRevision_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/draft": {
+      "put": {
+        "operationId": "BlogAdminController_autosave_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/preview": {
+      "post": {
+        "operationId": "BlogAdminController_preview_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/import": {
+      "post": {
+        "operationId": "BlogAdminController_importArticle_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/previews/{token}": {
+      "get": {
+        "operationId": "BlogAdminController_readPreview_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/publish": {
+      "post": {
+        "operationId": "BlogAdminController_publish_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/schedule": {
+      "post": {
+        "operationId": "BlogAdminController_schedule_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/unpublish": {
+      "post": {
+        "operationId": "BlogAdminController_unpublish_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/posts/{id}/translations/{locale}/archive": {
+      "post": {
+        "operationId": "BlogAdminController_archive_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/categories": {
+      "get": {
+        "operationId": "BlogAdminController_listCategories_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      },
+      "post": {
+        "operationId": "BlogAdminController_createCategory_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/tags": {
+      "get": {
+        "operationId": "BlogAdminController_listTags_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      },
+      "post": {
+        "operationId": "BlogAdminController_createTag_v1",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/categories/{id}": {
+      "put": {
+        "operationId": "BlogAdminController_updateCategory_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/tags/{id}": {
+      "put": {
+        "operationId": "BlogAdminController_updateTag_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/categories/{id}/translations/{locale}": {
+      "put": {
+        "operationId": "BlogAdminController_saveCategoryTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    },
+    "/api/v1/admin/blog/tags/{id}/translations/{locale}": {
+      "put": {
+        "operationId": "BlogAdminController_saveTagTranslation_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["BlogAdmin"]
+      }
+    }
+  },
+  "info": {
+    "title": "Portfolio API",
+    "description": "Public and authenticated owner operations",
+    "version": "1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "portfolio_session"
+      }
+    },
+    "schemas": {}
+  }
+}

@@ -11,7 +11,10 @@ import {
   publishDueTranslation,
   withAdvisoryLock,
 } from "@portfolio/database";
+import { createS3MediaObjectStore } from "@portfolio/media";
 
+import { parseApiEnvironment } from "../config/environment.js";
+import { createSmtpContactDelivery } from "../modules/contact/contact.runtime.js";
 import {
   runContentScheduler,
   runContentWorker,
@@ -19,8 +22,10 @@ import {
 } from "./content-worker.js";
 import { runInvalidationDrain } from "./invalidation-drain.js";
 import { createSignedInvalidationSender } from "./invalidation-sender.js";
+import { runMaintenanceLoop } from "./maintenance.js";
+import { createMaintenanceOperations } from "./maintenance.runtime.js";
 
-type Mode = "publication" | "scheduler";
+type Mode = "maintenance" | "publication" | "scheduler";
 
 const DEFAULTS = {
   leaseSeconds: 300,
@@ -31,6 +36,11 @@ const DEFAULTS = {
   invalidationVisibilitySeconds: 120,
   invalidationBatchSize: 20,
   invalidationIdleMs: 1_000,
+  maintenanceBatchSize: 100,
+  maintenanceIntervalMs: 15 * 60 * 1_000,
+  maxContactAttempts: 5,
+  mediaRetentionDays: 30,
+  quarantineRetentionDays: 14,
 } as const;
 
 async function main(): Promise<void> {
@@ -50,6 +60,52 @@ async function main(): Promise<void> {
   log({ event: "starting", mode, worker: workerName });
 
   try {
+    if (mode === "maintenance") {
+      const environment = parseApiEnvironment(process.env);
+      await withLockOrIdle(
+        lockPool,
+        ADVISORY_LOCKS.maintenance,
+        () => running,
+        async () => {
+          await runMaintenanceLoop({
+            operations: createMaintenanceOperations({
+              database,
+              media: createS3MediaObjectStore(environment.media),
+              delivery: createSmtpContactDelivery(
+                environment.smtpUrl,
+                environment.contactFromEmail
+              ),
+              maxContactAttempts: number(
+                process.env.CONTACT_DELIVERY_MAX_ATTEMPTS,
+                DEFAULTS.maxContactAttempts
+              ),
+              mediaRetentionDays: number(
+                process.env.MEDIA_RETENTION_DAYS,
+                DEFAULTS.mediaRetentionDays
+              ),
+              quarantineRetentionDays: number(
+                process.env.QUARANTINE_RETENTION_DAYS,
+                DEFAULTS.quarantineRetentionDays
+              ),
+            }),
+            batchSize: number(
+              process.env.MAINTENANCE_BATCH_SIZE,
+              DEFAULTS.maintenanceBatchSize
+            ),
+            intervalMs:
+              number(
+                process.env.MAINTENANCE_INTERVAL_SECONDS,
+                DEFAULTS.maintenanceIntervalMs / 1_000
+              ) * 1_000,
+            sleep: (ms) => delay(ms),
+            running: () => running,
+            log: (summary) => log({ event: "maintenance-pass", ...summary }),
+          });
+        }
+      );
+      return;
+    }
+
     if (mode === "scheduler") {
       await withLockOrIdle(
         lockPool,
@@ -165,7 +221,11 @@ function parseMode(argv: readonly string[], fallback?: string): Mode {
     .find((value) => value.startsWith("--mode="))
     ?.slice("--mode=".length);
   const value = flag ?? fallback ?? "publication";
-  if (value !== "publication" && value !== "scheduler") {
+  if (
+    value !== "maintenance" &&
+    value !== "publication" &&
+    value !== "scheduler"
+  ) {
     throw new Error(`Unknown worker mode ${JSON.stringify(value)}.`);
   }
   return value;

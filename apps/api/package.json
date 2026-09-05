@@ -12,12 +12,16 @@
     "test": "vitest run",
     "start:worker": "node dist/worker/main.js --mode=publication",
     "start:scheduler": "node dist/worker/main.js --mode=scheduler",
+    "start:maintenance": "node dist/worker/main.js --mode=maintenance",
     "dev:worker": "tsx src/worker/main.ts --mode=publication",
     "dev:scheduler": "tsx src/worker/main.ts --mode=scheduler",
+    "dev:maintenance": "tsx src/worker/main.ts --mode=maintenance",
     "verify:cutover": "tsx scripts/verify-public-cutover.ts --apply",
     "verify:auth": "tsx scripts/verify-auth-boundary.ts --apply",
     "verify:cms": "tsx scripts/verify-portfolio-cms.ts --apply",
     "verify:blog": "tsx scripts/verify-blog-authoring.ts --apply",
+    "verify:restore": "tsx scripts/verify-restore.ts",
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
     "provision:cms-browser": "tsx scripts/provision-cms-browser.ts --apply"
   },
   "dependencies": {

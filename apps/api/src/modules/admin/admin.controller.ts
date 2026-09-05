@@ -2,9 +2,11 @@ import {
   Body,
   Catch,
   Controller,
+  Delete,
   ArgumentsHost,
   type ExceptionFilter,
   Get,
+  HttpCode,
   HttpException,
   Inject,
   Param,
@@ -185,6 +187,42 @@ export class AdminPortfolioController {
     await this.require(request, "settings.manage");
     this.noStore(reply);
     return this.envelope(await this.portfolio.readSettings());
+  }
+
+  @Get("contacts")
+  async contacts(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    await this.require(request, "audit.read");
+    this.noStore(reply);
+    return this.envelope(await this.portfolio.readContactMessages());
+  }
+
+  @Post("contacts/:id/retry")
+  @HttpCode(202)
+  async retryContact(
+    @Param("id") id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const actor = await this.requireMutation(request, "settings.manage");
+    this.noStore(reply);
+    return this.envelope(
+      await this.portfolio.queueContactRetry(actor.user.userId, id)
+    );
+  }
+
+  @Delete("contacts/:id")
+  @HttpCode(204)
+  async deleteContact(
+    @Param("id") id: string,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ): Promise<void> {
+    const actor = await this.requireMutation(request, "settings.manage");
+    await this.portfolio.deleteContactMessage(actor.user.userId, id);
+    this.noStore(reply);
   }
 
   @Patch("settings")

@@ -5,6 +5,7 @@ export type PublicationState = "ok" | "backlogged" | "failing";
 
 export interface ReadinessProbes {
   readonly databaseReachable: () => Promise<boolean>;
+  readonly storageReachable: () => Promise<boolean>;
   readonly queue: () => Promise<ContentQueueMetrics | null>;
 }
 
@@ -15,6 +16,7 @@ export interface ReadinessThresholds {
 export interface ReadinessReport {
   readonly status: HealthState;
   readonly database: "ok" | "unavailable";
+  readonly storage: "ok" | "unavailable" | "unknown";
   readonly publication: PublicationState;
   readonly queue: {
     readonly pending: number;
@@ -38,19 +40,28 @@ export async function evaluateReadiness(
     return {
       status: "unavailable",
       database: "unavailable",
+      storage: "unknown",
       publication: "failing",
       queue: null,
     };
   }
 
-  const metrics = await probes.queue();
+  const [metrics, storageReachable] = await Promise.all([
+    probes.queue(),
+    probes.storageReachable(),
+  ]);
   const publication = resolvePublicationState(
     metrics,
     thresholds.maxQueueAgeSeconds
   );
   return {
-    status: publication === "ok" ? "ok" : "degraded",
+    status: !storageReachable
+      ? "unavailable"
+      : publication === "ok"
+        ? "ok"
+        : "degraded",
     database: "ok",
+    storage: storageReachable ? "ok" : "unavailable",
     publication,
     queue:
       metrics === null

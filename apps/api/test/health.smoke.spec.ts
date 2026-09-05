@@ -42,6 +42,7 @@ async function createApp(overrides: {
     .useValue(
       overrides.probes ?? {
         databaseReachable: async () => true,
+        storageReachable: async () => true,
         queue: async () => HEALTHY_QUEUE,
       }
     )
@@ -94,6 +95,7 @@ describe("API health smoke", () => {
         databaseReachable: async () => {
           throw new Error("liveness must not probe the database");
         },
+        storageReachable: async () => true,
         queue: async () => null,
       },
     });
@@ -119,6 +121,7 @@ describe("API health smoke", () => {
     expect(response.json()).toMatchObject({
       status: "ok",
       database: "ok",
+      storage: "ok",
       publication: "ok",
     });
   });
@@ -127,6 +130,7 @@ describe("API health smoke", () => {
     app = await createApp({
       probes: {
         databaseReachable: async () => true,
+        storageReachable: async () => true,
         queue: async () => ({ ...HEALTHY_QUEUE, dead: 3 }),
       },
     });
@@ -147,6 +151,7 @@ describe("API health smoke", () => {
     app = await createApp({
       probes: {
         databaseReachable: async () => false,
+        storageReachable: async () => false,
         queue: async () => null,
       },
     });
@@ -158,5 +163,23 @@ describe("API health smoke", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toMatchObject({ database: "unavailable" });
+  });
+
+  it("returns 503 when private object storage is unreachable", async () => {
+    app = await createApp({
+      probes: {
+        databaseReachable: async () => true,
+        storageReachable: async () => false,
+        queue: async () => HEALTHY_QUEUE,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/health/ready",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ storage: "unavailable" });
   });
 });

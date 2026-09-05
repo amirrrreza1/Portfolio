@@ -1079,6 +1079,13 @@ model ContactMessage {
   message            String
   deliveryStatus     ContactDeliveryStatus @default(PENDING)
   providerMessageRef String?
+  /// Number of SMTP attempts, including the initial synchronous attempt.
+  deliveryAttempts   Int                   @default(0)
+  /// A FAILED row with no next attempt is an exhausted, visible dead letter.
+  nextAttemptAt      DateTime?             @db.Timestamptz(6)
+  /// Bounded operational code only; provider responses and message content are
+  /// never copied into this field.
+  lastError          String?
   abuseScore         Int?
   abuseReason        String?
   createdAt          DateTime              @default(now()) @db.Timestamptz(6)
@@ -1086,6 +1093,7 @@ model ContactMessage {
   deletionDueAt      DateTime              @db.Timestamptz(6)
 
   @@index([deliveryStatus, createdAt])
+  @@index([deliveryStatus, nextAttemptAt])
   @@index([deletionDueAt])
   @@map("contact_messages")
 }

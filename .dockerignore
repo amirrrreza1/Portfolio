@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/test-results
+**/*.log
+_recovery
+.pnpm-store
+migration-reconciliation.json
+M8-verification-commands.md
+docs/status/evidence

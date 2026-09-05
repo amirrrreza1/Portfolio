@@ -17,6 +17,7 @@ const HEALTHY_QUEUE: ContentQueueMetrics = {
 function probes(overrides: Partial<ReadinessProbes> = {}): ReadinessProbes {
   return {
     databaseReachable: async () => true,
+    storageReachable: async () => true,
     queue: async () => HEALTHY_QUEUE,
     ...overrides,
   };
@@ -28,6 +29,7 @@ describe("evaluateReadiness", () => {
     expect(report).toMatchObject({
       status: "ok",
       database: "ok",
+      storage: "ok",
       publication: "ok",
     });
   });
@@ -39,8 +41,20 @@ describe("evaluateReadiness", () => {
     expect(report).toMatchObject({
       status: "unavailable",
       database: "unavailable",
+      storage: "unknown",
       publication: "failing",
       queue: null,
+    });
+  });
+
+  it("is unavailable when private object storage cannot be reached", async () => {
+    const report = await evaluateReadiness(
+      probes({ storageReachable: async () => false })
+    );
+    expect(report).toMatchObject({
+      status: "unavailable",
+      database: "ok",
+      storage: "unavailable",
     });
   });
 

@@ -1,0 +1,17 @@
+services:
+  postgres:
+    ports: []
+  minio:
+    ports: []
+  api:
+    restart: always
+  publication:
+    restart: always
+  scheduler:
+    restart: always
+  maintenance:
+    restart: always
+  web:
+    restart: always
+  edge:
+    restart: always

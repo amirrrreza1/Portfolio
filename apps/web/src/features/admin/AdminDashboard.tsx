@@ -27,6 +27,12 @@ type Dashboard = {
   readonly delivery: {
     readonly invalidations: Record<string, number>;
     readonly publicationJobs: Record<string, number>;
+    readonly contacts: Record<string, number>;
+    readonly overdueContactRetries: number;
+    readonly media: Record<
+      string,
+      { readonly count: number; readonly bytes: number }
+    >;
   };
 };
 
@@ -88,6 +94,11 @@ export default function AdminDashboard(): React.JSX.Element {
         Invalidations: {formatCounts(data.delivery.invalidations)} · Publication
         jobs: {formatCounts(data.delivery.publicationJobs)}
       </p>
+      <p className="text-text-muted text-sm">
+        Contact delivery: {formatCounts(data.delivery.contacts)} · Overdue or
+        exhausted retries: {data.delivery.overdueContactRetries} · Media:{" "}
+        {formatMedia(data.delivery.media)}
+      </p>
     </div>
   );
 }
@@ -138,4 +149,24 @@ function formatCounts(counts: Record<string, number>): string {
   return values.length === 0
     ? "none"
     : values.map(([key, value]) => `${key.toLowerCase()} ${value}`).join(", ");
+}
+
+function formatMedia(
+  states: Record<string, { readonly count: number; readonly bytes: number }>
+): string {
+  const values = Object.entries(states);
+  return values.length === 0
+    ? "none"
+    : values
+        .map(
+          ([key, value]) =>
+            `${key.toLowerCase()} ${value.count} (${formatBytes(value.bytes)})`
+        )
+        .join(", ");
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1_024) return `${bytes} B`;
+  if (bytes < 1_024 ** 2) return `${(bytes / 1_024).toFixed(1)} KiB`;
+  return `${(bytes / 1_024 ** 2).toFixed(1)} MiB`;
 }

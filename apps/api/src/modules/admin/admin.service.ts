@@ -149,6 +149,9 @@ export class AdminPortfolioService {
       securityEvents,
       outbox,
       jobs,
+      contactDelivery,
+      overdueContactRetries,
+      media,
     ] = await Promise.all([
       this.database.postTranslation.count({
         where: { status: "DRAFT", archivedAt: null },
@@ -191,6 +194,23 @@ export class AdminPortfolioService {
         by: ["state"],
         _count: { _all: true },
       }),
+      this.database.contactMessage.groupBy({
+        by: ["deliveryStatus"],
+        where: { deletionDueAt: { gt: new Date() } },
+        _count: { _all: true },
+      }),
+      this.database.contactMessage.count({
+        where: {
+          deliveryStatus: "FAILED",
+          deletionDueAt: { gt: new Date() },
+          OR: [{ nextAttemptAt: { lte: new Date() } }, { nextAttemptAt: null }],
+        },
+      }),
+      this.database.mediaAsset.groupBy({
+        by: ["processingState"],
+        _count: { _all: true },
+        _sum: { byteSize: true },
+      }),
     ]);
     return {
       drafts,
@@ -205,8 +225,100 @@ export class AdminPortfolioService {
         publicationJobs: Object.fromEntries(
           jobs.map((row) => [row.state, row._count._all])
         ),
+        contacts: Object.fromEntries(
+          contactDelivery.map((row) => [row.deliveryStatus, row._count._all])
+        ),
+        overdueContactRetries,
+        media: Object.fromEntries(
+          media.map((row) => [
+            row.processingState,
+            {
+              count: row._count._all,
+              bytes: Number(row._sum.byteSize ?? 0n),
+            },
+          ])
+        ),
       },
     };
+  }
+
+  /** Bounded owner-only contact inbox; provider responses remain internal. */
+  async readContactMessages(): Promise<unknown> {
+    return this.database.contactMessage.findMany({
+      where: { deletionDueAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        message: true,
+        deliveryStatus: true,
+        deliveryAttempts: true,
+        nextAttemptAt: true,
+        lastError: true,
+        createdAt: true,
+        deliveredAt: true,
+        deletionDueAt: true,
+      },
+    });
+  }
+
+  async queueContactRetry(actorId: string, id: string): Promise<unknown> {
+    return this.database.$transaction(async (tx) => {
+      const result = await tx.contactMessage.updateMany({
+        where: {
+          id,
+          deliveryStatus: "FAILED",
+          deletionDueAt: { gt: new Date() },
+        },
+        data: { nextAttemptAt: new Date(), lastError: null },
+      });
+      if (result.count === 0) {
+        throw new AdminResourceNotFoundError("ContactMessage", id);
+      }
+      await tx.auditEvent.create({
+        data: {
+          actorId,
+          eventType: "contact.retry_queued",
+          targetType: "ContactMessage",
+          targetId: id,
+          outcome: "SUCCESS",
+        },
+      });
+      return tx.contactMessage.findUniqueOrThrow({
+        where: { id },
+        select: {
+          id: true,
+          deliveryStatus: true,
+          deliveryAttempts: true,
+          nextAttemptAt: true,
+        },
+      });
+    });
+  }
+
+  async deleteContactMessage(actorId: string, id: string): Promise<void> {
+    await this.database.$transaction(async (tx) => {
+      const existing = await tx.contactMessage.findUnique({
+        where: { id },
+        select: { id: true, deliveryStatus: true },
+      });
+      if (existing === null) {
+        throw new AdminResourceNotFoundError("ContactMessage", id);
+      }
+      await tx.contactMessage.delete({ where: { id } });
+      await tx.auditEvent.create({
+        data: {
+          actorId,
+          eventType: "contact.deleted",
+          targetType: "ContactMessage",
+          targetId: id,
+          outcome: "SUCCESS",
+          metadata: { deliveryStatus: existing.deliveryStatus },
+        },
+      });
+    });
   }
 
   async updateSettings(

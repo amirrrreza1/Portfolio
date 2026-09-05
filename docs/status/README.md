@@ -13,8 +13,9 @@ This directory contains evidence-backed snapshots for every milestone that has s
 | [M6.md](M6.md) | Authentication foundation            | Complete       | 2026-08-27 |
 | [M7.md](M7.md) | Portfolio CMS                        | Complete       | 2026-08-28 |
 | [M8.md](M8.md) | Blog authoring, publishing, and SEO  | Complete       | 2026-09-04 |
+| [M9.md](M9.md) | Operations, release, and cleanup     | In progress    | 2026-09-05 |
 
-M9 (operations, release, and cleanup) has not started and has no status file yet. Its gates depended on M5 and M8; both are now closed.
+M9 is in progress. Its repository-owned operational foundation is implemented; environment-dependent deployment, restore, independent-review, and rollout gates remain open.
 
 M0 is the only open milestone. Its repository-owned work is finished; the gate is held by one owner action at the EmailJS provider plus two evidence discrepancies, all recorded in [M0.md](M0.md).
 

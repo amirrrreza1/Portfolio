@@ -125,3 +125,11 @@ Verify it the same way as `content_jobs`, with `prisma migrate diff`. The
 verification script `scripts/verify-article-authority.ts` covers the behaviour
 the diff cannot: constraints rejecting what they claim to, rollback leaving no
 partial state, and publication running with no network.
+
+## `20260905120000_m9_operations`
+
+M9 adds bounded contact-delivery attempt state and a due-retry index. Failure
+details are operational codes capped at 160 characters; provider responses and
+message bodies are never duplicated into the error field. The maintenance
+worker treats `FAILED` plus a null `nextAttemptAt` as an exhausted visible dead
+letter and purges the complete message only at its stored retention deadline.

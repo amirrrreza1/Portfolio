@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, dev]
+    branches: [master, main, dev]
 
 permissions:
   contents: read
@@ -62,6 +62,12 @@ jobs:
       # means assertions actually executed. Do not reintroduce the flag.
       - name: Run real test suites
         run: pnpm test
+
+      - name: Check generated OpenAPI contract
+        run: pnpm openapi:check
+
+      - name: Review production dependency licenses
+        run: pnpm security:licenses
 
       # docs/BASELINE_M0.md is deliberately NOT regenerated or drift-checked
       # here. It is a frozen pre-stabilization capture, so a CI job that kept it
@@ -154,3 +160,129 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  database-integration:
+    name: Migration and database integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_DB: portfolio_test
+          POSTGRES_USER: portfolio_test
+          POSTGRES_PASSWORD: portfolio_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portfolio_test -d portfolio_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://portfolio_test:portfolio_test_password@127.0.0.1:5432/portfolio_test?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Apply every migration from zero
+        run: pnpm --filter @portfolio/database exec prisma migrate deploy
+      - name: Run database behavior suites
+        run: pnpm --filter @portfolio/database test
+
+  dependency-audit:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm security:audit
+      - run: pnpm security:licenses
+
+  containers:
+    name: Hardened images, SBOM, and vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate Compose topology
+        run: >-
+          docker compose
+          --env-file infrastructure/docker/.env.compose.example
+          -f infrastructure/docker/compose.yaml
+          -f infrastructure/docker/compose.production.yaml
+          --profile full config --quiet
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: api-runtime
+          load: true
+          tags: portfolio-api:ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          load: true
+          tags: portfolio-web:ci
+          build-args: |
+            PUBLIC_SITE_URL=https://example.invalid
+            API_INTERNAL_ORIGIN=http://api:4000
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: portfolio-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Scan web image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: portfolio-web:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Generate API SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          image: portfolio-api:ci
+          format: spdx-json
+          output-file: api.spdx.json
+      - name: Generate web SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          image: portfolio-web:ci
+          format: spdx-json
+          output-file: web.spdx.json
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-sboms
+          path: "*.spdx.json"
+          retention-days: 30

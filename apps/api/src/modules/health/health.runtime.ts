@@ -4,6 +4,9 @@ import {
   getDatabaseClient,
   type ContentJobStore,
 } from "@portfolio/database";
+import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
+
+import { parseApiEnvironment } from "../../config/environment.js";
 
 import {
   DEFAULT_MAX_QUEUE_AGE_SECONDS,
@@ -15,16 +18,34 @@ export function createReadinessProbes(): ReadinessProbes {
   let resources: {
     readonly database: ReturnType<typeof getDatabaseClient>;
     readonly jobs: ContentJobStore;
+    readonly storage: S3Client;
+    readonly bucket: string;
   } | null = null;
 
   const resolve = (): typeof resources => {
     if (resources !== null) return resources;
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) return null;
-    const database = getDatabaseClient({ connectionString });
+    let environment: ReturnType<typeof parseApiEnvironment>;
+    try {
+      environment = parseApiEnvironment(process.env);
+    } catch {
+      return null;
+    }
+    const database = getDatabaseClient({
+      connectionString: environment.databaseUrl,
+    });
     resources = {
       database,
       jobs: createContentJobStore(createPrismaSqlExecutor(database)),
+      storage: new S3Client({
+        endpoint: environment.media.endpoint,
+        region: environment.media.region,
+        forcePathStyle: environment.media.forcePathStyle,
+        credentials: {
+          accessKeyId: environment.media.accessKeyId,
+          secretAccessKey: environment.media.secretAccessKey,
+        },
+      }),
+      bucket: environment.media.bucket,
     };
     return resources;
   };
@@ -35,6 +56,18 @@ export function createReadinessProbes(): ReadinessProbes {
       if (resolved === null) return false;
       try {
         await resolved.database.$queryRawUnsafe("SELECT 1");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    storageReachable: async () => {
+      const resolved = resolve();
+      if (resolved === null) return false;
+      try {
+        await resolved.storage.send(
+          new HeadBucketCommand({ Bucket: resolved.bucket })
+        );
         return true;
       } catch {
         return false;

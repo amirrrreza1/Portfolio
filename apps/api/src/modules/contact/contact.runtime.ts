@@ -49,13 +49,21 @@ export function createDatabaseContactMessageStore(
           deliveryStatus: "SENT",
           providerMessageRef,
           deliveredAt: new Date(),
+          deliveryAttempts: { increment: 1 },
+          nextAttemptAt: null,
+          lastError: null,
         },
       });
     },
-    async markFailed(id): Promise<void> {
+    async markFailed(id, failure): Promise<void> {
       await database.contactMessage.update({
         where: { id },
-        data: { deliveryStatus: "FAILED" },
+        data: {
+          deliveryStatus: "FAILED",
+          deliveryAttempts: { increment: 1 },
+          nextAttemptAt: failure.nextAttemptAt,
+          lastError: failure.code.slice(0, 160),
+        },
       });
     },
   };

@@ -126,6 +126,7 @@ export function advisoryLockKey(name: string): bigint {
 export const ADVISORY_LOCKS = {
   scheduler: advisoryLockKey("portfolio:scheduler"),
   publication: advisoryLockKey("portfolio:publication"),
+  maintenance: advisoryLockKey("portfolio:maintenance"),
 } as const;
 
 /**
