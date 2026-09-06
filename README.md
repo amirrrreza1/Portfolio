@@ -36,7 +36,7 @@ Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingu
 - Validation: Zod contracts shared by the web and API workspaces
 - Admin authentication: Argon2id password verification plus WebAuthn/passkeys, opaque server-side sessions, and secure cookies
 - Locales: English and Persian, locale-prefixed URLs, reciprocal `hreflang`, RTL typography
-- Deployment: separate non-root web/API images with PostgreSQL and MinIO object storage
+- Deployment: one hardened Docker Compose project containing Caddy, web/API, PostgreSQL, MinIO, workers, migrations, and nightly encrypted backups
 
 ### Why Markdown and not MDX
 
@@ -60,6 +60,17 @@ pnpm format:check
 ```
 
 `pnpm dev` starts the frontend at `http://localhost:3000`, which redirects to `/en`. Use `pnpm dev:api` for the API at `http://localhost:4000`; it serves versioned health, public portfolio/blog reads, contact, authentication, and owner-admin endpoints.
+
+## Docker Compose deployment
+
+The root `compose.yaml` is the production entrypoint. Copy `infrastructure/docker/.env.compose.example` to an ignored environment file, replace every placeholder, create the three ignored secret files described in the [backup and restore runbook](docs/runbooks/backup-and-restore.md), and then run:
+
+```bash
+docker compose --env-file infrastructure/docker/.env.compose --profile full up -d --build
+docker compose --env-file infrastructure/docker/.env.compose --profile full ps
+```
+
+This starts the complete application, its one-shot migrations, background workers, Caddy edge, and the nightly encrypted PostgreSQL/MinIO backup service. Use `infrastructure/docker/backupctl.sh` or `backupctl.ps1` to create, list, and download backups manually.
 
 Two commands are explicit-apply and touch real infrastructure, so they are not part of `pnpm dev`:
 

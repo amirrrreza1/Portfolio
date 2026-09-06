@@ -106,7 +106,7 @@ Compose dependency health can improve local startup but is not a substitute for 
 
 ## 9. Local development topology
 
-The eventual `compose.yaml` supports profiles:
+The implemented root `compose.yaml` includes the hardened production topology and supports profiles:
 
 - `dependencies`: PostgreSQL, MinIO, and a local mail catcher; web/API run with pnpm on the host.
 - `full`: production-like web/API/dependencies behind the edge.
@@ -134,7 +134,12 @@ infrastructure/docker/Caddyfile (or selected edge config)
 .dockerignore
 infrastructure/docker/ops.Dockerfile
 infrastructure/docker/scripts/backup.sh
+infrastructure/docker/scripts/backup-and-notify.sh
+infrastructure/docker/scripts/backup-scheduler.sh
+infrastructure/docker/scripts/backup-healthcheck.sh
 infrastructure/docker/scripts/restore.sh
+infrastructure/docker/backupctl.sh
+infrastructure/docker/backupctl.ps1
 ```
 
 Final file placement may adapt to the hosting provider, but the security and migration rules above remain mandatory.

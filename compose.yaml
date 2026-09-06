@@ -1,0 +1,4 @@
+include:
+  - path:
+      - ./infrastructure/docker/compose.yaml
+      - ./infrastructure/docker/compose.production.yaml

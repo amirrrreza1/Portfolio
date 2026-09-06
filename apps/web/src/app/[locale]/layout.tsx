@@ -7,6 +7,11 @@ import { notFound } from "next/navigation";
 import { getMessages } from "@/i18n/messages";
 import type { Metadata } from "next";
 
+// This locale shell reads request-time public data. Keep the same explicit
+// blocking boundary as the root shell so Cache Components does not require a
+// loading fallback around the entire portfolio during legacy rollback.
+export const instant = false;
+
 export async function generateMetadata({
   params,
 }: Readonly<{

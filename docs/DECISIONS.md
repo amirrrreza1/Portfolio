@@ -20,6 +20,7 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 | ADR-014 | Bounded last-known-good public reads during API outages                            | Accepted                        | 2026-08-09 |
 | ADR-015 | PostgreSQL-native article authoring and publication                                | Accepted                        | 2026-08-25 |
 | ADR-016 | Tagged Next Cache Components at the public DTO boundary                            | Accepted                        | 2026-09-06 |
+| ADR-017 | Portable Docker Compose deployment with encrypted Telegram backup delivery         | Accepted                        | 2026-09-06 |
 
 ---
 
@@ -427,6 +428,31 @@ Database is the default portfolio source after cutover. `PORTFOLIO_DATA_SOURCE=l
 ### Consequences
 
 The public shell remains request-bound while published DTO reads are reused and selectively expired. A production-build proof showed an immediate repeat of `/en/blog` made zero upstream calls; expiring `public:articles:en` refreshed the article list, taxonomy, and feed-index entries without refetching site or appearance data. The proof is recorded in [`status/evidence/M9-shared-cache-proof.md`](status/evidence/M9-shared-cache-proof.md).
+
+---
+
+## ADR-017 — Portable Docker Compose deployment with encrypted Telegram backup delivery
+
+**Status:** Accepted, 2026-09-06.
+
+### Context
+
+M9 needs one reproducible deployment unit without binding the application to a proprietary platform scheduler, database, object store, or edge runtime. The owner wants the full project operated through Docker Compose and wants an encrypted backup delivered nightly to a private Telegram chat while remaining manually downloadable from the host.
+
+### Decision
+
+Deploy the first production release as one hardened Docker Compose project on an owner-selected Linux Docker host. Compose owns Caddy, the Next.js web service, NestJS API, PostgreSQL, MinIO, one-shot migrations, publication/scheduler/maintenance workers, and a dedicated backup scheduler. Caddy remains the TLS edge; PostgreSQL and MinIO expose no public ports. Persistent state lives in named volumes, and backup passphrases plus Telegram credentials enter the backup container as mounted secret files.
+
+At a configured local time each night, the non-root backup service creates the existing AES-256-encrypted combined PostgreSQL/MinIO archive, retains it locally for a bounded period, and sends it with its SHA-256 file to the configured private Telegram chat. Oversized archives are split only after encryption. Manual tooling can list archives, trigger a backup, and copy an archive plus checksum out of the Compose volume without exposing a download endpoint on the public application.
+
+Telegram delivery is not the only off-site retention system and does not by itself close the production recovery gate. The decryption passphrase stays outside Telegram, another independently controlled copy is required, and restore evidence must still be produced from production-sized data. The physical host/provider, domain/DNS, final capacity, and alert receiver remain production choices.
+
+### Rejected alternatives
+
+- **Platform-specific deployment and cron.** This would couple the release to an unselected provider and split operational ownership across incompatible control planes.
+- **A public backup-download endpoint.** This creates a high-value internet-facing exfiltration surface inside the application.
+- **Unencrypted Telegram uploads.** Possession of the chat or bot account would immediately expose database content and private media.
+- **Telegram as the only retained copy.** Chat, account, bot, or provider loss would become total backup loss.
 
 ---
 

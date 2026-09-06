@@ -8,6 +8,44 @@ Build the operations image from `infrastructure/docker/ops.Dockerfile`, mount a 
 
 Copy the resulting `.tar.gz.gpg` and `.sha256` files to access-controlled off-site storage with lifecycle retention. Keep the passphrase in a different secret system. Alert if the job fails, produces an empty archive, or misses its schedule.
 
+### Compose nightly backup and Telegram delivery
+
+The `backup` service runs continuously with no inbound network, creates one encrypted PostgreSQL/MinIO backup each night, retains it in the `backup-data` volume, and sends it to the configured Telegram chat. Set `BACKUP_TIME_ZONE` and `BACKUP_TIME` (`HH:MM`) in the Compose environment. `BACKUP_RUN_ON_START=true` is useful for the first deployment proof; normally leave it false to avoid a new archive on every container restart. A successful archive and Telegram delivery updates a persistent health marker; the container becomes unhealthy after `BACKUP_HEALTH_MAX_AGE_MINUTES` without success (26 hours by default).
+
+Before starting the full profile, create these ignored files under `infrastructure/docker/secrets/` (or override their paths):
+
+- `backup-passphrase`: a long unique passphrase kept separately from downloaded archives;
+- `telegram-bot-token`: the token issued for the dedicated backup bot;
+- `telegram-chat-id`: the numeric private chat or group ID that has already messaged/added the bot.
+
+Restrict the files to the deployment administrator. Start the production topology with both Compose files; the `full` profile includes the backup service. Confirm its next run with `docker compose ... logs backup`. Each successful delivery sends the encrypted archive followed by its SHA-256 file. Archives larger than `TELEGRAM_MAX_FILE_BYTES` are sent as ordered `.part-0000` files; concatenate them in lexical order before checking the original `.sha256` file and restoring.
+
+Telegram is a delivery convenience, not the only acceptable off-site backup system: chat deletion, bot revocation, provider limits, or account loss can remove access. Retain another access-controlled off-site copy for the production recovery gate.
+
+### Manual operations
+
+From the repository, use the helper matching the host:
+
+```sh
+# Linux/macOS
+./infrastructure/docker/backupctl.sh list
+./infrastructure/docker/backupctl.sh create
+./infrastructure/docker/backupctl.sh download
+./infrastructure/docker/backupctl.sh download portfolio-YYYYMMDDTHHMMSSZ.tar.gz.gpg /safe/destination
+```
+
+```powershell
+# Windows PowerShell
+.\infrastructure\docker\backupctl.ps1 list
+.\infrastructure\docker\backupctl.ps1 create
+.\infrastructure\docker\backupctl.ps1 download
+.\infrastructure\docker\backupctl.ps1 download portfolio-YYYYMMDDTHHMMSSZ.tar.gz.gpg D:\safe\destination
+```
+
+`download` without a name selects the newest archive. It copies both the encrypted archive and checksum and refuses to overwrite an existing download. `create` runs immediately in the existing backup container, uses the same exclusive lock as the nightly job, and also delivers the result to Telegram.
+
+Both helpers read `infrastructure/docker/.env.compose` by default. Set `COMPOSE_ENV_FILE` to an alternate deployment environment-file path when needed.
+
 ## Restore drill
 
 1. Provision an isolated PostgreSQL database and empty MinIO bucket with credentials that cannot reach production.

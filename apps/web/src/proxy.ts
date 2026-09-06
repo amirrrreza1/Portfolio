@@ -33,7 +33,7 @@ function securityPolicy(nonce: string): string {
     "object-src 'none'",
     "frame-ancestors 'none'",
     `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self'",
+    `style-src 'self'${development ? " 'unsafe-inline'" : ""}`,
     "img-src 'self' data: blob: https:",
     "font-src 'self'",
     "connect-src 'self'",
@@ -86,7 +86,11 @@ function secure(response: NextResponse, nonce: string): NextResponse {
  * than left to `default-src`, so that a later `default-src` relaxation cannot
  * silently widen them.
  *
- * `style-src` is self-only. Syntax highlighting converts Shiki's finite
+ * Production `style-src` is self-only. Development additionally permits
+ * inline styles because Turbopack's devtools and React Three Fiber's canvas
+ * sizing inject them; that exception is selected only by Next's fixed
+ * `NODE_ENV=development` process mode and never reaches a production build.
+ * Syntax highlighting converts Shiki's finite
  * dual-theme palette to static classes before sanitized HTML is persisted, so
  * neither public content nor the shared admin preview needs inline styles.
  */
@@ -102,7 +106,7 @@ function adminSecurityPolicy(nonce: string): string {
     "manifest-src 'none'",
     "media-src 'none'",
     `script-src 'self' 'nonce-${nonce}'${development ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self'",
+    `style-src 'self'${development ? " 'unsafe-inline'" : ""}`,
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",

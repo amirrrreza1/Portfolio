@@ -20,11 +20,14 @@ next-env.d.ts
 test-results/
 playwright-report/
 blob-report/
+.playwright-cli/
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
 
 # local runtime data
 infrastructure/docker/data/
+infrastructure/docker/secrets/
+infrastructure/docker/downloads/
 uploads/
 migration-reconciliation.json
 

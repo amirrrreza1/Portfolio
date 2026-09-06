@@ -3,7 +3,7 @@ FROM minio/mc:${MINIO_CLIENT_VERSION} AS minio-client
 
 FROM postgres:17.6-bookworm
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y ca-certificates gnupg \
+    && apt-get install --no-install-recommends -y ca-certificates curl gnupg jq tzdata util-linux \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=minio-client /usr/bin/mc /usr/local/bin/mc
 RUN groupadd --gid 10001 portfolio \

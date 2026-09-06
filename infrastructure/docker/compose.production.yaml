@@ -11,6 +11,8 @@ services:
     restart: always
   maintenance:
     restart: always
+  backup:
+    restart: always
   web:
     restart: always
   edge:

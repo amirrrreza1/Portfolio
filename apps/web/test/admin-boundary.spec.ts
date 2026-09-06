@@ -1,6 +1,6 @@
 import { SESSION_COOKIE_NAME } from "@portfolio/contracts/auth";
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { isAdminPath } from "../src/server/admin-routes";
 import { proxyWithDependencies } from "../src/proxy";
@@ -23,6 +23,10 @@ function admin(path: string, cookie?: string): NextRequest {
 }
 
 const SESSION_COOKIE = `${SESSION_COOKIE_NAME}=opaque-token`;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("admin path classification", () => {
   it("matches the prefix and its children, and nothing that merely starts with it", () => {
@@ -124,6 +128,26 @@ describe("admin proxy boundary", () => {
 });
 
 describe("admin response policy — SECURITY.md §10", () => {
+  it("permits devtool styles only in development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const developmentResponse = await proxyWithDependencies(
+      admin("/admin", SESSION_COOKIE)
+    );
+    expect(
+      developmentResponse.headers.get("content-security-policy")
+    ).toContain("style-src 'self' 'unsafe-inline'");
+
+    vi.stubEnv("NODE_ENV", "production");
+    const productionResponse = await proxyWithDependencies(
+      admin("/admin", SESSION_COOKIE)
+    );
+    const productionCsp = productionResponse.headers.get(
+      "content-security-policy"
+    )!;
+    expect(productionCsp).toContain("style-src 'self'");
+    expect(productionCsp).not.toContain("'unsafe-inline'");
+  });
+
   it("is stricter than the public policy in every clause it changes", async () => {
     const adminResponse = await proxyWithDependencies(
       admin("/admin", SESSION_COOKIE)

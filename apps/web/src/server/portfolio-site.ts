@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Locale } from "@portfolio/contracts/common";
+import { connection } from "next/server";
 import { cache } from "react";
 
 import { parsePortfolioDataSource } from "./portfolio-data-source";
@@ -21,6 +22,12 @@ const readPortfolioSite = async (
   locale: Locale
 ): Promise<PortfolioSiteView> => {
   const source = parsePortfolioDataSource(process.env.PORTFOLIO_DATA_SOURCE);
+  if (source === "legacy") {
+    // The rollback adapter derives the displayed age from the current date.
+    // Make that explicitly request-time work under Cache Components so Next's
+    // prerender analysis never treats a changing clock value as static output.
+    await connection();
+  }
 
   return selectPortfolioSite(source, locale, {
     readLegacy: getLegacySiteData,
