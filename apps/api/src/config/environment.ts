@@ -11,6 +11,7 @@ function hasProtocol(value: string, protocols: readonly string[]): boolean {
 const apiEnvironmentSchema = z.object({
   API_HOST: z.string().trim().min(1).default("0.0.0.0"),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4_000),
+  API_TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   DATABASE_URL: z
     .string()
     .min(1)
@@ -82,6 +83,7 @@ const apiEnvironmentSchema = z.object({
 export type ApiEnvironment = {
   readonly host: string;
   readonly port: number;
+  readonly proxyHops: number;
   readonly databaseUrl: string;
   readonly smtpUrl: string;
   readonly contactFromEmail: string;
@@ -125,6 +127,7 @@ export function parseApiEnvironment(
   return {
     host: result.data.API_HOST,
     port: result.data.API_PORT,
+    proxyHops: result.data.API_TRUST_PROXY_HOPS,
     databaseUrl: result.data.DATABASE_URL,
     smtpUrl: result.data.SMTP_URL,
     contactFromEmail: result.data.CONTACT_FROM_EMAIL,

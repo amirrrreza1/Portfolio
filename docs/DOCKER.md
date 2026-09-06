@@ -27,7 +27,7 @@ The MinIO deployment uses the same private adapter contract in local and product
 - Stages: dependency resolution with frozen lockfile, workspace build, production dependency pruning, minimal runtime copy.
 - Cache pnpm’s content-addressable store without embedding credentials.
 - Never copy `.env`, `.git`, local uploads, tests, source maps (unless secured for monitoring), package-manager caches, or development dependencies into runtime images. Article Markdown is fetched from PostgreSQL through the API and never baked into a runtime image.
-- Next.js uses standalone output (`output: "standalone"`, which the current empty `next.config.ts` does not set) and includes only required workspace traces/public assets.
+- Next.js uses the implemented standalone output (`output: "standalone"`) and includes only required workspace traces/public assets.
 - Only the `woff2` font files actually referenced by the appearance registry are copied into the image. The `.eot`, `.ttf`, and `.woff` duplicates are not shipped.
 - API runs compiled JavaScript; TypeScript tooling and Nest CLI stay out of runtime.
 - Generate an SBOM and scan final images in CI. Rebuild regularly for base-image security updates.
@@ -57,6 +57,7 @@ PostgreSQL and MinIO run with least-privilege settings and are never exposed pub
 - PostgreSQL and MinIO accept only required private-service traffic.
 - Browser requests use `https://site.example/api/v1`; no production credentialed cross-origin API is required.
 - The edge applies request/header/body limits and TLS policy; the API repeats relevant validation.
+- `API_TRUST_PROXY_HOPS` is `0` for direct local API traffic and `2` for the repository Compose path (`Caddy -> Next.js -> API`). Change it only when the private proxy topology changes. Trusting too many hops lets a caller supply the client address used by authentication and contact throttles; trusting too few collapses visitors onto a proxy address.
 
 ## 6. Secrets and environment
 

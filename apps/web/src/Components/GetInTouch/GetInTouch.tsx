@@ -35,6 +35,7 @@ export default function GetInTouchForm({
     reset,
   } = useForm<FormData>({
     resolver: zodResolver(ContactUsSchema),
+    defaultValues: { company: "" },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -42,7 +43,7 @@ export default function GetInTouchForm({
       const response = await fetch(`${API_BASE_URL}/contact`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...data, company: "", startedAt }),
+        body: JSON.stringify({ ...data, startedAt }),
       });
       if (!response.ok) throw new Error("Contact request failed");
 
@@ -66,6 +67,19 @@ export default function GetInTouchForm({
       <Devider />
 
       <form onSubmit={handleSubmit(onSubmit)} className="px-1 md:px-4 lg:px-6">
+        <div
+          aria-hidden="true"
+          className="absolute top-auto -left-[10000px] h-px w-px overflow-hidden"
+        >
+          <label htmlFor="contact-company">Company</label>
+          <input
+            id="contact-company"
+            type="text"
+            autoComplete="off"
+            tabIndex={-1}
+            {...register("company")}
+          />
+        </div>
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={`${errors.name?.message ? "text-danger" : ""}`}>

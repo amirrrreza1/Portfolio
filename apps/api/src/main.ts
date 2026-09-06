@@ -12,7 +12,13 @@ async function bootstrap(): Promise<void> {
   const environment = parseApiEnvironment(process.env);
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: false }),
+    new FastifyAdapter({
+      logger: false,
+      // Only deployment configuration may opt into forwarded client
+      // addresses. The bounded hop count prevents an arbitrary X-Forwarded-For
+      // value from bypassing the contact and authentication throttles.
+      trustProxy: environment.proxyHops > 0 ? environment.proxyHops : false,
+    }),
     APPLICATION_OPTIONS
   );
 

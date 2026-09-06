@@ -61,6 +61,18 @@ describe("ContactSubmissionService", () => {
     expect(delivery.send).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["a missing form start time", undefined],
+    ["a form completed too quickly", Date.parse("2026-08-10T00:00:03Z")],
+  ])("silently suppresses %s", async (_case, startedAt) => {
+    const { service, store, delivery } = createFixture();
+
+    await service.submit({ ...submission, startedAt }, "client-key");
+
+    expect(store.getSettings).not.toHaveBeenCalled();
+    expect(delivery.send).not.toHaveBeenCalled();
+  });
+
   it("retains a failed delivery without exposing it to the sender", async () => {
     const { service, store, delivery } = createFixture();
     vi.mocked(delivery.send).mockRejectedValueOnce(

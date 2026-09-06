@@ -25,6 +25,7 @@ describe("API environment", () => {
     expect(parseApiEnvironment(validEnvironment)).toEqual({
       host: "0.0.0.0",
       port: 4_000,
+      proxyHops: 0,
       databaseUrl: validEnvironment.DATABASE_URL,
       smtpUrl: validEnvironment.SMTP_URL,
       contactFromEmail: validEnvironment.CONTACT_FROM_EMAIL,
@@ -53,13 +54,22 @@ describe("API environment", () => {
         ...validEnvironment,
         API_HOST: "127.0.0.1",
         API_PORT: "4100",
+        API_TRUST_PROXY_HOPS: "2",
       })
-    ).toMatchObject({ host: "127.0.0.1", port: 4_100 });
+    ).toMatchObject({ host: "127.0.0.1", port: 4_100, proxyHops: 2 });
   });
 
   it.each([
     [{ ...validEnvironment, API_PORT: "0" }, "API_PORT"],
     [{ ...validEnvironment, API_PORT: "70000" }, "API_PORT"],
+    [
+      { ...validEnvironment, API_TRUST_PROXY_HOPS: "-1" },
+      "API_TRUST_PROXY_HOPS",
+    ],
+    [
+      { ...validEnvironment, API_TRUST_PROXY_HOPS: "6" },
+      "API_TRUST_PROXY_HOPS",
+    ],
     [
       { ...validEnvironment, DATABASE_URL: "mysql://root:secret@db/app" },
       "DATABASE_URL",
