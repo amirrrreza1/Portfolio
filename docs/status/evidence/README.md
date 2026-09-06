@@ -4,6 +4,10 @@ This directory stores deterministic, non-secret reports produced while proving m
 
 Entries are grouped by milestone and, within a milestone, ordered so the run that closed its gate comes last.
 
+## M0 — baseline, guardrails, and decisions
+
+- [`M0-legacy-visual-baseline.md`](M0-legacy-visual-baseline.md) records the isolated recovery and inspected Chromium captures of the two frozen legacy routes.
+
 ## M2 — deterministic legacy migration
 
 - [`M2-run.md`](M2-run.md) records the applied PostgreSQL/MinIO legacy migration.
@@ -64,7 +68,4 @@ Entries are grouped by milestone and, within a milestone, ordered so the run tha
 ## M9 — operations, release, and cleanup
 
 - [`M9-local-release-proof.md`](M9-local-release-proof.md) records the clean production build and policy matrix, the complete local Compose topology, strict readiness and runtime hardening checks, and an encrypted PostgreSQL/MinIO restore into isolated targets. It is repository evidence, not a substitute for the independent security review or production rollout window.
-
-## M7 — portfolio CMS
-
-- [`M7-portfolio-cms-live.md`](M7-portfolio-cms-live.md) records the run that closed M7 — 31 API checks across the authenticated boundary, migrated inventory, conflict safety, archive protections, verified media and atomic resume activation, revision/audit/invalidation evidence, and the public reads taken afterwards, plus one real-browser test of the workspace and its conflict handling. It also records the two defects the run found: an unfinished record that returned `500` for a whole public collection, and the M6 role-assignment guard that M7's user endpoints never called.
+- [`M9-shared-cache-proof.md`](M9-shared-cache-proof.md) records the production-build counting-proxy proof: an immediate repeat blog render made zero upstream requests, then collective article invalidation refreshed exactly the three article-derived entries without flushing site or appearance data.

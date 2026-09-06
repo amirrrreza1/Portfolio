@@ -9,7 +9,7 @@ What that means concretely:
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
 - **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
-Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingual articles, public portfolio/blog reads, accessible appearance, two-factor admin authentication, portfolio CMS, Markdown authoring/import/export/restore, discovery/SEO, and scheduled publication. The final M8 run passed 63 live API checks, 47 browser tests, and 817 unit/integration tests. M9 operations and launch hardening have not started, and M0 still needs owner-confirmed EmailJS revocation and evidence reconciliation. [docs/STATUS.md](docs/STATUS.md) summarizes the current evidence; [docs/ROADMAP.md](docs/ROADMAP.md) defines the remaining gates.
+Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingual articles, public portfolio/blog reads, accessible appearance, two-factor admin authentication, portfolio CMS, Markdown authoring/import/export/restore, discovery/SEO, and scheduled publication. M9's repository-owned operations foundation is also implemented and locally proven: the latest release run passed 829 unit/integration assertions and all 45 public Chromium checks, exercised the complete hardened Compose topology, restored an encrypted PostgreSQL/MinIO backup into isolated targets with zero marker differences, and proved tagged shared public-data caching plus targeted invalidation in the production build. M9 remains open for the owner-selected production environment, independent security assessment, production-sized restore, staged rollout, and accepted rollback window. M0's repository evidence is reconciled and now needs only owner-confirmed EmailJS revocation. [docs/STATUS.md](docs/STATUS.md) summarizes the current evidence; [docs/ROADMAP.md](docs/ROADMAP.md) defines the remaining gates.
 
 ## Workspace
 
@@ -59,7 +59,7 @@ pnpm test
 pnpm format:check
 ```
 
-`pnpm dev` starts the frontend at `http://localhost:3000`, which redirects to `/en`. Use `pnpm dev:api` for the API at `http://localhost:4000`; it currently serves `GET /api/v1/health` and `POST /api/v1/contact`.
+`pnpm dev` starts the frontend at `http://localhost:3000`, which redirects to `/en`. Use `pnpm dev:api` for the API at `http://localhost:4000`; it serves versioned health, public portfolio/blog reads, contact, authentication, and owner-admin endpoints.
 
 Two commands are explicit-apply and touch real infrastructure, so they are not part of `pnpm dev`:
 
@@ -72,7 +72,7 @@ Both need a reachable PostgreSQL. `migrate:legacy` also needs an object store, r
 
 CI runs all of the above on every pull request, plus a full-history secret scan. Every package either has a real test suite or no `test` script — `--passWithNoTests` is deliberately absent, so a green run means assertions ran.
 
-Copy `.env.example` to `.env` only for local development. Never commit real credentials. `PUBLIC_SITE_URL` and `BIRTH_DATE` are required for a production build; the build fails rather than defaulting to `localhost` or rendering an empty age.
+Copy `.env.example` to `.env` only for local development. Never commit real credentials. `PUBLIC_SITE_URL` is required in production; database mode resolves age from persisted settings, while the explicit legacy rollback adapter additionally requires `BIRTH_DATE`.
 
 ## Documentation
 

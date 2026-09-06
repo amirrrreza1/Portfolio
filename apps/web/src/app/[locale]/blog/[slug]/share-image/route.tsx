@@ -27,8 +27,6 @@ import path from "node:path";
  * Persian and English are both real cases here: a card with tofu in it is
  * worse than no card.
  */
-export const dynamic = "force-dynamic";
-
 type RouteParams = Promise<{ locale: string; slug: string }>;
 
 export async function GET(

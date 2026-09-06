@@ -3,8 +3,6 @@ import { getSiteUrl } from "@/Utils/siteUrl";
 import { LOCALES } from "@portfolio/contracts/common";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 /**
  * The sitemap index, which is what `robots.txt` points at.
  *

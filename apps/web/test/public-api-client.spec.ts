@@ -104,6 +104,25 @@ describe("public API last-known-good client", () => {
     });
   });
 
+  it("reuses a fresh process entry when the Proxy gate opts in", async () => {
+    let currentTime = 1_000;
+    const cache = new TestCache();
+    const request = vi.fn().mockResolvedValue(jsonResponse(envelope("en")));
+    const read = createPublicProjectsClient({
+      apiOrigin: "http://127.0.0.1:4000",
+      fetch: request as unknown as typeof fetch,
+      cache,
+      now: () => currentTime,
+      reuseFresh: true,
+    });
+
+    await expect(read("en")).resolves.toMatchObject({ stale: false });
+    currentTime = 2_000;
+    await expect(read("en")).resolves.toMatchObject({ stale: false });
+
+    expect(request).toHaveBeenCalledOnce();
+  });
+
   it("serves a validated warm value during a retryable outage", async () => {
     let currentTime = 1_000;
     const cache = new TestCache();

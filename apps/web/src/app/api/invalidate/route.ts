@@ -17,9 +17,6 @@ import {
  * or reflects an origin.
  */
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
 /**
  * Module-scoped so the replay window survives between requests in one process.
  *

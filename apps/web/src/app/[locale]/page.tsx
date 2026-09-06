@@ -1,7 +1,7 @@
 import { LOCALES, isLocale } from "@portfolio/contracts/common";
 import { notFound } from "next/navigation";
 
-import HomePage from "../(Home Page)/page";
+import HomePage from "@/features/home/HomePage";
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));

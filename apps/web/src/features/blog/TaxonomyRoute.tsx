@@ -78,7 +78,11 @@ export async function buildTaxonomyMetadata(
       route.slug,
       route.cursor ?? undefined
     );
-    if (page === null) return { robots: { index: false } };
+    // Resolve the canonical 404 in metadata generation as well as in the
+    // streamed page body. Cache Components can otherwise flush a partial 200
+    // shell before a nested `notFound()` is raised, which turns an unknown
+    // taxonomy term into a misleading successful response.
+    if (page === null) notFound();
 
     const messages = getMessages(route.locale).blog;
     const heading =
@@ -136,6 +140,28 @@ export async function buildTaxonomyMetadata(
     }
     throw error;
   }
+}
+
+/**
+ * Resolve the taxonomy before the route starts streaming. This keeps an
+ * unknown term a real HTTP 404 under Cache Components instead of allowing the
+ * shared public shell to flush as a 200 before the nested body is evaluated.
+ */
+export async function assertTaxonomyExists(
+  kind: PublicTaxonomyKind,
+  params: TaxonomyRouteParams,
+  searchParams: TaxonomyRouteSearch
+): Promise<void> {
+  const { locale, slug } = await params;
+  const route = resolve(locale, slug, await searchParams);
+  if (route === null) notFound();
+  const { page } = await getPortfolioTaxonomyPage(
+    route.locale,
+    kind,
+    route.slug,
+    route.cursor ?? undefined
+  );
+  if (page === null) notFound();
 }
 
 export async function TaxonomyRoute({

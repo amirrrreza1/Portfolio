@@ -271,9 +271,8 @@ describe("public route availability gate", () => {
       )
     ).resolves.toBe("available");
 
-    // A withdrawn category is the same kind of answer as a missing project:
-    // the API replied, and its reply was "no". Treating it as an outage would
-    // answer a `404` page with a site-wide `503`.
+    // A withdrawn category is a canonical route-level 404: the API replied,
+    // and its reply was "no". It must not become a site-wide `503`.
     await expect(
       evaluatePublicRouteAvailability(
         {
@@ -288,7 +287,7 @@ describe("public route availability gate", () => {
           },
         })
       )
-    ).resolves.toBe("available");
+    ).resolves.toBe("not-found");
 
     await expect(
       evaluatePublicRouteAvailability(

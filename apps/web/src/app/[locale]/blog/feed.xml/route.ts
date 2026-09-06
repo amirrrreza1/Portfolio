@@ -6,8 +6,6 @@ import { getSiteUrl } from "@/Utils/siteUrl";
 import { isLocale } from "@portfolio/contracts/common";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 /**
  * One RSS feed per locale, generated from the same `feed-index` read that
  * produces the sitemap and the index page's structured data.

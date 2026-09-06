@@ -213,6 +213,10 @@ services:
       NODE_ENV: production
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:?PUBLIC_SITE_URL is required}
       API_INTERNAL_ORIGIN: http://api:4000
+      # The code also defaults to database after cutover. Keep this explicit in
+      # the production topology so `docker compose config` proves the active
+      # source without relying on an application default.
+      PORTFOLIO_DATA_SOURCE: database
       CACHE_INVALIDATION_SECRET: ${CACHE_INVALIDATION_SECRET:?CACHE_INVALIDATION_SECRET is required}
     depends_on:
       api: { condition: service_healthy }

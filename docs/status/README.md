@@ -4,7 +4,7 @@ This directory contains evidence-backed snapshots for every milestone that has s
 
 | File           | Milestone                            | Current status | Snapshot   |
 | -------------- | ------------------------------------ | -------------- | ---------- |
-| [M0.md](M0.md) | Baseline, guardrails, and decisions  | Blocked        | 2026-08-14 |
+| [M0.md](M0.md) | Baseline, guardrails, and decisions  | Blocked        | 2026-09-06 |
 | [M1.md](M1.md) | Trusted domain and media foundation  | Complete       | 2026-08-14 |
 | [M2.md](M2.md) | Deterministic legacy migration       | Complete       | 2026-08-24 |
 | [M3.md](M3.md) | PostgreSQL-native article foundation | Complete       | 2026-08-26 |
@@ -13,10 +13,10 @@ This directory contains evidence-backed snapshots for every milestone that has s
 | [M6.md](M6.md) | Authentication foundation            | Complete       | 2026-08-27 |
 | [M7.md](M7.md) | Portfolio CMS                        | Complete       | 2026-08-28 |
 | [M8.md](M8.md) | Blog authoring, publishing, and SEO  | Complete       | 2026-09-04 |
-| [M9.md](M9.md) | Operations, release, and cleanup     | In progress    | 2026-09-05 |
+| [M9.md](M9.md) | Operations, release, and cleanup     | In progress    | 2026-09-06 |
 
-M9 is in progress. Its repository-owned operational foundation is implemented; environment-dependent deployment, restore, independent-review, and rollout gates remain open.
+M9 is in progress. Its repository-owned operational foundation, production-like local deployment, encrypted isolated local restore, and tagged shared-cache/invalidation boundary are evidenced; the owner-selected production environment, independent review, production-sized restore, rollout, and rollback-window gates remain open.
 
-M0 is the other open milestone. Its repository-owned work is finished; the gate is held by one owner action at the EmailJS provider plus two evidence discrepancies, all recorded in [M0.md](M0.md).
+M0 is the other open milestone. Its repository-owned work and evidence reconciliation are finished; the gate is held only by the owner action at the EmailJS provider recorded in [M0.md](M0.md).
 
 The summary is [STATUS.md](../STATUS.md); milestone definitions and exit gates are in [ROADMAP.md](../ROADMAP.md).

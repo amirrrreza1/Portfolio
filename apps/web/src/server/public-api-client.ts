@@ -37,9 +37,11 @@ import {
   type PublicProjectDetailEnvelope,
   type PublicSiteEnvelope,
 } from "@portfolio/contracts/portfolio";
+import { connection } from "next/server";
 import { z } from "zod";
 
 import { parseApiOrigin } from "./api-origin";
+import { readNextCachedPublicApi } from "./next-public-api-cache";
 
 const PUBLIC_MAX_STALE_MS = 60 * 60 * 1_000;
 const ARTICLE_MAX_STALE_MS = 15 * 60 * 1_000;
@@ -78,6 +80,8 @@ interface PublicClientOptions {
   readonly now?: () => number;
   readonly timeoutMs?: number;
   readonly maxStaleMs?: number;
+  /** Reuse a fresh process entry before fetching (used by the Proxy gate). */
+  readonly reuseFresh?: boolean;
   readonly onStale?: (event: {
     readonly key: string;
     readonly ageMs: number;
@@ -464,6 +468,7 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
 ): (locale: Locale) => Promise<{ envelope: TEnvelope; stale: boolean }> {
   const apiOrigin = parseApiOrigin(options.apiOrigin);
   const request = options.fetch ?? fetch;
+  const useNextSharedCache = options.fetch === undefined;
   const cache = options.cache ?? processCache;
   const now = options.now ?? Date.now;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -479,6 +484,12 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
   }
 
   return async (locale: Locale) => {
+    // The root appearance shell is request-bound by ADR-009, and ADR-014's
+    // stale-age check also needs the current clock. Declare that boundary
+    // before the clock is read; the API payload itself remains shared inside
+    // `readNextCachedPublicApi` below.
+    if (useNextSharedCache) await connection();
+
     // Built by the shared contract, not spelled here: the API names these same
     // strings in invalidation events, and a mismatch is not a type error — it
     // is a purge that silently does nothing.
@@ -493,24 +504,51 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
       locale,
       options.envelopeSchema
     );
+    if (options.reuseFresh && cached !== undefined) {
+      const ageMs = now() - cached.validatedAt;
+      if (ageMs >= 0 && ageMs <= revalidateSeconds * 1_000) {
+        return { envelope: cached.envelope, stale: false };
+      }
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await request(
-        new URL(`/api/v1/public/${locale}/${options.resourcePath}`, apiOrigin),
-        {
-          headers: {
-            accept: "application/json",
-            ...(cached ? { "if-none-match": cached.etag } : {}),
-          },
-          signal: controller.signal,
-          next: {
-            revalidate: revalidateSeconds,
-            tags,
-          },
-        }
+      const url = new URL(
+        `/api/v1/public/${locale}/${options.resourcePath}`,
+        apiOrigin
       );
+      let sharedValidatedAt: number | undefined;
+      const response = useNextSharedCache
+        ? await readNextCachedPublicApi(
+            url.href,
+            tags,
+            revalidateSeconds,
+            timeoutMs
+          ).then((shared) => {
+            sharedValidatedAt = shared.validatedAt;
+            return new Response(
+              shared.body === null ? null : JSON.stringify(shared.body),
+              {
+                status: shared.status,
+                headers: {
+                  "content-type": "application/json",
+                  ...(shared.etag === null ? {} : { etag: shared.etag }),
+                },
+              }
+            );
+          })
+        : await request(url, {
+            headers: {
+              accept: "application/json",
+              ...(cached ? { "if-none-match": cached.etag } : {}),
+            },
+            signal: controller.signal,
+            next: {
+              revalidate: revalidateSeconds,
+              tags,
+            },
+          });
 
       if (response.status === 304 && cached !== undefined) {
         const refreshed = { ...cached, validatedAt: now() };
@@ -526,7 +564,19 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
         const etag = response.headers.get("etag");
         if (!etag) throw new Error("Public API response is missing its ETag.");
 
-        cache.set(key, { envelope, etag, validatedAt: now() }, tags);
+        const validatedAt = sharedValidatedAt ?? now();
+        const ageMs = now() - validatedAt;
+        if (ageMs < 0 || ageMs > maxStaleMs) {
+          return serveStaleOrThrow(
+            cached,
+            key,
+            now(),
+            maxStaleMs,
+            options.onStale
+          );
+        }
+
+        cache.set(key, { envelope, etag, validatedAt }, tags);
         return { envelope, stale: false };
       }
 
@@ -539,6 +589,12 @@ function createLocalizedPublicClient<TEnvelope extends LocalizedEnvelope>(
       return serveStaleOrThrow(cached, key, now(), maxStaleMs, options.onStale);
     } catch (error) {
       if (error instanceof PublicApiResponseError) throw error;
+      if (useNextSharedCache) {
+        console.warn("Public API shared-cache read failed", {
+          key,
+          error: error instanceof Error ? error.message : "unknown error",
+        });
+      }
       return serveStaleOrThrow(cached, key, now(), maxStaleMs, options.onStale);
     } finally {
       clearTimeout(timeout);

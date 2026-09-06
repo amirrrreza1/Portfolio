@@ -129,7 +129,8 @@ describe("admin response policy — SECURITY.md §10", () => {
       admin("/admin", SESSION_COOKIE)
     );
     const publicResponse = await proxyWithDependencies(
-      new NextRequest("https://example.test/en/blog")
+      new NextRequest("https://example.test/en/blog"),
+      { dataSource: "legacy" }
     );
 
     const adminCsp = adminResponse.headers.get("content-security-policy")!;
@@ -206,7 +207,8 @@ describe("admin response policy — SECURITY.md §10", () => {
     // the admin headers to everything, would show up here rather than in a
     // browser weeks later.
     const response = await proxyWithDependencies(
-      new NextRequest("https://example.test/en/blog")
+      new NextRequest("https://example.test/en/blog"),
+      { dataSource: "legacy" }
     );
 
     expect(response.headers.get("x-robots-tag")).toBeNull();

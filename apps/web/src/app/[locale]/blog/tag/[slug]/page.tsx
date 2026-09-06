@@ -1,5 +1,6 @@
 import {
   buildTaxonomyMetadata,
+  assertTaxonomyExists,
   TaxonomyRoute,
   type TaxonomyRouteParams,
   type TaxonomyRouteSearch,
@@ -15,12 +16,13 @@ export function generateMetadata(
   return buildTaxonomyMetadata("tag", props.params, props.searchParams);
 }
 
-export default function BlogTagPage(
+export default async function BlogTagPage(
   props: Readonly<{
     params: TaxonomyRouteParams;
     searchParams: TaxonomyRouteSearch;
   }>
 ) {
+  await assertTaxonomyExists("tag", props.params, props.searchParams);
   return (
     <TaxonomyRoute
       kind="tag"

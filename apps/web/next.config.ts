@@ -3,6 +3,14 @@ import { fileURLToPath } from "node:url";
 
 const nextConfig: NextConfig = {
   /**
+   * Public portfolio DTOs are cached at the server data boundary with
+   * `use cache`, `cacheLife`, and `cacheTag`. Without Cache Components those
+   * directives are inert and every render reaches the API even though the
+   * invalidation receiver reports a successful purge.
+   */
+  cacheComponents: true,
+
+  /**
    * Emit a self-contained server bundle with only the traced production
    * dependencies. This is what the multi-stage, non-root runtime image in
    * docs/DOCKER.md copies; without it the image would need the full

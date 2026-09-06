@@ -63,6 +63,16 @@ export function resolveLegacyThemeMigration(
 
 function consumeLegacyTheme(): ThemePreference | null {
   try {
+    // The nonce-protected pre-paint bridge may have already persisted the
+    // cookie so the first paint is correct. Preserve that value for the
+    // provider's state before hydration applies the server's older default.
+    const hintedTheme = document.documentElement.dataset.legacyTheme;
+    if (hintedTheme !== undefined) {
+      delete document.documentElement.dataset.legacyTheme;
+      window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+      return resolveLegacyThemeMigration(hintedTheme, null);
+    }
+
     const legacyTheme = resolveLegacyThemeMigration(
       window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY),
       readAppearanceCookie()
@@ -152,13 +162,36 @@ export function ThemeProvider({
    */
   useEffect(() => {
     const legacyTheme = consumeLegacyTheme();
-    if (legacyTheme === null) return;
+    if (legacyTheme === null) {
+      // A pre-paint migration can write the new cookie after the server has
+      // rendered its fallback appearance. Reconcile that cookie before the
+      // normal appearance effect leaves the server value in place.
+      const current = readAppearanceCookie();
+      if (current === null) return;
+      const { corrected, ...initialPreferences } = initialAppearance;
+      void corrected;
+      const hydratedAppearance = {
+        ...initialPreferences,
+        ...current,
+      };
+      if (
+        hydratedAppearance.theme === initialAppearance.theme &&
+        hydratedAppearance.motion === initialAppearance.motion &&
+        hydratedAppearance.blogFont === initialAppearance.blogFont &&
+        hydratedAppearance.blogSize === initialAppearance.blogSize
+      ) {
+        return;
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time cookie reconciliation
+      setAppearance(hydratedAppearance);
+      applyAppearance(hydratedAppearance);
+      return;
+    }
 
     const { corrected, ...initialPreferences } = initialAppearance;
     void corrected;
     const migratedAppearance = { ...initialPreferences, theme: legacyTheme };
     persistAppearance(migratedAppearance);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
     setAppearance(migratedAppearance);
     applyAppearance(migratedAppearance);
   }, [initialAppearance]);

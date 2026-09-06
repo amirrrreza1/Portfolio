@@ -49,7 +49,7 @@ export type PublicRouteRequirement =
       readonly slug: string;
     };
 
-export type PublicRouteAvailability = "available" | "unavailable";
+export type PublicRouteAvailability = "available" | "unavailable" | "not-found";
 
 export interface PublicRouteAvailabilityReaders {
   readonly readAppearance: (locale: Locale) => Promise<unknown>;
@@ -79,6 +79,7 @@ export interface PublicRouteAvailabilityClientOptions {
   readonly now?: () => number;
   readonly timeoutMs?: number;
   readonly maxStaleMs?: number;
+  readonly reuseFresh?: boolean;
   readonly onStale?: (event: {
     readonly key: string;
     readonly ageMs: number;
@@ -217,6 +218,7 @@ export async function evaluatePublicRouteAvailability(
     pending.map(({ promise }) => promise)
   );
   let unavailable = false;
+  let notFound = false;
 
   for (const [index, result] of results.entries()) {
     if (result.status === "fulfilled") continue;
@@ -225,9 +227,16 @@ export async function evaluatePublicRouteAvailability(
 
     // Missing public content is a canonical 404, not a dependency outage.
     if (
+      failedRead?.kind === "article-taxonomy" &&
+      error instanceof PublicApiResponseError &&
+      error.status === 404
+    ) {
+      notFound = true;
+      continue;
+    }
+    if (
       (failedRead?.kind === "project-detail" ||
-        failedRead?.kind === "article-detail" ||
-        failedRead?.kind === "article-taxonomy") &&
+        failedRead?.kind === "article-detail") &&
       error instanceof PublicApiResponseError &&
       error.status === 404
     ) {
@@ -240,7 +249,8 @@ export async function evaluatePublicRouteAvailability(
     throw error;
   }
 
-  return unavailable ? "unavailable" : "available";
+  if (unavailable) return "unavailable";
+  return notFound ? "not-found" : "available";
 }
 
 export function createPublicRouteAvailabilityChecker(
@@ -294,7 +304,15 @@ export function checkDefaultPublicRouteAvailability(
   if (!apiOrigin) throw new Error("API_INTERNAL_ORIGIN is required.");
   if (defaultChecker === undefined || defaultOrigin !== apiOrigin) {
     defaultOrigin = apiOrigin;
-    defaultChecker = createPublicRouteAvailabilityChecker({ apiOrigin });
+    // Proxy executes outside the React Cache Components render context, so it
+    // cannot call a `use cache` function. Its lightweight availability gate
+    // uses a five-minute process entry; the page render behind it uses the
+    // shared tagged Next cache and remains the source of rendered data.
+    defaultChecker = createPublicRouteAvailabilityChecker({
+      apiOrigin,
+      fetch: globalThis.fetch,
+      reuseFresh: true,
+    });
   }
   return defaultChecker(pathname);
 }

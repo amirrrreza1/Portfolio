@@ -1,8 +1,6 @@
 import { getSiteUrl } from "@/Utils/siteUrl";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 /**
  * `robots.txt`, per [SEO.md](../../../../docs/SEO.md).
  *

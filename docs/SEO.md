@@ -77,7 +77,7 @@ The system computes estimated reading time and a table of contents from rendered
 ## 6. Rendering and content safety
 
 - Published pages return complete meaningful HTML from the server; article text is not gated behind client fetch/hydration.
-- **Navigation must be present in the server-rendered HTML.** The current header renders `null` until mounted and then portals into the document body, so crawlers and no-JavaScript readers see no navigation at all. This is a crawlability defect, not a styling choice, and §7's requirement of a human HTML path to every indexable page depends on fixing it.
+- **Navigation is present in server-rendered HTML.** The former mount-only portal was removed; crawlers and no-JavaScript readers receive the same human navigation path to indexable pages.
 - Markdown raw HTML is disabled and MDX is never executed. GFM plus an allowlisted directive set is rendered through a schema-based sanitizer, server-side, at write time. See [CONTENT_PIPELINE.md](CONTENT_PIPELINE.md) §8.
 - Headings receive deterministic unique IDs, stable across renders, and accessible anchor links.
 - Syntax highlighting is performed server-side with Shiki; the full client highlighter is not shipped. `react-markdown` and `shiki` MUST NOT appear in a client bundle.
@@ -85,7 +85,7 @@ The system computes estimated reading time and a table of contents from rendered
 
 ## 7. Crawl surfaces
 
-- `robots.txt` references the canonical sitemap and blocks no CSS/image assets needed for rendering. None exists today; it is an addition.
+- `robots.txt` references the canonical sitemap and blocks no CSS/image assets needed for rendering.
 - XML sitemap includes canonical URL and accurate `lastmod` based on meaningful published changes, not every request. `lastmod` derives from the translation's realized publish/update time, never from a sync or reconciliation timestamp — a bot commit that only reconciles frontmatter MUST NOT bump `lastmod`.
 - Each published translation is its own sitemap entry with `xhtml:link` alternates that match the page's emitted `hreflang` set exactly. Sitemap and page metadata are generated from the same source so they cannot disagree.
 - Split sitemaps only when size warrants it; portfolio/blog and per-locale groups may be separate for operations.
@@ -99,9 +99,9 @@ The system computes estimated reading time and a table of contents from rendered
 - Use Next.js image/font optimization and reserve media dimensions to avoid layout shifts.
 - Keep public reading pages primarily server components and minimize hydration/animation cost.
 - Load the Rubik cube, particles, settings modal, admin editor, and other heavy interactive code only where needed. The cube is owner-toggleable per [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) §2 precisely so the heaviest component can be dropped without a code change.
-- Self-host and subset fonts, serve `woff2` only, declare `unicode-range` so Latin pages never download Persian glyphs, and preload an optional blog family's critical variant only on blog routes when that family is active. The four-format duplication was removed in M0 — the repository now carries the 16 JetBrains Mono faces plus one Vazir Code face as `woff2` alone (6.2 MB to 712 KB). Subsetting, `unicode-range`, and reducing to only the weights actually used remain open per [THEMING.md](THEMING.md) §4.
+- Self-hosted fonts are true glyph subsets served as `woff2` with explicit `unicode-range`; Latin pages do not download Persian glyphs, and a blog family's critical variant is preloaded only on blog routes when active. The font-delivery matrix and size budget are release-gated per [THEMING.md](THEMING.md) §4.
 - Appearance changes must not shift layout: blog font families declare metric-compatible fallbacks, blog typography is scoped to the blog content wrapper, and theme switching changes only colours.
-- Set immutable caching for fingerprinted assets and targeted ISR for published content.
+- Set immutable caching for fingerprinted assets and tagged Cache Components entries for published DTOs; signed publication invalidation expires only affected tags (ADR-016).
 - Monitor real-user Core Web Vitals by route/template and keep representative mobile Lighthouse results in CI as regression signals.
 - Accessibility semantics, keyboard use, contrast, reduced motion, readable line length, and stable layout are release requirements, not separate from SEO quality.
 

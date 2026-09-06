@@ -19,6 +19,7 @@ Each decision is dated, has an owner-approved status, and lists what was rejecte
 | ADR-013 | PostgreSQL-backed jobs with dedicated sync and scheduler workers                   | Partially superseded by ADR-015 | 2026-08-09 |
 | ADR-014 | Bounded last-known-good public reads during API outages                            | Accepted                        | 2026-08-09 |
 | ADR-015 | PostgreSQL-native article authoring and publication                                | Accepted                        | 2026-08-25 |
+| ADR-016 | Tagged Next Cache Components at the public DTO boundary                            | Accepted                        | 2026-09-06 |
 
 ---
 
@@ -397,6 +398,35 @@ MinIO remains the sole binary-media store. Public routes continue to consume pub
 ### Consequences
 
 M3 becomes the database-native article foundation: migration, source/render integrity, atomic bilingual saves, version conflicts, durable revisions, and publication-state tests. M4 proves public bilingual reads and publication invalidation against those records. M6 still owns authentication and authorization before any admin mutation endpoint is exposed; M8 builds the authenticated editor, imports, publishing UX, discovery, and scheduled publication on the M3 foundation. M9 backs up PostgreSQL and MinIO and verifies that their restore reproduces the site without cloning a content repository.
+
+---
+
+## ADR-016 — Tagged Next Cache Components at the public DTO boundary
+
+**Status:** Accepted, 2026-09-06.
+
+### Context
+
+The typed web client attached `next.revalidate` and cache tags to its fetches, but a production counting-proxy run showed that Next 16 performed every public API read again on every render. The signed invalidation route therefore had no shared entry to expire. Caching an entire page or root layout is not valid because ADR-009 requires the preference cookie to affect the first `<html>` attributes, and caching a raw API failure could extend an outage or a withdrawn response.
+
+### Decision
+
+Enable Next Cache Components and put only validated public API response data inside a server `use cache` function. Its serializable URL, tags, revalidation interval, and timeout form the key; `cacheLife` declares the time policy and `cacheTag` binds the existing contract tags. Retryable API responses throw rather than becoming cache entries. The typed client validates locale, DTO shape, ETag, and actual validation time after the shared read, and ADR-014's process-local last-known-good layer independently enforces the maximum stale age.
+
+The request-specific root shell remains blocking (`instant = false`) because headers and the preference cookie determine first-byte appearance. The Proxy availability gate cannot enter a React cache scope, so it keeps a five-minute process-local fresh entry; the page render behind it uses the tagged shared cache. Signed external invalidation uses `revalidateTag(tag, { expire: 0 })` and also drops the application process's last-known-good entry. A future multi-replica or serverless deployment must select a remote Cache Components handler before claiming cross-instance cache sharing.
+
+Database is the default portfolio source after cutover. `PORTFOLIO_DATA_SOURCE=legacy` remains an explicit rollback selection only, and production Compose states `database` rather than relying on the default.
+
+### Rejected alternatives
+
+- **Cache the full HTML route.** It would mix visitor appearance preferences or require `Vary: Cookie`, defeating a shared public cache.
+- **Keep fetch options without a Cache Components scope.** The production measurement proved they created no reusable entry in this Next 16 application.
+- **Serve the process map as the only cache.** It is neither tagged across the render boundary nor shared across processes, and cannot be the target of Next's invalidation API.
+- **Cache retryable errors.** It would convert a transient API failure into a deterministic cached outage.
+
+### Consequences
+
+The public shell remains request-bound while published DTO reads are reused and selectively expired. A production-build proof showed an immediate repeat of `/en/blog` made zero upstream calls; expiring `public:articles:en` refreshed the article list, taxonomy, and feed-index entries without refetching site or appearance data. The proof is recorded in [`status/evidence/M9-shared-cache-proof.md`](status/evidence/M9-shared-cache-proof.md).
 
 ---
 

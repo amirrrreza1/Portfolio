@@ -99,9 +99,10 @@ describe("portfolio project source switch", () => {
     expect(readDatabase).not.toHaveBeenCalled();
   });
 
-  it("defaults safely to legacy until deployment explicitly selects database", () => {
-    expect(parsePortfolioDataSource(undefined)).toBe("legacy");
+  it("defaults to the completed database cutover and keeps rollback explicit", () => {
+    expect(parsePortfolioDataSource(undefined)).toBe("database");
     expect(parsePortfolioDataSource("database")).toBe("database");
+    expect(parsePortfolioDataSource("legacy")).toBe("legacy");
     expect(() => parsePortfolioDataSource("auto")).toThrow(
       "PORTFOLIO_DATA_SOURCE"
     );

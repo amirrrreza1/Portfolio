@@ -15,8 +15,6 @@ import { getSiteUrl } from "@/Utils/siteUrl";
 import { isLocale, LOCALES } from "@portfolio/contracts/common";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 /**
  * One sitemap per locale.
  *

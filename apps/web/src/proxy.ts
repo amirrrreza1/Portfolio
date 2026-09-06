@@ -263,6 +263,9 @@ export async function proxyWithDependencies(
     if (availability === "unavailable") {
       return createUnavailableResponse(locale, nonce);
     }
+    if (availability === "not-found") {
+      return createNotFoundResponse(locale, nonce);
+    }
   }
 
   const headers = new Headers(request.headers);
@@ -292,6 +295,26 @@ function createUnavailableResponse(
         "Content-Language": definition.bcp47,
         "Content-Type": "text/html; charset=utf-8",
         "Retry-After": "60",
+      },
+    }
+  );
+  return secure(response, nonce);
+}
+
+function createNotFoundResponse(
+  locale: "en" | "fa",
+  nonce: string
+): NextResponse {
+  const definition = getLocaleDefinition(locale);
+  const messages = getMessages(locale);
+  const title = escapeHtml(messages.notFound.title);
+  const response = new NextResponse(
+    `<!doctype html><html lang="${definition.bcp47}" dir="${definition.direction}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title}</title></head><body><main role="main"><h1>${title}</h1><p>${escapeHtml(messages.notFound.description)}</p></main></body></html>`,
+    {
+      status: 404,
+      headers: {
+        "Content-Language": definition.bcp47,
+        "Content-Type": "text/html; charset=utf-8",
       },
     }
   );

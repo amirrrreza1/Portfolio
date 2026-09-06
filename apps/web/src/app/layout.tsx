@@ -31,6 +31,12 @@ export const metadata: Metadata = {
   },
 };
 
+// ADR-009 requires request headers and the preference cookie to determine the
+// first `<html>` attributes. That root cannot provide a shared static shell,
+// so Cache Components is explicitly allowed to block at this boundary while
+// the published DTO reads beneath it still use the shared tagged cache.
+export const instant = false;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -112,6 +118,13 @@ export default async function RootLayout({
           href={SITE_FONT_PRELOAD_HREF}
           crossOrigin="anonymous"
         />
+        <Script
+          id="legacy-theme-migration"
+          nonce={nonce}
+          strategy="beforeInteractive"
+        >
+          {`(function(){try{var k="theme",v=window.localStorage.getItem(k),p=document.cookie.split("; ").some(function(c){return c.indexOf("${PREFERENCES_COOKIE_NAME}=")===0});if(!p&&(v==="light"||v==="dark")){var x=encodeURIComponent(JSON.stringify({v:1,theme:v}));document.cookie="${PREFERENCES_COOKIE_NAME}="+x+"; Path=/; SameSite=Lax; Max-Age=31536000"+(window.location.protocol==="https:"?"; Secure":"");document.documentElement.dataset.theme=v;document.documentElement.dataset.legacyTheme=v}}catch(e){}})()`}
+        </Script>
         <Script id="system-theme" nonce={nonce} strategy="beforeInteractive">
           {`(function(){var r=document.documentElement;if(r.dataset.theme!=="system")return;var q=window.matchMedia("(prefers-color-scheme: dark)");var a=function(){r.dataset.systemTheme=q.matches?"dark":"light"};a();q.addEventListener("change",a)})()`}
         </Script>

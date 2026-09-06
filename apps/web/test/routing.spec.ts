@@ -93,10 +93,11 @@ describe("bare-root locale negotiation", () => {
       "https://example.test/fa"
     );
 
-    const prefixedResponse = await proxy(
+    const prefixedResponse = await proxyWithDependencies(
       new NextRequest("https://example.test/en/projects", {
         headers: { "accept-language": "fa" },
-      })
+      }),
+      { dataSource: "legacy" }
     );
     expect(prefixedResponse.status).toBe(200);
     expect(prefixedResponse.headers.get("location")).toBeNull();

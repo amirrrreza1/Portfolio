@@ -1,19 +1,9 @@
-import Footer from "@/Components/Layout/Footer/Footer";
-import { getLegacySiteData } from "@/server/legacy-portfolio";
 import React from "react";
 
 const Layout = ({ children }: Readonly<{ children: React.ReactNode }>) => {
-  const site = getLegacySiteData("en");
-  return (
-    <>
-      <main className="min-h-[calc(100dvh-56px)]">{children}</main>
-      <Footer
-        locale="en"
-        settings={site.settings}
-        socialLinks={site.socialLinks}
-      />
-    </>
-  );
+  // This route group contains redirect-only legacy URLs. Their canonical
+  // locale routes own all visible chrome and data reads.
+  return children;
 };
 
 export default Layout;
