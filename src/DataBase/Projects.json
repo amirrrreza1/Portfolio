@@ -12,7 +12,7 @@
     "id": 2,
     "title": "Fast Food",
     "description": "A full Stack site for a fast food restaurant with a ThreeJS burger maker",
-    "link": "https://www.amirfast.ir/",
+    "link": "https://fastfood.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/FastFood-BurgerMaker",
     "technologies": [102, 202, 203, 205, 206, 703, 801],
     "status": "Completed"
@@ -21,7 +21,7 @@
     "id": 3,
     "title": "Dastresi",
     "description": "An e-commerce platform for selling electronics with an admin panel to manage products.",
-    "link": "https://dastresi-sand.vercel.app/",
+    "link": "https://dastresi.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/Dastersi",
     "technologies": [102, 201, 204, 206, 701],
     "status": "Completed"
@@ -39,7 +39,7 @@
     "id": 5,
     "title": "Digikala (TypeScript)",
     "description": "A replica of Digikala’s homepage built with vanilla TypeScript.",
-    "link": "https://digi-kala-ts.vercel.app/",
+    "link": "https://digikala.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/DigiKala-API-Code",
     "technologies": [102, 208],
     "status": "Completed"
@@ -48,7 +48,7 @@
     "id": 14,
     "title": "OS Scheduler",
     "description": "A project for simulating operating system scheduling algorithms.",
-    "link": "https://os-scheduler-eta.vercel.app/",
+    "link": "https://os.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/OS-Scheduler",
     "technologies": [102, 201, 202, 306, 801],
     "status": "Completed"
@@ -75,7 +75,7 @@
     "id": 8,
     "title": "Morse Code",
     "description": "A weekend project for learning and practicing Morse code.",
-    "link": "https://morse-code-phi.vercel.app/",
+    "link": "https://morse.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/Morse-Code",
     "technologies": [102, 202, 206, 705],
     "status": "Completed"
@@ -84,7 +84,7 @@
     "id": 9,
     "title": "Hangman",
     "description": "A weekend project for building and playing the Hangman game.",
-    "link": "https://hangman-eta-nine.vercel.app/",
+    "link": "https://hangman.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/Hangman",
     "technologies": [201, 701],
     "status": "Completed"
@@ -93,7 +93,7 @@
     "id": 10,
     "title": "SSR Feed",
     "description": "My personal RSS feed",
-    "link": "https://myfeed-eta.vercel.app/",
+    "link": "https://feed.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/RSS-Feed",
     "technologies": [102, 206, 701],
     "status": "Completed"
@@ -102,7 +102,7 @@
     "id": 11,
     "title": "Infinite XO",
     "description": "A weekend project for building and playing the Infinite Tic-Tac-Toe game.",
-    "link": "https://tic-tac-toe-green-rho-74.vercel.app/",
+    "link": "https://xo.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/Tic-Tac-Toe",
     "technologies": [102, 202],
     "status": "Completed"
@@ -120,7 +120,7 @@
     "id": 13,
     "title": "Amazon React",
     "description": "Landing of the amazon website",
-    "link": "https://amazon-react-alpha.vercel.app/",
+    "link": "https://amazon.amirrrreza.ir/",
     "repo": "https://github.com/amirrrreza1/Amazon-React",
     "technologies": [201, 801],
     "status": "Completed"
