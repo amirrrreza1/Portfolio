@@ -114,6 +114,13 @@ The implemented root `compose.yaml` includes the hardened production topology an
 
 Only the local dependency profile may publish PostgreSQL/MinIO console ports to loopback. Named volumes are project-scoped and never silently deleted by routine start/stop commands.
 
+For a production VPS that already has a host-level TLS proxy bound to ports
+80/443, layer `infrastructure/docker/compose.host-caddy.yaml` over the root
+Compose file and explicitly start every `full` service except `edge`. This
+publishes `web` only on `127.0.0.1:${PORTFOLIO_HTTP_PORT:-3010}`. The host proxy
+should forward the site's public hostname to that loopback address; PostgreSQL,
+MinIO, and the API remain unpublished.
+
 ## 10. Backup, restore, and upgrades
 
 - Schedule encrypted PostgreSQL backups and object-version retention outside the application container.
