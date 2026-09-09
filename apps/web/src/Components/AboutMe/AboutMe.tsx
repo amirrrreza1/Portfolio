@@ -15,7 +15,7 @@ type AboutSection = Extract<PublicPageSection, { readonly key: "about" }>;
 const AboutMe = ({ section }: { readonly section: AboutSection }) => {
   return (
     <section className="Container my-10 border p-2 backdrop-blur-sm" id="about">
-      <ScrambleText text={section.title} className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text="About Me" className="ml-3 text-3xl" speed={30} />
       <Devider />
       {section.content.body.map((paragraph, index) => (
         <p

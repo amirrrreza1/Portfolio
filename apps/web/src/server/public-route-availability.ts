@@ -171,7 +171,9 @@ export async function evaluatePublicRouteAvailability(
       kind: "appearance",
       promise: readers.readAppearance(requirement.locale),
     },
-    { kind: "site", promise: readers.readSite(requirement.locale) },
+    // The shared shell is English even when the requested resource is a
+    // Persian blog page.
+    { kind: "site", promise: readers.readSite("en") },
   ];
 
   if (requirement.resource === "home") {

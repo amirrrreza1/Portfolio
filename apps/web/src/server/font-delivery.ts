@@ -33,9 +33,10 @@ const BLOG_FONT_PRELOAD_HREF: {
   // Already the site font: preloading it again on an article route would be a
   // second entry for a request the root layout has issued.
   "jetbrains-mono": null,
-  // Persian is the critical script for this family. Latin punctuation and
-  // codepoints remain a separate, lazily selected face in globals.css.
-  "vazir-code": "/Fonts/Vazir-Code-arabic.woff2",
+  // `vazir-code` is the stable persisted registry key; its current Persian
+  // family is Shabnam. The without-Latin build lets JetBrains Mono render Latin
+  // runs without downloading duplicate glyphs.
+  "vazir-code": "/Fonts/Shabnam-Regular.woff2",
   // A system stack downloads nothing, which is the point of offering it.
   "system-sans": null,
 };

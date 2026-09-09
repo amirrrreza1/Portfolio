@@ -44,7 +44,6 @@ function appearanceEnvelope(): PublicAppearanceEnvelope {
       defaultTheme: "dark",
       blogFonts: [
         { key: "jetbrains-mono", displayName: "JetBrains Mono" },
-        { key: "vazir-code", displayName: "Vazir Code" },
         { key: "system-sans", displayName: "System sans" },
       ],
       defaultBlogFont: "jetbrains-mono",
@@ -179,14 +178,14 @@ describe("public route availability gate", () => {
     const scopedReaders = readers();
     await expect(
       evaluatePublicRouteAvailability(
-        { locale: "fa", resource: "projects" },
+        { locale: "en", resource: "projects" },
         scopedReaders
       )
     ).resolves.toBe("available");
 
-    expect(scopedReaders.readAppearance).toHaveBeenCalledWith("fa");
-    expect(scopedReaders.readSite).toHaveBeenCalledWith("fa");
-    expect(scopedReaders.readProjects).toHaveBeenCalledWith("fa");
+    expect(scopedReaders.readAppearance).toHaveBeenCalledWith("en");
+    expect(scopedReaders.readSite).toHaveBeenCalledWith("en");
+    expect(scopedReaders.readProjects).toHaveBeenCalledWith("en");
     expect(scopedReaders.readHome).not.toHaveBeenCalled();
     expect(scopedReaders.readProjectDetail).not.toHaveBeenCalled();
     expect(scopedReaders.readArticles).not.toHaveBeenCalled();
@@ -214,6 +213,7 @@ describe("public route availability gate", () => {
       "fa",
       "مقاله-نمونه"
     );
+    expect(articleReaders.readSite).toHaveBeenCalledWith("en");
     expect(articleReaders.readArticles).not.toHaveBeenCalled();
 
     const taxonomyReaders = readers();

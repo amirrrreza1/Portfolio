@@ -27,7 +27,7 @@ const publishedAppearance = publicAppearanceSchema.parse({
   themes: ["dark", "light"],
   defaultTheme: "dark",
   blogFonts: [
-    { key: "vazir-code", displayName: "Vazir Code" },
+    { key: "vazir-code", displayName: "Shabnam" },
     { key: "system-sans", displayName: "System sans" },
   ],
   defaultBlogFont: "vazir-code",

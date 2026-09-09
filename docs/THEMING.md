@@ -1,22 +1,21 @@
-# Appearance and settings modal specification
+# Appearance behavior specification
 
 Normative decision: [ADR-006](DECISIONS.md#adr-006--site-wide-theme-and-blog-only-typography-from-an-owner-defined-allowlist).
 
 ## 1. Scope
 
-A settings modal lets a visitor change the site-wide theme, motion preference, and language, plus the font family and font size used only by the blog reading surface. The owner controls which options exist and which is the default. No appearance choice may cause a flash of the wrong theme, a layout shift, an accessibility regression, or a path from admin input to executable CSS.
+A compact theme toggle is the only public appearance control. The former settings modal has been retired: blog font, blog text size, and motion behavior are code-owned design choices, and blog language is selected in the blog itself. No appearance behavior may cause a flash of the wrong theme, a layout shift, an accessibility regression, or a path from stored data to executable CSS.
 
 Theme changes apply across the public site. Font family and font size changes apply only inside the blog content wrapper on `/[locale]/blog` routes. They MUST NOT change the portfolio, shared header, footer, navigation, settings UI, admin UI, or any other non-blog surface.
 
 ## 2. Control split
 
-| Setting          | Owner defines                                    | Visitor chooses                                   |
-| ---------------- | ------------------------------------------------ | ------------------------------------------------- |
-| Theme            | enabled themes, order, site default              | active theme, or follow system; applies site-wide |
-| Blog font family | enabled families, order, blog default per locale | active family for blog content only               |
-| Blog font size   | allowed scale steps, default step                | active step for blog content only                 |
-| Reduced motion   | whether the toggle is offered                    | on / off / follow system                          |
-| Language         | enabled locales, default                         | active locale ([I18N.md](I18N.md))                |
+| Setting          | Code defines                           | Visitor chooses        |
+| ---------------- | -------------------------------------- | ---------------------- |
+| Theme            | reviewed themes and default            | active site-wide theme |
+| Blog font family | one script-compatible default/locale   | not exposed            |
+| Blog font size   | one reviewed reading size              | not exposed            |
+| Reduced motion   | follow the operating-system preference | not exposed            |
 
 The visitor's choice always wins over the corresponding configured default. The owner's allowlist always wins over the visitor's request: an option that is not enabled cannot be selected by crafting a cookie value.
 
@@ -49,22 +48,22 @@ Rules:
 
 ## 4. Blog typography model
 
-Blog fonts come from a **code-declared registry**. The admin panel enables, orders, and defaults; it never supplies a file path, family name, or CSS value. The selected family and size are scoped to a dedicated `.blog-reading-surface` wrapper. Shared site chrome and non-blog pages always use the fixed site typography defined by the design system.
+Blog fonts come from a **code-declared registry**. The chosen family and size are scoped to a dedicated `.blog-reading-surface` wrapper. Shared site chrome and non-blog pages always use the fixed site typography defined by the design system. Neither the public blog nor the admin panel exposes typography controls.
 
 Registry entry: internal key, display name, CSS family stack, supported scripts, available weights and styles, self-hosted `woff2` sources, and a metric-compatible fallback stack.
 
 Initial registry:
 
-| Key              | Family               | Scripts                | Notes                                                |
-| ---------------- | -------------------- | ---------------------- | ---------------------------------------------------- |
-| `jetbrains-mono` | JetBrains Mono       | Latin                  | Current site font; available for Latin blog content  |
-| `vazir-code`     | Vazir Code           | Arabic/Persian + Latin | Required for `fa`; default for Persian blog content  |
-| `system-sans`    | System UI sans stack | Both                   | Zero-download option, best for reading long articles |
+| Key              | Family               | Scripts        | Notes                                                |
+| ---------------- | -------------------- | -------------- | ---------------------------------------------------- |
+| `jetbrains-mono` | JetBrains Mono       | Latin          | Current site font; available for Latin blog content  |
+| `vazir-code`     | Shabnam              | Arabic/Persian | Required for `fa`; default for Persian blog content  |
+| `system-sans`    | System UI sans stack | Both           | Zero-download option, best for reading long articles |
 
 Rules:
 
-- Font files are self-hosted, `woff2` only. **Done in M0:** the `.eot`, `.ttf`, and `.woff` copies of the 16 JetBrains Mono faces and one Vazir Code face were removed (6.2 MB to 712 KB), and the `@font-face` declarations were rewritten with numeric weights — the previous ones gave ExtraBold and ExtraBoldItalic `font-weight: bold`, colliding with Bold and making weight 800 unreachable. **Done in M5:** the 16 JetBrains Mono faces were reduced to the six the design can actually select — 400, 400 italic, 500, 600, 700, and 700 italic — taking `public/Fonts` to 7 files and 283 KB. The other ten were reachable only through a `font-weight` no rule in this codebase sets.
-- Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs. **Completed in M9:** every declared face carries a `unicode-range`; JetBrains Mono declares no Arabic block; and Vazir Code is physically split into disjoint Latin and Arabic/Persian WOFF2 assets, so a page does not download glyphs for the other script.
+- Font files are self-hosted, `woff2` only. JetBrains Mono ships only the six faces the design selects: 400, 400 italic, 500, 600, 700, and 700 italic. Shabnam ships only its without-Latin 400, 500, and 700 faces; obsolete `.eot`, `.ttf`, and `.woff` copies and unused thin/light variants are not kept.
+- Subset by script where licensing allows, and declare `unicode-range` so Latin text never downloads Persian glyphs. Every declared face carries a `unicode-range`; JetBrains Mono declares no Arabic block; and Shabnam uses the upstream without-Latin builds so Latin runs fall through to JetBrains Mono.
 - `font-display: swap` with a metric-compatible fallback, so a font swap does not reflow the article.
 - Preload only the critical variant for the active family and locale. Non-default families load on selection. **Done in M5:** the root layout preloads the site font's regular face and nothing else; the article route is the only place that may preload a blog family, and it does so only when that family is self-hosted and is not already the site font. The hrefs are a static literal keyed by the registry key in `apps/web/src/server/font-delivery.ts`, and `test/font-delivery.spec.ts` fails if any other source file names a font file.
 - No dynamic `@font-face` generation from any stored value. Font CSS is static, authored, and reviewed. Upload of font files is out of scope for this release.
@@ -86,19 +85,15 @@ The mechanism that makes this work without a flash:
 
 The `system` theme still uses the reviewed nonced pre-paint script because the server does not know the visitor's media-query result. Explicit theme choices do not depend on client correction.
 
-## 6. Settings modal UX
+## 6. Public appearance control
 
-- Reachable from the header control that currently holds the theme toggle, and from the footer. The keyboard shortcut is documented in the modal.
-- A real accessible dialog: focus trapped, focus restored to the trigger on close, `Escape` closes, `aria-modal` with a labelled heading, no scroll lock that breaks keyboard scrolling.
-- Every option is a labelled control with a visible current state. Theme options are identified by name, not by colour swatch alone. Font controls are labelled "Blog font" and "Blog text size" and explain that they do not affect the rest of the site.
-- Changes apply live with no Save button, and a single Reset returns everything to the configured site and blog defaults.
-- The modal is server-rendered as markup and progressively enhanced. With JavaScript disabled the site still renders at the cookie's or site's default appearance; the controls simply do not operate.
-- Loading the modal must not pull the heavy interactive code (Rubik cube, particles) into the initial bundle; it is a separately loaded chunk.
-- Reduced motion, when on or when the system requests it, disables the scramble text, typing animation, particle background, smooth scroll, and cube auto-rotation. `prefers-reduced-motion` is respected by default without requiring a visit to the modal.
+- The header theme button is labelled and keyboard-operable.
+- No appearance dialog, blog-font selector, blog-size selector, or motion selector is rendered on portfolio or blog pages.
+- `prefers-reduced-motion` disables the scramble text, typing animation, particle background, smooth scroll, and cube auto-rotation without requiring a site control.
 
-## 7. Admin configuration
+## 7. Code-owned configuration
 
-`AppearanceSettings` is a singleton record per [DATA_MODEL.md](DATA_MODEL.md) §4: enabled theme keys with order, default theme, enabled blog-font keys with order, default blog font per locale, allowed blog-size steps, default blog-size step, and whether the motion toggle is offered. It carries a `version` for optimistic concurrency and is revisioned and audited like any other content change.
+The admin panel does not expose appearance settings. The registry and reviewed defaults remain code-owned; the existing `AppearanceSettings` persistence contract is retained only for compatibility with previously issued preference cookies and the current public API boundary.
 
 Validation on write: every key MUST exist in the code registry; the default MUST be among the enabled set; at least one theme and one script-compatible blog font per enabled locale MUST remain enabled. Disabling a theme or blog font a visitor currently has selected resolves that preference to its new default on the visitor's next request.
 
@@ -121,7 +116,7 @@ The static and unit half runs under `pnpm test`; the half that needs a rendered 
 - Contrast: automated AA checks for every enabled theme across body text, muted text, links, focus rings, meaningful borders, and both code themes.
 - Caching: public responses do not send `Vary: Cookie`; two visitors with different preferences reuse one public-data cache entry while receiving the correct dynamic shell attributes; appearance is absent from shared cache keys.
 - Reduced motion: system preference alone disables every animation listed in §6.
-- Dialog accessibility: focus trap and restore, `Escape`, labelling, keyboard-only operation.
+- Appearance UI retirement: blog pages contain no appearance dialog or dialog trigger.
 - Blog typography: only `woff2` is requested; optional blog families are not downloaded on non-blog routes; the selected family and size affect only `.blog-reading-surface`; shared chrome and non-blog pages retain fixed site typography; `unicode-range` prevents cross-script downloads; a script-incompatible family is not offered.
 - No-JavaScript: the page renders at the correct default appearance and remains readable.
 - Migration: an existing valid `localStorage` theme is adopted into the cookie once and the key is removed; malformed values and a pre-existing valid cookie never override the resolved appearance.

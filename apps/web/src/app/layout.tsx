@@ -61,12 +61,14 @@ export default async function RootLayout({
 
   const localeHeader = requestHeaders.get("x-portfolio-locale");
   const nonce = requestHeaders.get("x-portfolio-csp-nonce") ?? undefined;
-  const locale = isLocale(localeHeader) ? localeHeader : "en";
-  const definition = getLocaleDefinition(locale);
-  const messages = getMessages(locale);
+  // The document shell is always English. A blog route may still use its
+  // content locale to resolve a script-compatible reading font.
+  const contentLocale = isLocale(localeHeader) ? localeHeader : "en";
+  const definition = getLocaleDefinition("en");
+  const messages = getMessages("en");
   let appearanceSettings;
   try {
-    appearanceSettings = await getPortfolioAppearance(locale);
+    appearanceSettings = await getPortfolioAppearance(contentLocale);
   } catch (error) {
     if (!(error instanceof PublicDataUnavailableError)) throw error;
   }

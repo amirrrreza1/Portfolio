@@ -14,12 +14,11 @@ function appearance(locale: "en" | "fa") {
   const fonts =
     locale === "fa"
       ? [
-          { key: "vazir-code" as const, displayName: "Vazir Code" },
+          { key: "vazir-code" as const, displayName: "Shabnam" },
           { key: "system-sans" as const, displayName: "System sans" },
         ]
       : [
           { key: "jetbrains-mono" as const, displayName: "JetBrains Mono" },
-          { key: "vazir-code" as const, displayName: "Vazir Code" },
           { key: "system-sans" as const, displayName: "System sans" },
         ];
   return publicAppearanceSchema.parse({

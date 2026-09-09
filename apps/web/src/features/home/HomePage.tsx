@@ -8,17 +8,11 @@ import ProjectsSection from "@/Components/Projects/Projects";
 import Skills from "@/Components/Skills/Skills";
 import { getMessages } from "@/i18n/messages";
 import { getPortfolioGitHubStats } from "@/server/portfolio-github-stats";
-import type { GitHubStatsByRepository } from "@/server/github-stats-source";
 import { getPortfolioHome } from "@/server/portfolio-home";
 import { getPortfolioProjects } from "@/server/portfolio-projects";
 import { getPortfolioSite } from "@/server/portfolio-site";
 import { PublicDataUnavailableError } from "@/server/public-api-client";
 import type { Locale } from "@portfolio/contracts/common";
-import type {
-  PublicPageSection,
-  PublicSite,
-} from "@portfolio/contracts/portfolio";
-import { Fragment } from "react";
 
 const HomePage = async ({ locale }: { readonly locale: Locale }) => {
   let portfolio;
@@ -44,62 +38,25 @@ const HomePage = async ({ locale }: { readonly locale: Locale }) => {
     site.settings,
     portfolio.projects
   );
-  return site.sections.map((section) => (
-    <Fragment key={section.key}>
-      {renderSection(section, site, locale, portfolio, home, githubStats)}
-    </Fragment>
-  ));
-};
+  const about = site.sections.find((section) => section.key === "about");
 
-function renderSection(
-  section: PublicPageSection,
-  site: PublicSite,
-  locale: Locale,
-  portfolio: Awaited<ReturnType<typeof getPortfolioProjects>>,
-  home: Awaited<ReturnType<typeof getPortfolioHome>>,
-  githubStats: GitHubStatsByRepository
-) {
-  switch (section.key) {
-    case "hero":
-      return (
-        <>
-          <Hero section={section} />
-          <DailyQuote quote={home.quote} />
-        </>
-      );
-    case "about":
-      return <AboutMe section={section} />;
-    case "skills":
-      return <Skills title={section.title} skills={portfolio.skills} />;
-    case "contact":
-      return site.settings.contactEnabled ? (
-        <GetInTouchForm title={section.title} content={section.content} />
-      ) : null;
-    case "projects":
-      return (
-        <ProjectsSection
-          title={section.title}
-          locale={locale}
-          projects={portfolio.projects}
-          skills={portfolio.skills}
-          githubStats={githubStats}
-        />
-      );
-    case "certificates":
-      return (
-        <>
-          <Certificate
-            title={section.title}
-            certificates={home.certificates}
-            locale={locale}
-          />
-          <DownloadResume
-            resume={home.resume}
-            buttonLabel={site.settings.resumeButtonLabel}
-          />
-        </>
-      );
-  }
-}
+  return (
+    <>
+      <Hero locale={locale} />
+      <DailyQuote quote={home.quote} />
+      {about === undefined ? null : <AboutMe section={about} />}
+      <Skills skills={portfolio.skills} />
+      <ProjectsSection
+        locale={locale}
+        projects={portfolio.projects}
+        skills={portfolio.skills}
+        githubStats={githubStats}
+      />
+      <Certificate certificates={home.certificates} locale={locale} />
+      <DownloadResume resume={home.resume} locale={locale} />
+      {site.settings.contactEnabled ? <GetInTouchForm /> : null}
+    </>
+  );
+};
 
 export default HomePage;

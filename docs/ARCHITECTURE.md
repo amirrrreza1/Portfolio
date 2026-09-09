@@ -33,7 +33,7 @@ A dedicated scheduler holds a PostgreSQL advisory lock before enqueuing due publ
 ```text
 portfolio-platform/
 ├─ apps/
-│  ├─ web/                 # locale-prefixed public routes and eventual authenticated admin
+│  ├─ web/                 # English portfolio, language-scoped blog, and authenticated admin
 │  └─ api/                 # NestJS/Fastify HTTP boundary and publication worker
 ├─ packages/
 │  ├─ contracts/           # environment-neutral Zod schemas and transport contracts

@@ -36,7 +36,7 @@ test("an owner can author, check, publish, and preview an article", async ({
   await page.getByRole("button", { name: "Use recovery code" }).click();
   await expect(page.getByTestId("admin-actor")).toContainText("OWNER");
 
-  await page.getByRole("button", { name: "Articles", exact: true }).click();
+  await page.getByRole("link", { name: "Articles", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Articles", exact: true })
   ).toBeVisible();

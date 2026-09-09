@@ -119,15 +119,10 @@ export default async function LocaleBlogPage({
   const slugs = buildTaxonomySlugs(taxonomy);
 
   return (
-    <section className="Container my-16 space-y-8 border p-5 md:p-8">
+    <section className="Container bg-surface/90 border-border mt-4 mb-16 space-y-8 border p-5 shadow-lg backdrop-blur-md md:my-16 md:p-8">
       <header className="space-y-3">
         <h1 className="text-4xl font-bold">{messages.title}</h1>
         <p className="text-text-muted max-w-3xl">{messages.description}</p>
-        <p>
-          <a href={feedPath(locale)} className="underline">
-            {messages.feedLink}
-          </a>
-        </p>
       </header>
 
       {taxonomy.categories.length === 0 && taxonomy.tags.length === 0 ? null : (
@@ -188,6 +183,12 @@ export default async function LocaleBlogPage({
         </nav>
       )}
 
+      <p>
+        <a href={feedPath(locale)} className="underline">
+          {messages.feedLink}
+        </a>
+      </p>
+
       {entries.length === 0 ? null : (
         <script
           type="application/ld+json"
@@ -207,7 +208,10 @@ export default async function LocaleBlogPage({
 
 function UnavailableBlog({ locale }: { readonly locale: "en" | "fa" }) {
   return (
-    <main className="Container my-20 border p-8 text-center" role="alert">
+    <main
+      className="Container bg-surface/90 border-border my-20 border p-8 text-center shadow-lg backdrop-blur-md"
+      role="alert"
+    >
       <h1 className="text-2xl font-semibold">
         {getMessages(locale).blog.unavailable}
       </h1>

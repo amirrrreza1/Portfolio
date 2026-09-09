@@ -67,8 +67,8 @@ export default function ProjectsGallery({
   }, [projects, searchTerm, skills]);
 
   return (
-    <main className="min-h-screen px-4 py-10 pt-20">
-      <header className="fixed top-5 right-0 left-0 z-50 flex justify-center px-4">
+    <main className="min-h-screen px-4 pt-5 pb-10">
+      <header className="sticky top-5 z-50 flex justify-center">
         <div className="bg-surface border-border flex w-full max-w-lg items-center gap-3 rounded border px-3 py-2 shadow-xl backdrop-blur-md md:gap-4 md:px-5">
           <Tooltip title={messages.common.back}>
             <Link

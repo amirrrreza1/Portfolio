@@ -445,7 +445,7 @@ export class AdminPortfolioService {
   }
 
   async updateSection(
-    actorId: string,
+    _actorId: string,
     id: string,
     version: number,
     input: AdminSectionUpdate
@@ -456,23 +456,9 @@ export class AdminPortfolioService {
         throw new OptimisticConcurrencyError("PageSection", id, version, null);
       if (before.key !== input.key)
         throw new Error("Section key does not match the target.");
-      await requireVersion(tx.pageSection, "PageSection", id, version, {
-        content: input.content,
-        enabled: input.enabled,
-        sortOrder: input.sortOrder,
+      throw new AdminInvariantError({
+        section: ["Page section structure is fixed and cannot be edited."],
       });
-      const after = await tx.pageSection.findUniqueOrThrow({ where: { id } });
-      await this.recordChange(
-        tx,
-        actorId,
-        "PageSection",
-        id,
-        after.version,
-        "UPDATE",
-        before,
-        after
-      );
-      return after;
     });
   }
 
@@ -487,6 +473,10 @@ export class AdminPortfolioService {
       const section = await tx.pageSection.findUnique({ where: { id } });
       if (section === null)
         throw new OptimisticConcurrencyError("PageSection", id, version, null);
+      if (section.key !== "about")
+        throw new AdminInvariantError({
+          section: ["Only About biography content can be edited."],
+        });
       if (section.key !== input.key)
         throw new Error("Section key does not match the target.");
       const before = await tx.pageSectionTranslation.findUnique({

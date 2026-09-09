@@ -3,85 +3,63 @@ import {
   SESSION_ABSOLUTE_TIMEOUT_HOURS,
   SESSION_IDLE_TIMEOUT_MINUTES,
 } from "@portfolio/contracts/auth";
+import { Clock3, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 
-import AdminEnrolPasskey from "@/features/admin/AdminEnrolPasskey";
 import AdminDashboard from "@/features/admin/AdminDashboard";
-import AdminContentWorkspace from "@/features/admin/AdminContentWorkspace";
-import AdminSessionList from "@/features/admin/AdminSessionList";
+import { AdminPageHeader } from "@/features/admin/AdminPage";
 import { formatUtc } from "@/features/admin/format";
-import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
+import { requireAdminActor } from "@/server/admin-session";
 
-/**
- * The admin shell.
- *
- * M6 established the authenticated boundary; M7 fills that boundary with the
- * complete non-blog portfolio workspace while security and content controls
- * continue to share the same owner shell.
- */
 export default async function AdminHomePage(): Promise<React.JSX.Element> {
-  // Asked again here, not inherited from the layout. See admin-session.ts.
   const actor = await requireAdminActor();
-  const sessions = await listAdminSessions();
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">This session</h2>
-        <dl className="border-border grid grid-cols-1 gap-3 border p-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <dt className="text-text-muted text-sm">Role</dt>
-            <dd className="text-base" data-testid="admin-role">
-              {actor.role}
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-text-muted text-sm">Expires</dt>
-            <dd className="text-base">{formatUtc(actor.expiresAt)}</dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-text-muted text-sm">Recent authentication</dt>
-            <dd className="text-base" data-testid="admin-recent-auth">
-              {actor.recentlyAuthenticated
-                ? `Active · ${RECENT_AUTH_WINDOW_MINUTES} minutes from sign-in`
-                : "Expired · a privileged action will ask for your passkey"}
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-text-muted text-sm">Session policy</dt>
-            <dd className="text-base">
-              {SESSION_IDLE_TIMEOUT_MINUTES} minutes idle ·{" "}
-              {SESSION_ABSOLUTE_TIMEOUT_HOURS} hours absolute
-            </dd>
-          </div>
+    <div className="flex flex-col gap-8">
+      <section>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <AdminPageHeader
+            eyebrow="Dashboard"
+            title={`Welcome back, ${actor.displayName}`}
+            description="A quick view of your account and portfolio delivery. Use the sidebar to open each editing workspace."
+          />
+          <span className="border-success/40 bg-success/10 text-success inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
+            <span className="bg-success size-1.5 rounded-full" />
+            Admin session active
+          </span>
+        </div>
+
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <OverviewCard
+            icon={UserRound}
+            label="Role"
+            value={actor.role}
+            testId="admin-role"
+          />
+          <OverviewCard
+            icon={Clock3}
+            label="Session expires"
+            value={formatUtc(actor.expiresAt)}
+          />
+          <OverviewCard
+            icon={KeyRound}
+            label="Recent authentication"
+            value={
+              actor.recentlyAuthenticated
+                ? `Active for ${RECENT_AUTH_WINDOW_MINUTES} minutes`
+                : "Passkey confirmation required"
+            }
+            testId="admin-recent-auth"
+          />
+          <OverviewCard
+            icon={ShieldCheck}
+            label="Session policy"
+            value={`${SESSION_IDLE_TIMEOUT_MINUTES}m idle · ${SESSION_ABSOLUTE_TIMEOUT_HOURS}h max`}
+          />
         </dl>
       </section>
 
-      <AdminContentWorkspace />
-
-      <section className="flex flex-col gap-4">
+      <section className="border-border bg-surface flex flex-col gap-4 rounded-xl border p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Active sessions</h2>
-          <p className="text-text-muted text-sm">
-            Revoking another session takes effect on its next request. It needs
-            a passkey confirmation if you have not signed in recently.
-          </p>
-        </div>
-        <AdminSessionList sessions={sessions} />
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Passkeys</h2>
-          <p className="text-text-muted text-sm">
-            Register the device you will sign in with. An account that has only
-            recovery codes left needs one of these before the codes run out.
-          </p>
-        </div>
-        <AdminEnrolPasskey />
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <div>
           <h2 className="text-lg font-semibold">Content health</h2>
           <p className="text-text-muted text-sm">
             Drafts, delivery state, recent edits, and failed security events.
@@ -90,6 +68,30 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         </div>
         <AdminDashboard />
       </section>
+    </div>
+  );
+}
+
+function OverviewCard({
+  icon: Icon,
+  label,
+  value,
+  testId,
+}: {
+  readonly icon: typeof UserRound;
+  readonly label: string;
+  readonly value: string;
+  readonly testId?: string;
+}): React.JSX.Element {
+  return (
+    <div className="border-border bg-surface flex min-h-28 flex-col justify-between rounded-xl border p-4">
+      <div className="text-text-muted flex items-center gap-2 text-sm">
+        <Icon aria-hidden="true" size={16} strokeWidth={1.8} />
+        <dt>{label}</dt>
+      </div>
+      <dd className="mt-4 text-sm font-medium" data-testid={testId}>
+        {value}
+      </dd>
     </div>
   );
 }

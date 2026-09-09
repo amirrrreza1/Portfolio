@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   try {
-    const site = await getPortfolioSite(locale);
+    const site = await getPortfolioSite("en");
     const settings = site.settings;
     return {
       metadataBase: new URL(settings.canonicalSiteUrl),
@@ -60,10 +60,10 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const definition = getLocaleDefinition(locale);
-  const messages = getMessages(locale);
+  const messages = getMessages("en");
   let site;
   try {
-    site = await getPortfolioSite(locale);
+    site = await getPortfolioSite("en");
   } catch (error) {
     if (!(error instanceof PublicDataUnavailableError)) throw error;
   }
@@ -79,15 +79,17 @@ export default async function LocaleLayout({
   }
 
   return (
-    <div
-      lang={definition.bcp47}
-      dir={definition.direction}
-      data-locale={locale}
-    >
-      <Header locale={locale} navigation={site.navigation} />
-      <main>{children}</main>
+    <div data-content-locale={locale} className="flex min-h-dvh flex-col">
+      <Header locale="en" />
+      <main
+        lang={definition.bcp47}
+        dir={definition.direction}
+        className="flex-1"
+      >
+        {children}
+      </main>
       <Footer
-        locale={locale}
+        locale="en"
         settings={site.settings}
         socialLinks={site.socialLinks}
       />

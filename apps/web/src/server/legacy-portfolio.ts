@@ -98,20 +98,17 @@ export function getLegacySiteData(
   locale: Locale,
   now: Date = new Date()
 ): PublicSite {
-  const fa = locale === "fa";
-  const messages = getMessages(locale);
+  const messages = getMessages("en");
   const migratedSections = legacyPageSections(now);
   return publicSiteSchema.parse({
     locale,
     settings: {
       canonicalSiteUrl: "http://localhost:3000",
       defaultLocale: "en",
-      enabledLocales: ["en", "fa"],
-      siteName: fa ? "امیررضا آذریون" : "Amirreza Azarioun",
-      titleTemplate: fa ? "%s | امیررضا آذریون" : "%s | Amirreza Azarioun",
-      metaDescription: fa
-        ? "وب‌سایت شخصی امیررضا آذریون"
-        : "Amirreza Azarioun's portfolio site",
+      enabledLocales: ["en"],
+      siteName: "Amirreza Azarioun",
+      titleTemplate: "%s | Amirreza Azarioun",
+      metaDescription: "Amirreza Azarioun's portfolio site",
       authorName: "Amirreza Azarioun",
       creatorName: "Amirreza Azarioun",
       publisherName: "Amirreza Azarioun",
@@ -142,10 +139,10 @@ export function getLegacySiteData(
     },
     sections: [
       ...migratedSections,
-      { key: "skills", title: fa ? "مهارت‌ها" : "Skills", content: {} },
+      { key: "skills", title: "Skills", content: {} },
       {
         key: "contact",
-        title: fa ? "تماس با من" : "Get in Touch",
+        title: "Get in Touch",
         content: {
           nameLabel: messages.contact.name,
           namePlaceholder: messages.contact.namePlaceholder,
@@ -164,47 +161,43 @@ export function getLegacySiteData(
       },
       {
         key: "projects",
-        title: fa ? "پروژه‌ها" : "Projects",
+        title: "Projects",
         content: {},
       },
       {
         key: "certificates",
-        title: fa ? "گواهینامه‌ها" : "Certificates",
+        title: "Certificates",
         content: {},
       },
     ],
     navigation: [
-      nav("navhome00000000000000000", fa ? "خانه" : "Home", "hero"),
-      nav("navabout0000000000000000", fa ? "درباره" : "About", "about"),
-      nav("navskills000000000000000", fa ? "مهارت‌ها" : "Skills", "skills"),
+      nav("navhome00000000000000000", "Home", "hero"),
+      nav("navabout0000000000000000", "About", "about"),
+      nav("navskills000000000000000", "Skills", "skills"),
       {
         id: "navprojects0000000000000",
-        label: fa ? "پروژه‌ها" : "Projects",
+        label: "Projects",
         iconKey: null,
         targetKind: "INTERNAL_ROUTE",
         target: "/projects",
       },
-      nav(
-        "navcertificates000000000",
-        fa ? "گواهینامه‌ها" : "Certificates",
-        "certificates"
-      ),
-      nav("navcontact00000000000000", fa ? "تماس" : "Contact", "contact"),
+      nav("navcertificates000000000", "Certificates", "certificates"),
+      nav("navcontact00000000000000", "Contact", "contact"),
     ],
     socialLinks: [
       social(
         "socialgithub000000000000",
-        fa ? "گیت‌هاب" : "GitHub",
+        "GitHub",
         "https://github.com/amirrrreza1"
       ),
       social(
         "sociallinkedin0000000000",
-        fa ? "لینکدین" : "LinkedIn",
+        "LinkedIn",
         "https://www.linkedin.com/in/amirrrreza1/"
       ),
       {
         id: "socialemail0000000000000",
-        label: fa ? "ایمیل" : "Email",
+        label: "Email",
         iconKey: null,
         rel: null,
         kind: "EMAIL",
@@ -212,7 +205,7 @@ export function getLegacySiteData(
       },
       {
         id: "socialdonate000000000000",
-        label: fa ? "حمایت" : "Donate",
+        label: "Donate",
         iconKey: null,
         rel: null,
         kind: "DONATE",

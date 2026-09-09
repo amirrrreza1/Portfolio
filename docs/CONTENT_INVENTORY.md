@@ -148,29 +148,22 @@ Also: `score` MUST NOT be emitted as structured-data `ratingValue`, and certific
 
 `public/resume.pdf`, linked from `DownloadResume.tsx` as a static `/resume.pdf` download.
 
-| Admin field        | Type                     | Notes                                                              |
-| ------------------ | ------------------------ | ------------------------------------------------------------------ |
-| Upload new version | PDF upload               | Verified by magic bytes, size-bounded, quarantined until validated |
-| Label              | short text               | e.g. `Frontend CV — August 2026`                                   |
-| Public filename    | short text               | Display name in the download; not the storage key                  |
-| Activate           | action                   | Atomic single-active transition                                    |
-| History            | list                     | Prior versions retained for rollback with upload date and actor    |
-| Button label       | short text, translatable | Currently `"Download Resume"`                                      |
+| Admin field        | Type               | Notes                                                              |
+| ------------------ | ------------------ | ------------------------------------------------------------------ |
+| Upload new version | PDF upload         | Verified by magic bytes, size-bounded, quarantined until validated |
+| Label              | short text         | e.g. `Frontend CV — August 2026`                                   |
+| Public filename    | short text         | Display name in the download; not the storage key                  |
+| Activate           | action             | Atomic single-active transition                                    |
+| History            | list               | Prior versions retained for rollback with upload date and actor    |
+| Button label       | code-owned UI copy | Fixed by the public message catalog                                |
 
 **Corrections:** the public URL must remain stable regardless of which version is active, so the download route resolves the active version server-side rather than exposing a storage key. Old versions are retained, not overwritten — replacing a resume today would destroy the previous file. Served with `application/pdf`, `nosniff`, and safe disposition.
 
 ## 9. Header navigation — `NavItem`
 
-The frozen header had six anchor buttons (Home, About Me, Skills, Get In Touch, Projects, Certificates), each with a Lucide icon, plus the theme toggle. `Header.tsx` now consumes the selected server DTO and maps only allowlisted targets to authored icons.
+The header has six fixed portfolio destinations (Home, About, Skills, Projects, Certificates, Contact), each with a code-owned Lucide icon, plus the Blog destination and theme toggle.
 
-| Admin field    | Type                     | Notes                                                                                                                            |
-| -------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Label          | short text, translatable | Used as the tooltip and accessible name                                                                                          |
-| Target         | section key or route     | Anchor for on-page sections, or a locale-agnostic path such as `/blog` to which the active locale prefix is added at render time |
-| Icon           | key from a code registry | Icon names are keys, never arbitrary strings                                                                                     |
-| Order, enabled | integer, boolean         |                                                                                                                                  |
-
-**Corrections:** navigation and the six homepage sections now render from ordered enabled database records (or the isolated legacy adapter), and navigation exists in server-rendered HTML. A temporary live disable proved the page omits a disabled section. The migrated section order preserves the legacy visual order; navigation ordering remains independently editable. A blog link must be added once the blog ships, and the theme control now opens the settings dialog from [THEMING.md](THEMING.md) §6.
+Navigation labels, targets, icons, order, and enabled state are not admin fields. They are part of the reviewed page design. The homepage order is likewise fixed in `HomePage.tsx`; only the About biography and collection records are content-managed.
 
 ## 10. Footer — `SiteSettings` and `SocialLink`
 
@@ -189,12 +182,12 @@ The frozen header had six anchor buttons (Home, About Me, Skills, Get In Touch, 
 
 `GetInTouch.tsx` sent mail from the browser via EmailJS using three `NEXT_PUBLIC_*` values. It now posts to `POST /api/v1/contact` and holds no credential.
 
-| Admin field                                                 | Type                     | Notes                                   |
-| ----------------------------------------------------------- | ------------------------ | --------------------------------------- |
-| Heading, field labels, placeholders, success and error text | short text, translatable | Currently English literals              |
-| Recipient address                                           | email                    | Server-only; never in the client bundle |
-| Enabled                                                     | boolean                  | Lets the owner close the form           |
-| Retention window                                            | integer days             | Applied to stored message bodies        |
+| Admin field                                                 | Type               | Notes                                   |
+| ----------------------------------------------------------- | ------------------ | --------------------------------------- |
+| Heading, field labels, placeholders, success and error text | code-owned UI copy | Sourced from the public message catalog |
+| Recipient address                                           | email              | Server-only; never in the client bundle |
+| Enabled                                                     | boolean            | Lets the owner close the form           |
+| Retention window                                            | integer days       | Applied to stored message bodies        |
 
 **Corrections — the source half is done, the exposure is not.** `NEXT_PUBLIC_EMAILJS_SERVICE_ID`, `NEXT_PUBLIC_EMAILJS_TEMPLATE_ID`, and `NEXT_PUBLIC_EMAILJS_PUBLIC_KEY` were compiled into the browser bundle and readable by anyone. Delivery has moved to the server-side SMTP adapter, the `@emailjs/browser` dependency and all three variables are gone from the workspace, and the shared submission contract now validates on both sides. **The keys have still not been rotated or revoked at the provider**, and removing them from the code does not invalidate keys already published — every bundle already served still contains them. Server-side throttling derives a client key per request. The browser now exposes a non-focusable off-screen company honeypot instead of overwriting that signal, and the API silently accepts without storing or delivering honeypot, missing-timestamp, and sub-three-second submissions.
 

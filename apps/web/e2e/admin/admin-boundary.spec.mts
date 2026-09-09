@@ -111,6 +111,7 @@ test.describe("the bootstrap", () => {
     await expect(page.getByTestId("admin-actor")).toContainText("OWNER");
     expect(new URL(page.url()).pathname).toBe("/admin");
 
+    await page.getByRole("link", { name: "Security", exact: true }).click();
     await page.getByLabel("Name this device").fill("Virtual authenticator");
     await page.getByTestId("admin-enrol-passkey").click();
     await expect(page.getByTestId("admin-enrol-status")).toHaveText(

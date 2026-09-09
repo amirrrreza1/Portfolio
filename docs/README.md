@@ -30,7 +30,7 @@ These documents define the approved target. They are normative: where an impleme
 
 ## What this product is
 
-A bilingual portfolio and blog. Article bodies are Markdown stored in PostgreSQL, editable from the authenticated admin panel and portable through validated Markdown import/export. Everything currently visible on the portfolio — including the About Me prose, the skill colours, and the resume PDF — becomes editable in the admin panel. Visitors choose their own site-wide theme and language, plus a font and text size for blog content only.
+An English portfolio with a multilingual blog. Article bodies are Markdown stored in PostgreSQL, editable from the authenticated admin panel and portable through validated Markdown import/export. Everything currently visible on the portfolio — including the About Me prose, the skill colours, and the resume PDF — becomes editable in the admin panel. Visitors choose blog language inside the blog section and can choose a font and text size for blog content only.
 
 ## Priority rules
 
@@ -47,7 +47,7 @@ A bilingual portfolio and blog. Article bodies are Markdown stored in PostgreSQL
 
 [ROADMAP.md](ROADMAP.md) is the authoritative status document. [STATUS.md](STATUS.md) and the files in [`status/`](status/) provide the per-milestone evidence, completed work, open gates, and next actions.
 
-The active workspace packages are `contracts`, `database`, `markdown`, `media`, `migration`, and `auth-core`. The web app has a locale-prefixed shell with server-resolved appearance, a public CSP, and a settings dialog; the API exposes a health route and a server-side contact endpoint. M2 is complete: the schema, deterministic seed, legacy portfolio/media migration, reviewed skill-colour normalization, and no-write replay have run against real PostgreSQL and a private MinIO bucket. Legacy JSON remains confined to a single server-only rollback adapter.
+The active workspace packages are `contracts`, `database`, `markdown`, `media`, `migration`, and `auth-core`. The web app has an English shell with language-scoped blog routes, server-resolved appearance, a public CSP, and a compact theme toggle; the retired appearance dialog is no longer exposed on portfolio or blog pages. The API exposes a health route and a server-side contact endpoint. M2 is complete: the schema, deterministic seed, legacy portfolio/media migration, reviewed skill-colour normalization, and no-write replay have run against real PostgreSQL and a private MinIO bucket. Legacy JSON remains confined to a single server-only rollback adapter.
 
 The active proof backlog is now M3, M4, and M6: M3 needs PostgreSQL-native bilingual article persistence and migration proof, M4 needs a real persisted bilingual article plus end-to-end publication invalidation, and M6 needs the API/auth/admin boundary. M5 is complete. See [ROADMAP.md](ROADMAP.md) and [STATUS.md](STATUS.md) for the evidence-backed details.
 

@@ -165,17 +165,21 @@ describe("sitemap generation", () => {
     expect(url.alternates).toHaveLength(3);
   });
 
-  it("lists the static locale routes in both languages", () => {
+  it("lists an English portfolio and language-scoped blogs", () => {
     const urls = staticLocaleUrls("en", siteUrl);
     expect(urls.map(({ loc }) => loc)).toEqual([
-      "https://example.test/en",
-      "https://example.test/en/projects",
+      "https://example.test/",
+      "https://example.test/projects",
       "https://example.test/en/blog",
     ]);
-    expect(urls[0]?.alternates?.map(({ hreflang }) => hreflang)).toEqual([
+    expect(urls[0]?.alternates).toEqual([]);
+    expect(urls[2]?.alternates?.map(({ hreflang }) => hreflang)).toEqual([
       "en",
       "fa",
       "x-default",
+    ]);
+    expect(staticLocaleUrls("fa", siteUrl).map(({ loc }) => loc)).toEqual([
+      "https://example.test/fa/blog",
     ]);
   });
 

@@ -1,13 +1,13 @@
 # Portfolio Platform
 
-This repository is being migrated from a static Next.js portfolio into a secure **bilingual portfolio and blog** with a full admin panel.
+This repository is a secure **English portfolio with a multilingual blog** and a full admin panel.
 
 What that means concretely:
 
-- **Blog articles are Markdown stored directly in PostgreSQL**, with bilingual translations, immutable revisions, version-based conflict protection, and sanitized render caches. They can be written in the admin panel or imported/exported as Markdown files, and publishing never requires a deployment.
-- **Every article exists in English and Persian** as two independent translations. One language is shown at a time; a missing translation is a `404` in that language, not a silent fallback.
+- **Blog articles are Markdown stored directly in PostgreSQL**, with a language chosen by the author, immutable revisions, version-based conflict protection, and sanitized render caches. They can be written in the admin panel or imported/exported as Markdown files, and publishing never requires a deployment.
+- **Blog readers choose English or Persian in the blog section.** A post may exist in either or both languages; a missing version is a `404`, not a silent fallback.
 - **Everything currently on the portfolio becomes editable** in the admin panel — the About Me prose, hero lines, skills and their colours, projects, certificates and their PDFs, quotes, navigation, footer links, site metadata, and the resume file.
-- **Visitors choose their own appearance** — site-wide theme, motion, and language plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
+- **Visitors choose their own appearance** — site-wide theme and motion plus blog-only font and text size — from options the owner enables, applied in the first server-rendered byte with no flash.
 
 Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingual articles, public portfolio/blog reads, accessible appearance, two-factor admin authentication, portfolio CMS, Markdown authoring/import/export/restore, discovery/SEO, and scheduled publication. M9's repository-owned operations foundation is also implemented and locally proven: the current root verification passes 833 unit/integration assertions, while the release proof also passes all 45 public Chromium checks, exercises the complete hardened Compose topology, restores an encrypted PostgreSQL/MinIO backup into isolated targets with zero marker differences, and proves tagged shared public-data caching plus targeted invalidation in the production build. M9 remains open for the owner-selected production environment, independent security assessment, production-sized restore, staged rollout, and accepted rollback window. M0's repository evidence is reconciled and now needs only owner-confirmed EmailJS revocation. [docs/STATUS.md](docs/STATUS.md) summarizes the current evidence; [docs/ROADMAP.md](docs/ROADMAP.md) defines the remaining gates.
 
@@ -15,7 +15,7 @@ Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingu
 
 | Path                    | Responsibility                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `apps/web`              | Next.js public site (locale-prefixed) and the `/admin` interface                                 |
+| `apps/web`              | Next.js English portfolio, language-scoped blog, and the `/admin` interface                      |
 | `apps/api`              | NestJS/Fastify API; authenticated writes, public reads, and database-native article publication  |
 | `packages/contracts`    | Shared Zod request/response schemas and TypeScript types                                         |
 | `packages/database`     | Prisma schema, migrations, and PostgreSQL client                                                 |
@@ -35,7 +35,7 @@ Where the work stands: M1–M8 are complete, including PostgreSQL-native bilingu
 - Authoring format: GFM Markdown with an allowlisted directive set, sanitized server-side. **MDX is never executed** — see [ADR-004](docs/DECISIONS.md#adr-004--markdown-with-an-allowlisted-directive-set-no-runtime-mdx-execution)
 - Validation: Zod contracts shared by the web and API workspaces
 - Admin authentication: Argon2id password verification plus WebAuthn/passkeys, opaque server-side sessions, and secure cookies
-- Locales: English and Persian, locale-prefixed URLs, reciprocal `hreflang`, RTL typography
+- Languages: English portfolio; English/Persian blog routes with reciprocal `hreflang` and RTL article typography
 - Deployment: one hardened Docker Compose project containing Caddy, web/API, PostgreSQL, MinIO, workers, migrations, and nightly encrypted backups
 
 ### Why Markdown and not MDX

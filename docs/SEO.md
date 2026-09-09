@@ -8,16 +8,16 @@ Technical SEO enables discovery; it cannot guarantee rankings.
 
 ## 2. Route and index policy
 
-All public routes are locale-prefixed per [I18N.md](I18N.md) §2, so every row below exists once per locale.
+Portfolio routes are unprefixed and English-only. Blog routes carry a content-language prefix per [I18N.md](I18N.md) §2.
 
 | Route                                              | Default index policy                                   |
 | -------------------------------------------------- | ------------------------------------------------------ |
-| `/<locale>` and public portfolio pages             | index, follow                                          |
-| `/<locale>/projects` and canonical project details | index, follow                                          |
+| `/` and public portfolio pages                     | index, follow                                          |
+| `/projects` and canonical project details          | index, follow                                          |
 | `/<locale>/blog` and canonical published posts     | index, follow                                          |
 | useful category archives with unique copy          | index, follow                                          |
 | thin/duplicate tag or deep pagination archives     | noindex, follow until editorially valuable             |
-| `/` before locale resolution                       | `308` redirect, not an indexable page                  |
+| old locale-prefixed portfolio URLs                 | `308` redirect, not indexable                          |
 | `/admin/**`, previews, drafts, auth, API, webhooks | noindex, nofollow, noarchive and excluded from sitemap |
 | internal search results, if added                  | noindex, follow                                        |
 

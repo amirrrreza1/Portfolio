@@ -1,6 +1,5 @@
 import Button from "@/Components/UI/Buttons/CustomBTN";
 import CodeStyleText from "@/Components/UI/CodeTyleText/CodeTyleText";
-import AppearanceSettingsDialog from "@/Components/Appearance/AppearanceSettingsDialog";
 import type { Locale } from "@portfolio/contracts/common";
 import type {
   PublicSiteSettings,
@@ -80,42 +79,54 @@ export default function Footer({
               strings={[
                 `${messages.footer.copyright} ${year} ${settings.siteName}`,
                 ...settings.footerLines,
-                settings.footerRights,
+                messages.footer.rights,
               ]}
               typingSpeed={50}
               deletingSpeed={30}
             />
           </p>
 
-          <div className="flex items-center gap-4">
-            <Link
-              href={localePath(locale, "blog")}
-              className="hover:text-bg flex items-center gap-1 underline-offset-4 hover:underline"
-            >
-              <BookOpen aria-hidden="true" size={18} />
-              {messages.blog.title}
-            </Link>
-            <AppearanceSettingsDialog locale={locale} />
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <div className="flex gap-3">
               {standardLinks.map((link) => (
                 <PublicLink key={link.id} link={link} />
               ))}
             </div>
-            {donateLinks.map((link) => {
-              return (
-                <Button key={link.id} className="!px-3 !py-1">
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel={link.rel ?? "noopener noreferrer"}
-                    className="flex items-center gap-2"
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                size="sm"
+                className="focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <Link href={localePath(locale, "blog")}>
+                  <span className="inline-flex items-center gap-2">
+                    <BookOpen aria-hidden="true" size={18} />
+                    {messages.blog.title}
+                  </span>
+                </Link>
+              </Button>
+              {donateLinks.map((link) => {
+                return (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="focus-visible:ring-2 focus-visible:outline-none"
+                    key={link.id}
                   >
-                    <SocialIcon link={link} />
-                    {link.label}
-                  </a>
-                </Button>
-              );
-            })}
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel={link.rel ?? "noopener noreferrer"}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <SocialIcon link={link} />
+                        {link.label}
+                      </span>
+                    </a>
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

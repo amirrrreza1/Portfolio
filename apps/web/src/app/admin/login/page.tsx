@@ -17,7 +17,10 @@ export default async function AdminLoginPage(): Promise<React.JSX.Element> {
   if (signedIn) redirect("/admin");
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-6">
+    <main
+      id="admin-main"
+      className="mx-auto flex min-h-screen w-[90%] max-w-sm flex-col justify-center gap-6 py-12"
+    >
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Sign in</h1>
         <p className="text-text-muted text-sm">
@@ -25,6 +28,6 @@ export default async function AdminLoginPage(): Promise<React.JSX.Element> {
         </p>
       </div>
       <AdminLoginForm />
-    </div>
+    </main>
   );
 }

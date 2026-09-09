@@ -54,38 +54,11 @@ type Settings = {
   readonly translations: readonly Translation[];
 };
 
-type Appearance = {
-  readonly version: number;
-  readonly enabledThemes: readonly string[];
-  readonly defaultTheme: string;
-  readonly enabledBlogFonts: readonly string[];
-  readonly defaultBlogFontByLocale: Record<string, string>;
-  readonly allowedBlogSizeSteps: readonly string[];
-  readonly defaultBlogSizeStep: string;
-  readonly offerMotionToggle: boolean;
-};
-
 type Section = {
   readonly id: string;
   readonly key:
     "hero" | "about" | "skills" | "projects" | "certificates" | "contact";
-  readonly content: unknown;
-  readonly enabled: boolean;
-  readonly sortOrder: number;
-  readonly version: number;
   readonly translations: readonly Translation[];
-};
-
-type NavItem = {
-  readonly id: string;
-  readonly labelByLocale: Record<string, string>;
-  readonly targetKind: "SECTION_ANCHOR" | "INTERNAL_ROUTE";
-  readonly target: string;
-  readonly iconKey: string | null;
-  readonly enabled: boolean;
-  readonly sortOrder: number;
-  readonly archivedAt: string | null;
-  readonly version: number;
 };
 
 type SocialLink = {
@@ -103,9 +76,7 @@ type SocialLink = {
 
 type State = {
   readonly settings: Settings;
-  readonly appearance: Appearance;
   readonly sections: readonly Section[];
-  readonly navigation: readonly NavItem[];
   readonly socials: readonly SocialLink[];
 };
 
@@ -117,15 +88,12 @@ export default function AdminPortfolioEditor(): React.JSX.Element {
 
   const load = useCallback(async () => {
     try {
-      const [settings, appearance, sections, navigation, socials] =
-        await Promise.all([
-          adminRequest<Settings>("/admin/settings"),
-          adminRequest<Appearance>("/admin/appearance"),
-          adminRequest<readonly Section[]>("/admin/sections"),
-          adminRequest<readonly NavItem[]>("/admin/nav-items"),
-          adminRequest<readonly SocialLink[]>("/admin/social-links"),
-        ]);
-      setState({ settings, appearance, sections, navigation, socials });
+      const [settings, sections, socials] = await Promise.all([
+        adminRequest<Settings>("/admin/settings"),
+        adminRequest<readonly Section[]>("/admin/sections"),
+        adminRequest<readonly SocialLink[]>("/admin/social-links"),
+      ]);
+      setState({ settings, sections, socials });
       setFailed(false);
     } catch (error) {
       setMessage(describeAdminError(error));
@@ -163,37 +131,21 @@ export default function AdminPortfolioEditor(): React.JSX.Element {
     );
   }
 
-  const missingTranslations = state.sections.reduce(
-    (total, section) =>
-      total +
-      (["en", "fa"] as const).filter(
-        (locale) => !section.translations.some((item) => item.locale === locale)
-      ).length,
-    0
-  );
-
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
         <div>
-          <p className="font-semibold">Translation coverage</p>
+          <p className="font-semibold">English portfolio content</p>
           <p className="text-text-muted text-sm">
-            {missingTranslations === 0
-              ? "Every page section has English and Persian content."
-              : `${missingTranslations} section translation${missingTranslations === 1 ? " is" : "s are"} still missing.`}
+            Site-wide content is English. Blog posts manage their language in
+            the Blog workspace.
           </p>
         </div>
         <EditorStatus message={message} error={failed} />
       </div>
 
       <SettingsEditor settings={state.settings} busy={busy} mutate={mutate} />
-      <AppearanceEditor
-        appearance={state.appearance}
-        busy={busy}
-        mutate={mutate}
-      />
-      <SectionsEditor sections={state.sections} busy={busy} mutate={mutate} />
-      <NavigationEditor items={state.navigation} busy={busy} mutate={mutate} />
+      <AboutEditor sections={state.sections} busy={busy} mutate={mutate} />
       <SocialEditor items={state.socials} busy={busy} mutate={mutate} />
     </div>
   );
@@ -223,10 +175,8 @@ function SettingsEditor({
           body: {
             settings: {
               canonicalSiteUrl: text(form, "canonicalSiteUrl"),
-              defaultLocale: text(form, "defaultLocale"),
-              enabledLocales: (["en", "fa"] as const).filter((locale) =>
-                form.has(`locale-${locale}`)
-              ),
+              defaultLocale: "en",
+              enabledLocales: ["en"],
               timezone: text(form, "timezone"),
               defaultSocialImageId: nullable(form, "defaultSocialImageId"),
               authorName: text(form, "authorName"),
@@ -280,31 +230,6 @@ function SettingsEditor({
             defaultValue={settings.timezone}
           />
         </Field>
-        <Field label="Default language">
-          <select
-            className={inputClass}
-            name="defaultLocale"
-            defaultValue={settings.defaultLocale}
-          >
-            <option value="en">English</option>
-            <option value="fa">Persian</option>
-          </select>
-        </Field>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">Enabled languages</legend>
-          <div className="grid grid-cols-2 gap-2">
-            <Check
-              name="locale-en"
-              label="English"
-              defaultChecked={settings.enabledLocales.includes("en")}
-            />
-            <Check
-              name="locale-fa"
-              label="Persian"
-              defaultChecked={settings.enabledLocales.includes("fa")}
-            />
-          </div>
-        </fieldset>
         <Field label="Author name">
           <input
             className={inputClass}
@@ -439,7 +364,7 @@ function SettingsEditor({
       </form>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {(["en", "fa"] as const).map((locale) => {
+        {(["en"] as const).map((locale) => {
           const translation = settings.translations.find(
             (item) => item.locale === locale
           );
@@ -462,8 +387,10 @@ function SettingsEditor({
                         metaDescription: text(form, "metaDescription"),
                         keywords: lines(form, "keywords"),
                         footerLines: lines(form, "footerLines"),
-                        footerRights: text(form, "footerRights"),
-                        resumeButtonLabel: text(form, "resumeButtonLabel"),
+                        footerRights:
+                          translation?.footerRights ?? "All rights reserved",
+                        resumeButtonLabel:
+                          translation?.resumeButtonLabel ?? "Download",
                       },
                     }),
                   `${locale.toUpperCase()} site text saved.`
@@ -471,9 +398,7 @@ function SettingsEditor({
               }}
             >
               <div className="flex items-center justify-between gap-3">
-                <h4 className="font-semibold">
-                  {locale === "en" ? "English" : "Persian"}
-                </h4>
+                <h4 className="font-semibold">English</h4>
                 <LocaleBadge
                   locale={locale}
                   present={translation !== undefined}
@@ -485,7 +410,7 @@ function SettingsEditor({
                   name="siteName"
                   required
                   defaultValue={translation?.siteName ?? ""}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
+                  dir="ltr"
                 />
               </Field>
               <Field label="Title template">
@@ -494,7 +419,7 @@ function SettingsEditor({
                   name="titleTemplate"
                   required
                   defaultValue={translation?.titleTemplate ?? ""}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
+                  dir="ltr"
                 />
               </Field>
               <Field label="Meta description">
@@ -504,7 +429,7 @@ function SettingsEditor({
                   required
                   rows={4}
                   defaultValue={translation?.metaDescription ?? ""}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
+                  dir="ltr"
                 />
               </Field>
               <Field label="SEO keywords" hint="One reviewed keyword per line.">
@@ -513,7 +438,7 @@ function SettingsEditor({
                   name="keywords"
                   rows={6}
                   defaultValue={(translation?.keywords ?? []).join("\n")}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
+                  dir="ltr"
                 />
               </Field>
               <Field
@@ -525,25 +450,7 @@ function SettingsEditor({
                   name="footerLines"
                   rows={3}
                   defaultValue={(translation?.footerLines ?? []).join("\n")}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
-                />
-              </Field>
-              <Field label="Footer rights text">
-                <input
-                  className={inputClass}
-                  name="footerRights"
-                  required
-                  defaultValue={translation?.footerRights ?? ""}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
-                />
-              </Field>
-              <Field label="Resume button label">
-                <input
-                  className={inputClass}
-                  name="resumeButtonLabel"
-                  required
-                  defaultValue={translation?.resumeButtonLabel ?? ""}
-                  dir={locale === "fa" ? "rtl" : "ltr"}
+                  dir="ltr"
                 />
               </Field>
               <SaveButton busy={busy} />
@@ -555,127 +462,7 @@ function SettingsEditor({
   );
 }
 
-function AppearanceEditor({
-  appearance,
-  busy,
-  mutate,
-}: {
-  readonly appearance: Appearance;
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  return (
-    <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Appearance options"
-        description="Choose only registry-backed themes, fonts, text sizes, and defaults. These values never become authored CSS."
-      />
-      <form
-        className="border-border grid gap-4 border p-4 md:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          void mutate(
-            () =>
-              adminRequest("/admin/appearance", {
-                method: "PATCH",
-                mutation: true,
-                ifMatch: appearance.version,
-                body: {
-                  settings: {
-                    enabledThemes: commaList(form, "enabledThemes"),
-                    defaultTheme: text(form, "defaultTheme"),
-                    enabledBlogFonts: commaList(form, "enabledBlogFonts"),
-                    defaultBlogFontByLocale: {
-                      en: text(form, "fontEn"),
-                      fa: text(form, "fontFa"),
-                    },
-                    allowedBlogSizeSteps: commaList(
-                      form,
-                      "allowedBlogSizeSteps"
-                    ),
-                    defaultBlogSizeStep: text(form, "defaultBlogSizeStep"),
-                    offerMotionToggle: form.has("offerMotionToggle"),
-                  },
-                },
-              }),
-            "Appearance options saved."
-          );
-        }}
-      >
-        <Field label="Enabled themes" hint="Comma-separated registry keys.">
-          <input
-            className={inputClass}
-            name="enabledThemes"
-            required
-            defaultValue={appearance.enabledThemes.join(", ")}
-          />
-        </Field>
-        <Field label="Default theme">
-          <input
-            className={inputClass}
-            name="defaultTheme"
-            required
-            defaultValue={appearance.defaultTheme}
-          />
-        </Field>
-        <Field label="Enabled blog fonts" hint="Comma-separated registry keys.">
-          <input
-            className={inputClass}
-            name="enabledBlogFonts"
-            required
-            defaultValue={appearance.enabledBlogFonts.join(", ")}
-          />
-        </Field>
-        <Field label="English blog font">
-          <input
-            className={inputClass}
-            name="fontEn"
-            required
-            defaultValue={appearance.defaultBlogFontByLocale.en}
-          />
-        </Field>
-        <Field label="Persian blog font">
-          <input
-            className={inputClass}
-            name="fontFa"
-            required
-            defaultValue={appearance.defaultBlogFontByLocale.fa}
-          />
-        </Field>
-        <Field label="Allowed size steps">
-          <input
-            className={inputClass}
-            name="allowedBlogSizeSteps"
-            required
-            defaultValue={appearance.allowedBlogSizeSteps.join(", ")}
-          />
-        </Field>
-        <Field label="Default size step">
-          <input
-            className={inputClass}
-            name="defaultBlogSizeStep"
-            required
-            defaultValue={appearance.defaultBlogSizeStep}
-          />
-        </Field>
-        <Check
-          name="offerMotionToggle"
-          label="Offer reduced-motion control"
-          defaultChecked={appearance.offerMotionToggle}
-        />
-        <div className="md:col-span-2">
-          <SaveButton busy={busy} />
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function SectionsEditor({
+function AboutEditor({
   sections,
   busy,
   mutate,
@@ -687,49 +474,24 @@ function SectionsEditor({
     success: string
   ) => Promise<void>;
 }): React.JSX.Element {
+  const about = sections.find((section) => section.key === "about");
+
   return (
     <section className="flex flex-col gap-5">
       <ResourceHeading
-        title="Page sections"
-        description="Control order, visibility, hero motion, About prose, and both localized headings from one closed section set."
+        title="About content"
+        description="Edit the portfolio biography. Section headings, order, visibility, navigation, and interface labels are fixed in the site design."
       />
-      <div className="flex flex-col gap-3">
-        {sections.map((section) => (
-          <details className="border-border border" key={section.id}>
-            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4">
-              <span className="font-semibold capitalize">{section.key}</span>
-              <span className="flex gap-2">
-                {(["en", "fa"] as const).map((locale) => (
-                  <LocaleBadge
-                    key={locale}
-                    locale={locale}
-                    present={section.translations.some(
-                      (item) => item.locale === locale
-                    )}
-                  />
-                ))}
-              </span>
-            </summary>
-            <div className="border-border flex flex-col gap-5 border-t p-4">
-              <SectionBaseForm section={section} busy={busy} mutate={mutate} />
-              {(["en", "fa"] as const).map((locale) => (
-                <SectionTranslationForm
-                  key={locale}
-                  section={section}
-                  locale={locale}
-                  busy={busy}
-                  mutate={mutate}
-                />
-              ))}
-            </div>
-          </details>
-        ))}
-      </div>
+      {about === undefined ? (
+        <EditorStatus message="The About content record is missing." error />
+      ) : (
+        <AboutContentForm section={about} busy={busy} mutate={mutate} />
+      )}
     </section>
   );
 }
 
-function SectionBaseForm({
+function AboutContentForm({
   section,
   busy,
   mutate,
@@ -741,524 +503,74 @@ function SectionBaseForm({
     success: string
   ) => Promise<void>;
 }): React.JSX.Element {
-  const content = record(section.content);
+  const translation = section.translations.find((item) => item.locale === "en");
+  const content = record(translation?.content);
+
   return (
     <form
-      className="grid gap-3 md:grid-cols-2"
+      className="border-border grid gap-3 border p-4 md:grid-cols-2"
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
-        const hero =
-          section.key === "hero"
-            ? {
-                variant: "primary",
-                typingSpeed: integer(form, "typingSpeed"),
-                deletingSpeed: integer(form, "deletingSpeed"),
-                pauseBetween: integer(form, "pauseBetween"),
-                showRubikCube: form.has("showRubikCube"),
-              }
-            : {};
         void mutate(
           () =>
-            adminRequest(`/admin/sections/${section.id}`, {
+            adminRequest(`/admin/sections/${section.id}/translations/en`, {
               method: "PATCH",
               mutation: true,
-              ifMatch: section.version,
+              ifMatch: translation?.version ?? 0,
               body: {
-                key: section.key,
-                content: hero,
-                enabled: form.has("enabled"),
-                sortOrder: integer(form, "sortOrder"),
-              },
-            }),
-          `${section.key} section settings saved.`
-        );
-      }}
-    >
-      <Field label="Order">
-        <input
-          className={inputClass}
-          name="sortOrder"
-          type="number"
-          min="0"
-          required
-          defaultValue={section.sortOrder}
-        />
-      </Field>
-      <Check
-        name="enabled"
-        label="Show this section"
-        defaultChecked={section.enabled}
-      />
-      {section.key === "hero" ? (
-        <>
-          <Field label="Typing speed (ms)">
-            <input
-              className={inputClass}
-              name="typingSpeed"
-              type="number"
-              min="10"
-              max="500"
-              defaultValue={numberValue(content.typingSpeed, 100)}
-            />
-          </Field>
-          <Field label="Deleting speed (ms)">
-            <input
-              className={inputClass}
-              name="deletingSpeed"
-              type="number"
-              min="10"
-              max="500"
-              defaultValue={numberValue(content.deletingSpeed, 50)}
-            />
-          </Field>
-          <Field label="Pause between lines (ms)">
-            <input
-              className={inputClass}
-              name="pauseBetween"
-              type="number"
-              min="0"
-              max="30000"
-              defaultValue={numberValue(content.pauseBetween, 1200)}
-            />
-          </Field>
-          <Check
-            name="showRubikCube"
-            label="Show Rubik cube"
-            defaultChecked={content.showRubikCube !== false}
-          />
-        </>
-      ) : null}
-      <div className="md:col-span-2">
-        <SaveButton busy={busy} />
-      </div>
-    </form>
-  );
-}
-
-function SectionTranslationForm({
-  section,
-  locale,
-  busy,
-  mutate,
-}: {
-  readonly section: Section;
-  readonly locale: "en" | "fa";
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  const translation = section.translations.find(
-    (item) => item.locale === locale
-  );
-  const content = record(translation?.content);
-  const direction = locale === "fa" ? "rtl" : "ltr";
-  return (
-    <form
-      className="border-border grid gap-3 border-t pt-4 md:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const translatedContent =
-          section.key === "hero"
-            ? {
-                lines: lines(form, "lines"),
-                ...(nullable(form, "subtitle") === null
-                  ? {}
-                  : { subtitle: text(form, "subtitle") }),
-              }
-            : section.key === "about"
-              ? {
-                  location: text(form, "location"),
-                  role: text(form, "role"),
-                  body: paragraphs(form, "body"),
-                }
-              : section.key === "contact"
-                ? {
-                    nameLabel: text(form, "nameLabel"),
-                    namePlaceholder: text(form, "namePlaceholder"),
-                    emailLabel: text(form, "emailLabel"),
-                    emailPlaceholder: text(form, "emailPlaceholder"),
-                    messageLabel: text(form, "messageLabel"),
-                    messagePlaceholder: text(form, "messagePlaceholder"),
-                    sendingLabel: text(form, "sendingLabel"),
-                    submitLabel: text(form, "submitLabel"),
-                    successMessage: text(form, "successMessage"),
-                    failureMessage: text(form, "failureMessage"),
-                    invalidNameMessage: text(form, "invalidNameMessage"),
-                    invalidEmailMessage: text(form, "invalidEmailMessage"),
-                    invalidMessageMessage: text(form, "invalidMessageMessage"),
-                  }
-                : {};
-        void mutate(
-          () =>
-            adminRequest(
-              `/admin/sections/${section.id}/translations/${locale}`,
-              {
-                method: "PATCH",
-                mutation: true,
-                ifMatch: translation?.version ?? 0,
-                body: {
-                  key: section.key,
-                  translation: {
-                    title: nullable(form, "title"),
-                    content: translatedContent,
+                key: "about",
+                translation: {
+                  title: translation?.title ?? "About Me",
+                  content: {
+                    location: text(form, "location"),
+                    role: text(form, "role"),
+                    body: paragraphs(form, "body"),
                   },
                 },
-              }
-            ),
-          `${section.key} ${locale.toUpperCase()} content saved.`
+              },
+            }),
+          "About content saved."
         );
       }}
     >
       <div className="flex items-center gap-2 md:col-span-2">
-        <h5 className="font-semibold">
-          {locale === "en" ? "English" : "Persian"}
-        </h5>
-        <LocaleBadge locale={locale} present={translation !== undefined} />
+        <h4 className="font-semibold">Biography</h4>
+        <LocaleBadge locale="en" present={translation !== undefined} />
       </div>
-      <Field label="Section title">
+      <Field label="Location">
         <input
           className={inputClass}
-          name="title"
-          defaultValue={translation?.title ?? ""}
-          dir={direction}
+          name="location"
+          required
+          defaultValue={stringValue(content.location)}
+          dir="ltr"
         />
       </Field>
-      {section.key === "hero" ? (
-        <>
-          <Field label="Typed lines" hint="One line per row.">
-            <textarea
-              className={inputClass}
-              name="lines"
-              required
-              rows={4}
-              defaultValue={stringArray(content.lines).join("\n")}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Subtitle">
-            <textarea
-              className={inputClass}
-              name="subtitle"
-              rows={3}
-              defaultValue={stringValue(content.subtitle)}
-              dir={direction}
-            />
-          </Field>
-        </>
-      ) : null}
-      {section.key === "about" ? (
-        <>
-          <Field label="Location">
-            <input
-              className={inputClass}
-              name="location"
-              required
-              defaultValue={stringValue(content.location)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Role">
-            <input
-              className={inputClass}
-              name="role"
-              required
-              defaultValue={stringValue(content.role)}
-              dir={direction}
-            />
-          </Field>
-          <Field
-            label="About paragraphs"
-            hint="Separate paragraphs with a blank line."
-          >
-            <textarea
-              className={inputClass}
-              name="body"
-              required
-              rows={8}
-              defaultValue={stringArray(content.body).join("\n\n")}
-              dir={direction}
-            />
-          </Field>
-        </>
-      ) : null}
-      {section.key === "contact" ? (
-        <>
-          <Field label="Name label">
-            <input
-              className={inputClass}
-              name="nameLabel"
-              required
-              defaultValue={stringValue(content.nameLabel)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Name placeholder">
-            <input
-              className={inputClass}
-              name="namePlaceholder"
-              required
-              defaultValue={stringValue(content.namePlaceholder)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Email label">
-            <input
-              className={inputClass}
-              name="emailLabel"
-              required
-              defaultValue={stringValue(content.emailLabel)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Email placeholder">
-            <input
-              className={inputClass}
-              name="emailPlaceholder"
-              required
-              defaultValue={stringValue(content.emailPlaceholder)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Message label">
-            <input
-              className={inputClass}
-              name="messageLabel"
-              required
-              defaultValue={stringValue(content.messageLabel)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Message placeholder">
-            <input
-              className={inputClass}
-              name="messagePlaceholder"
-              required
-              defaultValue={stringValue(content.messagePlaceholder)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Sending label">
-            <input
-              className={inputClass}
-              name="sendingLabel"
-              required
-              defaultValue={stringValue(content.sendingLabel)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Submit label">
-            <input
-              className={inputClass}
-              name="submitLabel"
-              required
-              defaultValue={stringValue(content.submitLabel)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Success message">
-            <input
-              className={inputClass}
-              name="successMessage"
-              required
-              defaultValue={stringValue(content.successMessage)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Failure message">
-            <input
-              className={inputClass}
-              name="failureMessage"
-              required
-              defaultValue={stringValue(content.failureMessage)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Invalid-name message">
-            <input
-              className={inputClass}
-              name="invalidNameMessage"
-              required
-              defaultValue={stringValue(content.invalidNameMessage)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Invalid-email message">
-            <input
-              className={inputClass}
-              name="invalidEmailMessage"
-              required
-              defaultValue={stringValue(content.invalidEmailMessage)}
-              dir={direction}
-            />
-          </Field>
-          <Field label="Invalid-message message">
-            <input
-              className={inputClass}
-              name="invalidMessageMessage"
-              required
-              defaultValue={stringValue(content.invalidMessageMessage)}
-              dir={direction}
-            />
-          </Field>
-        </>
-      ) : null}
+      <Field label="Role">
+        <input
+          className={inputClass}
+          name="role"
+          required
+          defaultValue={stringValue(content.role)}
+          dir="ltr"
+        />
+      </Field>
+      <Field
+        label="About paragraphs"
+        hint="Separate paragraphs with a blank line."
+      >
+        <textarea
+          className={inputClass}
+          name="body"
+          required
+          rows={8}
+          defaultValue={stringArray(content.body).join("\n\n")}
+          dir="ltr"
+        />
+      </Field>
       <div className="md:col-span-2">
         <SaveButton busy={busy} />
-      </div>
-    </form>
-  );
-}
-
-function NavigationEditor({
-  items,
-  busy,
-  mutate,
-}: {
-  readonly items: readonly NavItem[];
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  return (
-    <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Header navigation"
-        description="Navigation can target an allowlisted section key or a site-relative route—never an external URL."
-      />
-      <NavForm busy={busy} mutate={mutate} />
-      {items.map((item) => (
-        <NavForm key={item.id} item={item} busy={busy} mutate={mutate} />
-      ))}
-    </section>
-  );
-}
-
-function NavForm({
-  item,
-  busy,
-  mutate,
-}: {
-  readonly item?: NavItem;
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  return (
-    <form
-      className={`border-border grid gap-3 border p-4 md:grid-cols-3 ${item?.archivedAt === null || item === undefined ? "" : "opacity-70"}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const body = {
-          labelByLocale: {
-            en: text(form, "labelEn"),
-            fa: text(form, "labelFa"),
-          },
-          targetKind: text(form, "targetKind"),
-          target: text(form, "target"),
-          iconKey: nullable(form, "iconKey"),
-          enabled: form.has("enabled"),
-          sortOrder: integer(form, "sortOrder"),
-        };
-        void mutate(
-          () =>
-            adminRequest(
-              item === undefined
-                ? "/admin/nav-items"
-                : `/admin/nav-items/${item.id}`,
-              {
-                method: item === undefined ? "POST" : "PATCH",
-                mutation: true,
-                ...(item === undefined ? {} : { ifMatch: item.version }),
-                body,
-              }
-            ),
-          item === undefined
-            ? "Navigation item created."
-            : "Navigation item saved."
-        );
-      }}
-    >
-      <h4 className="font-semibold md:col-span-3">
-        {item === undefined ? "Add navigation item" : item.labelByLocale.en}
-      </h4>
-      <Field label="English label">
-        <input
-          className={inputClass}
-          name="labelEn"
-          required
-          defaultValue={item?.labelByLocale.en ?? ""}
-        />
-      </Field>
-      <Field label="Persian label">
-        <input
-          className={inputClass}
-          name="labelFa"
-          required
-          defaultValue={item?.labelByLocale.fa ?? ""}
-          dir="rtl"
-        />
-      </Field>
-      <Field label="Target type">
-        <select
-          className={inputClass}
-          name="targetKind"
-          defaultValue={item?.targetKind ?? "SECTION_ANCHOR"}
-        >
-          <option value="SECTION_ANCHOR">Page section</option>
-          <option value="INTERNAL_ROUTE">Internal route</option>
-        </select>
-      </Field>
-      <Field label="Target">
-        <input
-          className={inputClass}
-          name="target"
-          required
-          defaultValue={item?.target ?? ""}
-        />
-      </Field>
-      <Field label="Icon key">
-        <input
-          className={inputClass}
-          name="iconKey"
-          defaultValue={item?.iconKey ?? ""}
-        />
-      </Field>
-      <Field label="Order">
-        <input
-          className={inputClass}
-          name="sortOrder"
-          type="number"
-          min="0"
-          required
-          defaultValue={item?.sortOrder ?? 0}
-        />
-      </Field>
-      <Check
-        name="enabled"
-        label="Enabled"
-        defaultChecked={item?.enabled ?? true}
-      />
-      <div className="flex flex-wrap gap-2 md:col-span-3">
-        <SaveButton busy={busy}>
-          {item === undefined ? "Create item" : "Save changes"}
-        </SaveButton>
-        {item === undefined ? null : (
-          <ArchiveButton
-            resource="nav-items"
-            item={item}
-            busy={busy}
-            mutate={mutate}
-          />
-        )}
       </div>
     </form>
   );
@@ -1311,7 +623,6 @@ function SocialForm({
         const body = {
           labelByLocale: {
             en: text(form, "labelEn"),
-            fa: text(form, "labelFa"),
           },
           kind: text(form, "kind"),
           url: text(form, "url"),
@@ -1346,15 +657,6 @@ function SocialForm({
           name="labelEn"
           required
           defaultValue={item?.labelByLocale.en ?? ""}
-        />
-      </Field>
-      <Field label="Persian label">
-        <input
-          className={inputClass}
-          name="labelFa"
-          required
-          defaultValue={item?.labelByLocale.fa ?? ""}
-          dir="rtl"
         />
       </Field>
       <Field label="Kind">
@@ -1493,12 +795,6 @@ function paragraphs(form: FormData, name: string): string[] {
     .map((value) => value.trim())
     .filter(Boolean);
 }
-function commaList(form: FormData, name: string): string[] {
-  return text(form, name)
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
 function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -1511,7 +807,4 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
-}
-function numberValue(value: unknown, fallback: number): number {
-  return typeof value === "number" ? value : fallback;
 }

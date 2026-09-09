@@ -154,13 +154,16 @@ export default function AdminCollectionsEditor(): React.JSX.Element {
     );
   const allSkills = state.categories.flatMap((category) => category.skills);
   const missing =
-    state.categories.filter((item) => item.translations.length < 2).length +
-    state.projects.filter((item) => item.translations.length < 2).length +
-    state.certificates.filter((item) => item.translations.length < 2).length +
-    state.quotes.filter(
-      (item) =>
-        item.textByLocale.en === undefined || item.textByLocale.fa === undefined
-    ).length;
+    state.categories.filter(
+      (item) => !item.translations.some(({ locale }) => locale === "en")
+    ).length +
+    state.projects.filter(
+      (item) => !item.translations.some(({ locale }) => locale === "en")
+    ).length +
+    state.certificates.filter(
+      (item) => !item.translations.some(({ locale }) => locale === "en")
+    ).length +
+    state.quotes.filter((item) => item.textByLocale.en === undefined).length;
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
@@ -168,8 +171,8 @@ export default function AdminCollectionsEditor(): React.JSX.Element {
           <p className="font-semibold">Collection readiness</p>
           <p className="text-text-muted text-sm">
             {missing === 0
-              ? "Every localized collection record is bilingual."
-              : `${missing} record${missing === 1 ? " needs" : "s need"} translation work.`}
+              ? "Every portfolio collection has English content."
+              : `${missing} record${missing === 1 ? " needs" : "s need"} English content.`}
           </p>
         </div>
         <EditorStatus message={message} error={failed} />
@@ -261,7 +264,7 @@ function SkillsEditor({
                 ?.name ?? category.key}
             </span>
             <span className="flex gap-2">
-              {(["en", "fa"] as const).map((locale) => (
+              {(["en"] as const).map((locale) => (
                 <LocaleBadge
                   key={locale}
                   locale={locale}
@@ -328,7 +331,7 @@ function SkillsEditor({
               </div>
             </form>
             <div className="grid gap-3 lg:grid-cols-2">
-              {(["en", "fa"] as const).map((locale) => {
+              {(["en"] as const).map((locale) => {
                 const value = category.translations.find(
                   (item) => item.locale === locale
                 );
@@ -355,9 +358,7 @@ function SkillsEditor({
                     }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold">
-                        {locale === "en" ? "English" : "Persian"}
-                      </span>
+                      <span className="font-semibold">English</span>
                       <LocaleBadge
                         locale={locale}
                         present={value !== undefined}
@@ -369,7 +370,7 @@ function SkillsEditor({
                         name="name"
                         required
                         defaultValue={value?.name ?? ""}
-                        dir={locale === "fa" ? "rtl" : "ltr"}
+                        dir="ltr"
                       />
                     </Field>
                     <SaveButton busy={busy} />
@@ -534,7 +535,7 @@ function ProjectsEditor({
     <section className="flex flex-col gap-5">
       <ResourceHeading
         title="Projects"
-        description="Manage links, dates, status, featured order, verified imagery, skill relationships, and independent English/Persian copy."
+        description="Manage links, dates, status, featured order, verified imagery, skill relationships, and English copy."
       />
       <ProjectForm skills={skills} busy={busy} mutate={mutate} />
       {projects.map((project) => (
@@ -575,7 +576,7 @@ function ProjectForm({
         </span>
         {project === undefined ? null : (
           <span className="flex gap-2">
-            {(["en", "fa"] as const).map((locale) => (
+            {(["en"] as const).map((locale) => (
               <LocaleBadge
                 key={locale}
                 locale={locale}
@@ -744,7 +745,7 @@ function ProjectForm({
         </form>
         {project === undefined
           ? null
-          : (["en", "fa"] as const).map((locale) => (
+          : (["en"] as const).map((locale) => (
               <ProjectTranslationForm
                 key={locale}
                 project={project}
@@ -796,9 +797,7 @@ function ProjectTranslationForm({
       }}
     >
       <div className="flex items-center gap-2 md:col-span-2">
-        <h5 className="font-semibold">
-          {locale === "en" ? "English" : "Persian"}
-        </h5>
+        <h5 className="font-semibold">English</h5>
         <LocaleBadge locale={locale} present={value !== undefined} />
       </div>
       <Field label="Title">
@@ -886,7 +885,7 @@ function CertificateForm({
         </span>
         {certificate === undefined ? null : (
           <span className="flex gap-2">
-            {(["en", "fa"] as const).map((locale) => (
+            {(["en"] as const).map((locale) => (
               <LocaleBadge
                 key={locale}
                 locale={locale}
@@ -1035,7 +1034,7 @@ function CertificateForm({
         </form>
         {certificate === undefined
           ? null
-          : (["en", "fa"] as const).map((locale) => (
+          : (["en"] as const).map((locale) => (
               <CertificateTranslationForm
                 key={locale}
                 certificate={certificate}
@@ -1085,9 +1084,7 @@ function CertificateTranslationForm({
       }}
     >
       <div className="flex items-center gap-2 md:col-span-2">
-        <h5 className="font-semibold">
-          {locale === "en" ? "English" : "Persian"}
-        </h5>
+        <h5 className="font-semibold">English</h5>
         <LocaleBadge locale={locale} present={value !== undefined} />
       </div>
       <Field label="Title">
@@ -1152,11 +1149,9 @@ function QuoteForm({
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
-        const fa = nullable(form, "textFa");
         const body = {
           textByLocale: {
             en: text(form, "textEn"),
-            ...(fa === null ? {} : { fa }),
           },
           author: nullable(form, "author"),
           sourceUrl: nullable(form, "sourceUrl"),
@@ -1192,10 +1187,6 @@ function QuoteForm({
             locale="en"
             present={quote?.textByLocale.en !== undefined}
           />
-          <LocaleBadge
-            locale="fa"
-            present={quote?.textByLocale.fa !== undefined}
-          />
         </span>
       </div>
       <Field label="English text">
@@ -1205,15 +1196,6 @@ function QuoteForm({
           required
           rows={3}
           defaultValue={quote?.textByLocale.en ?? ""}
-        />
-      </Field>
-      <Field label="Persian text">
-        <textarea
-          className={inputClass}
-          name="textFa"
-          rows={3}
-          defaultValue={quote?.textByLocale.fa ?? ""}
-          dir="rtl"
         />
       </Field>
       <Field label="Author">

@@ -9,24 +9,16 @@ import Button from "../UI/Buttons/CustomBTN";
 import { useToast } from "../Toast/Toast";
 import { ContactUsSchema } from "@/Schemas/ContactUsForm";
 import { useAutoLang } from "@/Hooks/useAutoLang";
+import { getMessages } from "@/i18n/messages";
 import { FormData } from "./Types";
-import type { PublicPageSection } from "@portfolio/contracts/portfolio";
 
 /** Public contact requests go through the server-side SMTP delivery path. */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
-export default function GetInTouchForm({
-  title,
-  content,
-}: {
-  readonly title: string;
-  readonly content: Extract<
-    PublicPageSection,
-    { readonly key: "contact" }
-  >["content"];
-}) {
+export default function GetInTouchForm() {
   const toast = useToast();
   const [startedAt] = useState(() => Date.now());
+  const messages = getMessages("en");
 
   const {
     register,
@@ -47,10 +39,10 @@ export default function GetInTouchForm({
       });
       if (!response.ok) throw new Error("Contact request failed");
 
-      toast(content.successMessage);
+      toast(messages.contact.success);
       reset();
     } catch {
-      toast(content.failureMessage);
+      toast(messages.contact.failure);
     }
   };
 
@@ -63,7 +55,7 @@ export default function GetInTouchForm({
       className="Container my-10 border p-2 backdrop-blur-sm"
       id="getintouch"
     >
-      <ScrambleText text={title} className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text="Get in Touch" className="ml-3 text-3xl" speed={30} />
       <Devider />
 
       <form onSubmit={handleSubmit(onSubmit)} className="px-1 md:px-4 lg:px-6">
@@ -83,18 +75,18 @@ export default function GetInTouchForm({
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={`${errors.name?.message ? "text-danger" : ""}`}>
-              {content.nameLabel}
+              {messages.contact.name}
             </label>
             {errors.name?.message && (
               <p className="text-danger text-sm">
-                ({content.invalidNameMessage})
+                ({messages.contact.invalidName})
               </p>
             )}
           </div>
           <input
             type="text"
             className="FormInput"
-            placeholder={content.namePlaceholder}
+            placeholder={messages.contact.namePlaceholder}
             {...register("name")}
             ref={(el) => {
               register("name").ref(el);
@@ -105,18 +97,18 @@ export default function GetInTouchForm({
         <div className="mb-5">
           <div className="mb-1 flex items-center gap-2">
             <label className={` ${errors.email?.message ? "text-danger" : ""}`}>
-              {content.emailLabel}
+              {messages.contact.email}
             </label>
             {errors.email?.message && (
               <p className="text-danger text-sm">
-                ({content.invalidEmailMessage})
+                ({messages.contact.invalidEmail})
               </p>
             )}
           </div>
           <input
             className="FormInput"
             type="text"
-            placeholder={content.emailPlaceholder}
+            placeholder={messages.contact.emailPlaceholder}
             autoComplete="off"
             {...register("email")}
             ref={(el) => {
@@ -132,17 +124,17 @@ export default function GetInTouchForm({
                 errors.message?.message ? "text-danger" : ""
               }`}
             >
-              {content.messageLabel}
+              {messages.contact.message}
             </label>
             {errors.message?.message && (
               <p className="text-danger text-sm">
-                ({content.invalidMessageMessage})
+                ({messages.contact.invalidMessage})
               </p>
             )}
           </div>
           <textarea
             className="FormInput resize-none"
-            placeholder={content.messagePlaceholder}
+            placeholder={messages.contact.messagePlaceholder}
             rows={4}
             {...register("message")}
             ref={(el) => {
@@ -153,7 +145,7 @@ export default function GetInTouchForm({
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="mb-5">
-          {isSubmitting ? content.sendingLabel : content.submitLabel}
+          {isSubmitting ? messages.contact.sending : messages.contact.send}
         </Button>
       </form>
     </section>

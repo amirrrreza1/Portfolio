@@ -1,6 +1,5 @@
 import {
   PREFERENCES_COOKIE_NAME,
-  PREFERENCES_VERSION,
   serializeAppearanceCookie,
   THEME_TOKENS,
 } from "@portfolio/contracts/appearance";
@@ -211,7 +210,7 @@ test.describe("cookie tampering falls back without an error page", () => {
     test(`discards ${description}`, async ({ page }) => {
       await page.context().addCookies([cookie(value)]);
 
-      const response = await page.request.get("/en");
+      const response = await page.request.get("/fa");
       expect(response.status()).toBe(200);
 
       const html = await response.text();
@@ -414,87 +413,16 @@ test.describe("reduced motion", () => {
   });
 });
 
-test.describe("settings dialog accessibility", () => {
-  test("traps focus, closes on Escape, and restores the trigger", async ({
-    page,
-  }) => {
-    await page.goto("/en");
+test.describe("appearance settings UI is retired", () => {
+  test("offers no appearance settings dialog on the blog", async ({ page }) => {
+    await page.goto(ARTICLE_EN);
 
-    const trigger = page.locator("header button[aria-haspopup='dialog']");
-    await trigger.first().focus();
-    await page.keyboard.press("Enter");
-
-    const dialog = page.locator("header dialog[aria-modal='true']");
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toHaveAttribute("aria-labelledby", /.+/);
-
-    const labelId = await dialog.getAttribute("aria-labelledby");
-    await expect(page.locator(`#${labelId}`)).toBeVisible();
-
-    // A modal <dialog> confines the tab ring to its own subtree. Walk further
-    // than the dialog has focusable controls and assert nothing behind the
-    // modal ever takes focus.
-    //
-    // `<body>` is allowed and is not an escape: tabbing past the last control
-    // hands focus to the browser's own UI, and the document reports `body` for
-    // as long as that lasts. What would be a real failure is a control from the
-    // page behind the dialog — a header link, the footer's second settings
-    // trigger — becoming active.
-    const escapes: string[] = [];
-    for (let step = 0; step < 25; step += 1) {
-      await page.keyboard.press("Tab");
-      const outside = await page.evaluate(() => {
-        const active = document.activeElement;
-        if (active === null || active === document.body) return null;
-        const dialogElement = document.querySelector("dialog[open]");
-        if (dialogElement !== null && dialogElement.contains(active)) {
-          return null;
-        }
-        return `${active.tagName.toLowerCase()}.${active.className}`;
-      });
-      if (outside !== null) escapes.push(`step ${step}: ${outside}`);
-    }
-    expect(escapes).toEqual([]);
-
-    await page.keyboard.press("Escape");
-    await expect(dialog).not.toBeVisible();
-
-    const triggerFocused = await page.evaluate(
-      () => document.activeElement?.getAttribute("aria-haspopup") === "dialog"
+    await expect(
+      page.locator("header button[aria-haspopup='dialog']")
+    ).toHaveCount(0);
+    await expect(page.locator("header dialog[aria-modal='true']")).toHaveCount(
+      0
     );
-    expect(triggerFocused).toBe(true);
-  });
-
-  test("changes appearance live and can be reset by keyboard alone", async ({
-    page,
-  }) => {
-    await page.goto("/en");
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-
-    await page.locator("header button[aria-haspopup='dialog']").first().click();
-    await page
-      .locator("dialog[open] [role='radio']", { hasText: /^Light$/ })
-      .first()
-      .click();
-
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await expect(page.locator("body")).toHaveCSS(
-      "background-color",
-      "rgb(255, 255, 255)"
-    );
-
-    // The choice is written to the cookie, so the next server render agrees.
-    const cookies = await page.context().cookies();
-    const stored = cookies.find(
-      (entry) => entry.name === PREFERENCES_COOKIE_NAME
-    );
-    expect(stored).toBeDefined();
-    expect(
-      JSON.parse(decodeURIComponent(stored?.value ?? "{}")) as {
-        v: number;
-        theme: string;
-      }
-    ).toMatchObject({ v: PREFERENCES_VERSION, theme: "light" });
   });
 });
 
@@ -620,7 +548,7 @@ test.describe("security headers — THEMING.md §8", () => {
   test("the localized 503 carries them too", async ({ page }) => {
     await page.request.get(`${fixtureApiOrigin}/__fixture/fail?value=1`);
     try {
-      const response = await page.request.get("/fa");
+      const response = await page.request.get("/en");
       expect(response.status()).toBe(503);
 
       const headers = response.headers();

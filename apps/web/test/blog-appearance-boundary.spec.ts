@@ -20,9 +20,17 @@ describe("blog typography boundary", () => {
       path.join(sourceRoot, "projects/[slug]/page.tsx"),
       "utf8"
     );
+    const articleContent = await readFile(
+      path.join(webSourceRoot, "features/blog/ArticleContent.tsx"),
+      "utf8"
+    );
 
-    expect(article).toContain('className="blog-reading-surface');
-    expect(article).toContain("{...blogSurfaceAttributes(appearance)}");
+    expect(article).toContain("<ArticleReadingSurface");
+    expect(article).toContain("font={appearance.blogFont}");
+    expect(article).toContain("size={appearance.blogSize}");
+    expect(articleContent).toContain('className="blog-reading-surface"');
+    expect(articleContent).toContain("data-blog-font={font}");
+    expect(articleContent).toContain("data-blog-size={size}");
     expect(article).toContain("getPortfolioAppearance(locale)");
     expect(project).not.toContain("blog-reading-surface");
   });

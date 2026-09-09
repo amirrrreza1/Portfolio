@@ -48,7 +48,7 @@ export const LOCALE_DEFINITIONS: {
     nativeName: "فارسی",
     direction: "rtl",
     bcp47: "fa",
-    siteFontKey: "vazir-code",
+    siteFontKey: "shabnam",
   },
 } as const;
 

@@ -34,23 +34,23 @@ export default function AdminContentWorkspace(): React.JSX.Element {
           Content workspace
         </h2>
         <p className="text-text-muted max-w-3xl text-sm">
-          Edit what visitors see, check both languages, and recover earlier
+          Edit what visitors see, manage blog languages, and recover earlier
           versions without touching the database or source files.
         </p>
       </div>
 
       <nav
         aria-label="Content workspace sections"
-        className="border-border grid grid-cols-2 border lg:grid-cols-5"
+        className="border-border bg-bg grid grid-cols-1 gap-1 rounded-lg border p-1 sm:grid-cols-2 lg:grid-cols-5"
       >
         {VIEWS.map((item) => (
           <button
             key={item.key}
             type="button"
             aria-current={view === item.key ? "page" : undefined}
-            className={`focus-visible:ring-accent min-h-12 border-r border-b px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none lg:border-b-0 ${
+            className={`focus-visible:ring-accent min-h-11 rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               view === item.key
-                ? "bg-secondary text-text font-semibold"
+                ? "bg-secondary text-text font-medium shadow-sm"
                 : "text-text-muted hover:bg-secondary hover:text-text"
             }`}
             onClick={() => setView(item.key)}

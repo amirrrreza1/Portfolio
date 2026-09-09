@@ -103,12 +103,11 @@ function appearanceEnvelope(locale: "en" | "fa") {
       blogFonts:
         locale === "fa"
           ? [
-              { key: "vazir-code", displayName: "Vazir Code" },
+              { key: "vazir-code", displayName: "Shabnam" },
               { key: "system-sans", displayName: "System sans" },
             ]
           : [
               { key: "jetbrains-mono", displayName: "JetBrains Mono" },
-              { key: "vazir-code", displayName: "Vazir Code" },
               { key: "system-sans", displayName: "System sans" },
             ],
       defaultBlogFont: locale === "fa" ? "vazir-code" : "jetbrains-mono",

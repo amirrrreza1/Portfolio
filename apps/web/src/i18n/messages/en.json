@@ -20,7 +20,6 @@
     "motion": "Motion",
     "fullMotion": "Full motion",
     "reduceMotion": "Reduce motion",
-    "switchLanguage": "Switch to Persian",
     "reset": "Reset to site defaults"
   },
   "navigation": {
@@ -30,6 +29,8 @@
     "unavailable": "Homepage content is temporarily unavailable. Please try again shortly."
   },
   "blog": {
+    "navigation": "Blog navigation",
+    "switchLanguage": "Switch language",
     "title": "Blog",
     "description": "Published articles about software, the web, and what I learn while building.",
     "empty": "No published articles are available yet.",
@@ -40,6 +41,9 @@
     "published": "Published",
     "updated": "Updated",
     "contents": "On this page",
+    "copyCode": "Copy code",
+    "codeCopied": "Code copied",
+    "copyCodeFailed": "Could not copy code",
     "availableIn": "Available in",
     "translationMissing": "This article is not published in English.",
     "backToBlog": "Back to blog",

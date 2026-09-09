@@ -12,11 +12,9 @@ import { getMessages } from "@/i18n/messages";
 import { formatPublicDate } from "@/i18n/format";
 
 const CertificatesSection = ({
-  title,
   certificates,
   locale,
 }: {
-  readonly title: string;
   readonly certificates: readonly PublicCertificate[];
   readonly locale: Locale;
 }) => {
@@ -26,7 +24,7 @@ const CertificatesSection = ({
       className="Container my-10 border p-2 backdrop-blur-sm"
       id="certificates"
     >
-      <ScrambleText text={title} className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text="Certificates" className="ml-3 text-3xl" speed={30} />
       <Devider />
 
       <div className="my-6 grid grid-cols-1 gap-2 px-1 sm:grid-cols-2 md:gap-4 md:px-4 lg:grid-cols-3 lg:gap-6 lg:px-6">

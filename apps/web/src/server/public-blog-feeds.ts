@@ -266,25 +266,29 @@ export function toTaxonomySitemapUrl(
 }
 
 /**
- * The static locale-prefixed routes that exist regardless of content.
- *
- * They carry the full alternate set unconditionally because they are
- * published in both locales by construction — there is no draft state for the
- * home page.
+ * Static public routes. The portfolio is English-only; only the blog has
+ * language variants.
  */
 export function staticLocaleUrls(locale: Locale, siteUrl: URL): SitemapUrl[] {
-  const paths = ["", "projects", "blog"] as const;
+  const paths =
+    locale === "en" ? (["", "projects", "blog"] as const) : (["blog"] as const);
   return paths.map((path) => ({
     loc: new URL(localePath(locale, path), siteUrl).toString(),
-    alternates: [
-      ...LOCALES.map((alternateLocale) => ({
-        hreflang: alternateLocale,
-        href: new URL(localePath(alternateLocale, path), siteUrl).toString(),
-      })),
-      {
-        hreflang: "x-default",
-        href: new URL(localePath("en", path), siteUrl).toString(),
-      },
-    ],
+    alternates:
+      path === "blog"
+        ? [
+            ...LOCALES.map((alternateLocale) => ({
+              hreflang: alternateLocale,
+              href: new URL(
+                localePath(alternateLocale, "blog"),
+                siteUrl
+              ).toString(),
+            })),
+            {
+              hreflang: "x-default",
+              href: new URL(localePath("en", "blog"), siteUrl).toString(),
+            },
+          ]
+        : [],
   }));
 }

@@ -104,7 +104,7 @@ export default function AdminLoginForm(): React.JSX.Element {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           disabled={busy}
-          className="border-border bg-surface text-text border p-2.5 text-base outline-none"
+          className="border-border bg-surface text-text h-10 border px-3 py-0 text-base outline-none"
         />
       </div>
 
@@ -121,7 +121,7 @@ export default function AdminLoginForm(): React.JSX.Element {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           disabled={busy}
-          className="border-border bg-surface text-text border p-2.5 text-base outline-none"
+          className="border-border bg-surface text-text h-10 border px-3 py-0 text-base outline-none"
         />
       </div>
 
@@ -144,7 +144,7 @@ export default function AdminLoginForm(): React.JSX.Element {
       <button
         type="submit"
         disabled={busy}
-        className="border-border bg-surface text-text border p-2.5 text-base disabled:opacity-60"
+        className="border-border bg-surface text-text flex h-10 items-center justify-center border px-3 py-0 text-base leading-none disabled:opacity-60"
       >
         {busy ? "Signing in…" : "Sign in"}
       </button>

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LogOut } from "lucide-react";
 
 import { adminRequest, describeAdminError } from "./admin-client";
 
@@ -16,7 +17,11 @@ import { adminRequest, describeAdminError } from "./admin-client";
  * The redirect is `replace`, so the signed-in shell is not one back-button
  * press away after the session behind it has already been destroyed.
  */
-export default function SignOutButton(): React.JSX.Element {
+export default function SignOutButton({
+  compact = false,
+}: {
+  readonly compact?: boolean;
+}): React.JSX.Element {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,15 +42,19 @@ export default function SignOutButton(): React.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className={`flex flex-col gap-1 ${compact ? "items-end" : "w-full"}`}>
       <button
         type="button"
         onClick={() => void signOut()}
         disabled={busy}
-        data-testid="admin-sign-out"
-        className="border-border text-text border p-2 text-sm disabled:opacity-60"
+        data-testid={compact ? "admin-sign-out-mobile" : "admin-sign-out"}
+        aria-label={compact ? "Sign out" : undefined}
+        className={`border-border text-text hover:bg-secondary focus-visible:ring-accent flex items-center justify-center gap-2 rounded-lg border text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60 ${
+          compact ? "size-9" : "min-h-10 w-full px-3"
+        }`}
       >
-        {busy ? "Signing out…" : "Sign out"}
+        <LogOut aria-hidden="true" size={16} />
+        {compact ? null : busy ? "Signing out…" : "Sign out"}
       </button>
       {error === null ? null : (
         <span role="status" aria-live="polite" className="text-danger text-sm">

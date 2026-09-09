@@ -298,23 +298,20 @@ function PostList({
     <section className="flex flex-col gap-5">
       <ResourceHeading
         title="Articles"
-        description="Each language has its own editorial state. Publishing English does not publish Persian, and neither blocks the other."
+        description="Choose the language of each article. English and Persian posts keep independent drafts and publishing states."
       />
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          className="border-border border px-4 py-2 text-sm disabled:opacity-50"
-          onClick={() =>
-            // A new article needs an ID before it has anything else, because
-            // the ID is what its two translations are joined by. It is minted
-            // here rather than by the server so that both locales of a brand
-            // new post can be drafted before either is ever saved.
-            onSelect({ postId: crypto.randomUUID(), locale: "en" })
-          }
-        >
-          Start a new article
-        </button>
+        {(["en", "fa"] as const).map((locale) => (
+          <button
+            key={locale}
+            type="button"
+            disabled={busy}
+            className="border-border border px-4 py-2 text-sm disabled:opacity-50"
+            onClick={() => onSelect({ postId: crypto.randomUUID(), locale })}
+          >
+            Start a new {locale === "en" ? "English" : "Persian"} article
+          </button>
+        ))}
       </div>
       {posts.length === 0 ? (
         <p className="text-text-muted text-sm">No articles exist yet.</p>
@@ -459,7 +456,7 @@ function ImportPanel({
             ))}
           </select>
         </Field>
-        <Field label="Translation locale">
+        <Field label="Article language">
           <select className={inputClass} name="locale" defaultValue="en">
             <option value="en">English</option>
             <option value="fa">Persian</option>

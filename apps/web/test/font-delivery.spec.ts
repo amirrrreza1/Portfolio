@@ -121,7 +121,7 @@ describe("web font declarations — THEMING.md §4", () => {
     const arabicBlock = /u\+06[0-9a-f]{2}/i;
 
     const latin = faces.filter((face) => face.family === "JetBrains_Mono");
-    const persian = faces.filter((face) => face.family === "VazirCode");
+    const persian = faces.filter((face) => face.family === "Shabnam");
     expect(latin.length).toBeGreaterThan(0);
     expect(persian.length).toBeGreaterThan(0);
 
@@ -131,20 +131,24 @@ describe("web font declarations — THEMING.md §4", () => {
         `${face.href} declares an Arabic range`
       ).toBe(false);
     }
-    const vazirLatin = persian.filter((face) => face.href.includes("-latin."));
-    const vazirArabic = persian.filter((face) =>
-      face.href.includes("-arabic.")
-    );
-    expect(vazirLatin).toHaveLength(1);
-    expect(vazirArabic).toHaveLength(1);
-    expect(arabicBlock.test(vazirLatin[0].unicodeRange ?? "")).toBe(false);
-    expect(arabicBlock.test(vazirArabic[0].unicodeRange ?? "")).toBe(true);
-    // Zero-width non-joiner. Persian word forms are wrong without it.
-    expect(vazirArabic[0].unicodeRange).toContain("u+200c");
+    expect(persian).toHaveLength(3);
+    for (const face of persian) {
+      expect(arabicBlock.test(face.unicodeRange ?? "")).toBe(true);
+      // Zero-width non-joiner. Persian word forms are wrong without it.
+      expect(face.unicodeRange).toContain("u+200c");
+    }
   });
 });
 
 describe("blog typography scoping — THEMING.md §4", () => {
+  it("uses Shabnam for Persian-language content", async () => {
+    const css = await readFile(globalsCssPath, "utf8");
+
+    expect(css).toMatch(
+      /:lang\(fa\)\s*\{[^}]*font-family:\s*"Shabnam"/
+    );
+  });
+
   it("applies a blog preference only under .blog-reading-surface", async () => {
     const css = await readFile(globalsCssPath, "utf8");
     const offenders: string[] = [];

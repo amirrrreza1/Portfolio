@@ -137,15 +137,15 @@ describe("resolveAppearance — the owner's allowlist wins", () => {
   it("ignores a blog font the owner has disabled", () => {
     const settings: AppearanceSettings = {
       ...SETTINGS,
-      enabledBlogFonts: ["vazir-code"],
-      defaultBlogFontByLocale: { en: "vazir-code", fa: "vazir-code" },
+      enabledBlogFonts: ["system-sans"],
+      defaultBlogFontByLocale: { en: "system-sans", fa: "system-sans" },
     };
     const cookie = parseAppearanceCookie(
-      serializeAppearanceCookie({ blogFont: "system-sans" })
+      serializeAppearanceCookie({ blogFont: "jetbrains-mono" })
     );
     const resolved = resolveAppearance(cookie, settings, "en");
 
-    expect(resolved.blogFont).toBe("vazir-code");
+    expect(resolved.blogFont).toBe("system-sans");
     expect(resolved.corrected).toBe(true);
   });
 
@@ -215,7 +215,10 @@ describe("resolveAppearance — script compatibility", () => {
 
   it("only offers script-compatible fonts", () => {
     expect(fontsSupportingLocale("fa")).toEqual(["vazir-code", "system-sans"]);
-    expect(fontsSupportingLocale("en")).toContain("jetbrains-mono");
+    expect(fontsSupportingLocale("en")).toEqual([
+      "jetbrains-mono",
+      "system-sans",
+    ]);
   });
 });
 
@@ -330,7 +333,7 @@ describe("public appearance DTO", () => {
     themes: ["dark", "light"],
     defaultTheme: "dark",
     blogFonts: [
-      { key: "vazir-code", displayName: "Vazir Code" },
+      { key: "vazir-code", displayName: "Shabnam" },
       { key: "system-sans", displayName: "System sans" },
     ],
     defaultBlogFont: "vazir-code",

@@ -12,13 +12,11 @@ import { getMessages } from "@/i18n/messages";
 import type { GitHubStatsByRepository } from "@/server/github-stats-source";
 
 export default function ProjectsSection({
-  title,
   locale,
   projects,
   skills,
   githubStats,
 }: {
-  readonly title: string;
   readonly locale: Locale;
   readonly projects: readonly Projects[];
   readonly skills: readonly SkillCategory[];
@@ -30,7 +28,7 @@ export default function ProjectsSection({
       className="Container my-10 border p-2 backdrop-blur-sm"
       id="projects"
     >
-      <ScrambleText text={title} className="ml-3 text-3xl" speed={30} />
+      <ScrambleText text="Projects" className="ml-3 text-3xl" speed={30} />
       <Devider />
 
       <div className="my-6 space-y-4 px-1 md:px-4 lg:space-y-8 lg:px-6">

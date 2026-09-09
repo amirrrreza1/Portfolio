@@ -16,15 +16,19 @@
  *   3. Every write is an upsert keyed on a stable natural key, so re-running
  *      changes nothing.
  *
- * This seeds only the structural rows the application needs to boot: the two
- * settings singletons, the page sections, navigation, and social links. It
- * deliberately does NOT seed portfolio content — projects, skills,
- * certificates, and quotes arrive through the M2 migration from the legacy
- * JSON, and seeding them here would create two competing sources for the same
- * rows and make the reconciliation meaningless.
+ * This seeds the structural rows the application needs to boot and one
+ * explicitly labelled bilingual test article. It deliberately does NOT seed
+ * portfolio content — projects, skills, certificates, and quotes arrive
+ * through the M2 migration from the legacy JSON, and seeding them here would
+ * create two competing sources for the same rows and make the reconciliation
+ * meaningless.
  */
 
 import { PrismaPg } from "@prisma/adapter-pg";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { CURRENT_FRONTMATTER_VERSION } from "@portfolio/contracts/content";
+import { renderArticleBody } from "@portfolio/markdown";
 
 import { PrismaClient } from "../src/generated/client/client.js";
 
@@ -56,7 +60,12 @@ const IDS = {
   socialLinkedin: "sociallinkedin0000000000",
   socialTelegram: "socialtelegram0000000000",
   socialDonate: "socialdonate000000000000",
+  testBlogPost: "testblogpost000000000000",
+  testBlogEnglish: "testblogen00000000000000",
+  testBlogPersian: "testblogfa00000000000000",
 } as const;
+
+const TEST_BLOG_PUBLISHED_AT = new Date("2026-09-09T09:00:00.000Z");
 
 async function seedSiteSettings(): Promise<void> {
   await prisma.siteSettings.upsert({
@@ -69,7 +78,7 @@ async function seedSiteSettings(): Promise<void> {
       // an https origin it does not have.
       canonicalSiteUrl: "http://localhost:3000",
       defaultLocale: "en",
-      enabledLocales: ["en", "fa"],
+      enabledLocales: ["en"],
       timezone: "Asia/Tehran",
       authorName: "Amirreza Azarioun",
       creatorName: "Amirreza Azarioun",
@@ -104,25 +113,6 @@ async function seedSiteSettings(): Promise<void> {
       footerLines: [],
       footerRights: "All rights reserved",
       resumeButtonLabel: "Download Resume",
-    },
-    {
-      locale: "fa" as const,
-      siteName: "امیررضا آذریون",
-      titleTemplate: "%s | امیررضا آذریون",
-      metaDescription: "وب‌سایت شخصی امیررضا آذریون",
-      keywords: [
-        "امیررضا آذریون",
-        "نمونه کار",
-        "توسعه‌دهنده وب",
-        "فرانت‌اند",
-        "React",
-        "Next.js",
-        "JavaScript",
-        "TypeScript",
-      ],
-      footerLines: [],
-      footerRights: "تمامی حقوق محفوظ است",
-      resumeButtonLabel: "دانلود رزومه",
     },
   ];
 
@@ -176,11 +166,6 @@ async function seedPageSections(): Promise<void> {
           title: "Amirreza Azarioun",
           content: { lines: ["Frontend Developer"] },
         },
-        {
-          locale: "fa" as const,
-          title: "امیررضا آذریون",
-          content: { lines: ["توسعه‌دهنده فرانت‌اند"] },
-        },
       ],
     },
     {
@@ -196,8 +181,7 @@ async function seedPageSections(): Promise<void> {
       // seeded but has not yet had the M2 migration applied would otherwise
       // fail validation and take the whole `/site` endpoint down with it.
       // They live in the English translation because that is where
-      // PageSections.json puts them and where the API reads them; Persian
-      // deliberately omits them and falls back to English (ADR-005).
+      // PageSections.json puts them and where the API reads them.
       content: {},
       translations: [
         {
@@ -209,7 +193,6 @@ async function seedPageSections(): Promise<void> {
             body: [],
           },
         },
-        { locale: "fa" as const, title: "درباره من", content: { body: [] } },
       ],
     },
     {
@@ -217,20 +200,14 @@ async function seedPageSections(): Promise<void> {
       key: "skills",
       sortOrder: 2,
       content: {},
-      translations: [
-        { locale: "en" as const, title: "Skills", content: {} },
-        { locale: "fa" as const, title: "مهارت‌ها", content: {} },
-      ],
+      translations: [{ locale: "en" as const, title: "Skills", content: {} }],
     },
     {
       id: IDS.projectsSection,
       key: "projects",
       sortOrder: 3,
       content: {},
-      translations: [
-        { locale: "en" as const, title: "Projects", content: {} },
-        { locale: "fa" as const, title: "پروژه‌ها", content: {} },
-      ],
+      translations: [{ locale: "en" as const, title: "Projects", content: {} }],
     },
     {
       id: IDS.certificatesSection,
@@ -239,7 +216,6 @@ async function seedPageSections(): Promise<void> {
       content: {},
       translations: [
         { locale: "en" as const, title: "Certificates", content: {} },
-        { locale: "fa" as const, title: "گواهینامه‌ها", content: {} },
       ],
     },
     {
@@ -267,25 +243,6 @@ async function seedPageSections(): Promise<void> {
             invalidEmailMessage: "Enter a valid email address.",
             invalidMessageMessage:
               "Enter a message between 10 and 5,000 characters.",
-          },
-        },
-        {
-          locale: "fa" as const,
-          title: "تماس با من",
-          content: {
-            nameLabel: "نام",
-            namePlaceholder: "نام شما",
-            emailLabel: "ایمیل",
-            emailPlaceholder: "you@example.com",
-            messageLabel: "پیام",
-            messagePlaceholder: "پیام خود را بنویسید…",
-            sendingLabel: "در حال ارسال…",
-            submitLabel: "ارسال پیام",
-            successMessage: "سپاس؛ پیام شما دریافت شد.",
-            failureMessage: "مشکلی پیش آمد. لطفاً کمی بعد دوباره تلاش کنید.",
-            invalidNameMessage: "یک نام معتبر وارد کنید.",
-            invalidEmailMessage: "یک ایمیل معتبر وارد کنید.",
-            invalidMessageMessage: "پیام باید بین ۱۰ تا ۵۰۰۰ نویسه باشد.",
           },
         },
       ],
@@ -326,7 +283,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navHome,
       key: "hero",
       en: "Home",
-      fa: "خانه",
       kind: "SECTION_ANCHOR" as const,
       target: "hero",
     },
@@ -334,7 +290,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navAbout,
       key: "about",
       en: "About",
-      fa: "درباره",
       kind: "SECTION_ANCHOR" as const,
       target: "about",
     },
@@ -342,7 +297,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navSkills,
       key: "skills",
       en: "Skills",
-      fa: "مهارت‌ها",
       kind: "SECTION_ANCHOR" as const,
       target: "skills",
     },
@@ -350,7 +304,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navProjects,
       key: "projects",
       en: "Projects",
-      fa: "پروژه‌ها",
       kind: "INTERNAL_ROUTE" as const,
       target: "/projects",
     },
@@ -358,7 +311,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navCertificates,
       key: "certificates",
       en: "Certificates",
-      fa: "گواهینامه‌ها",
       kind: "SECTION_ANCHOR" as const,
       target: "certificates",
     },
@@ -366,7 +318,6 @@ async function seedNavigation(): Promise<void> {
       id: IDS.navContact,
       key: "contact",
       en: "Contact",
-      fa: "تماس",
       kind: "SECTION_ANCHOR" as const,
       target: "contact",
     },
@@ -378,7 +329,7 @@ async function seedNavigation(): Promise<void> {
       update: {},
       create: {
         id: item.id,
-        labelByLocale: { en: item.en, fa: item.fa },
+        labelByLocale: { en: item.en },
         targetKind: item.kind,
         target: item.target,
         sortOrder: index,
@@ -393,28 +344,24 @@ async function seedSocialLinks(): Promise<void> {
     {
       id: IDS.socialGithub,
       en: "GitHub",
-      fa: "گیت‌هاب",
       url: "https://github.com/amirrrreza1",
       kind: "SOCIAL" as const,
     },
     {
       id: IDS.socialLinkedin,
       en: "LinkedIn",
-      fa: "لینکدین",
       url: "https://www.linkedin.com/in/amirreza-azarioun",
       kind: "SOCIAL" as const,
     },
     {
       id: IDS.socialTelegram,
       en: "Telegram",
-      fa: "تلگرام",
       url: "https://t.me/amirrrreza1",
       kind: "SOCIAL" as const,
     },
     {
       id: IDS.socialDonate,
       en: "Donate",
-      fa: "حمایت",
       url: "https://daramet.com/amirrrreza1",
       kind: "DONATE" as const,
     },
@@ -426,11 +373,98 @@ async function seedSocialLinks(): Promise<void> {
       update: {},
       create: {
         id: link.id,
-        labelByLocale: { en: link.en, fa: link.fa },
+        labelByLocale: { en: link.en },
         url: link.url,
         kind: link.kind,
         sortOrder: index,
         enabled: true,
+      },
+    });
+  }
+}
+
+/**
+ * A durable typography/content fixture for manual testing.
+ *
+ * The two translations share one Post identity so language alternates behave
+ * exactly like a real bilingual article. The Markdown files are authoritative
+ * seed input; rendering and hashing happen through the production pipeline so
+ * public reads do not need a special test-only exception.
+ */
+async function seedTestBlog(): Promise<void> {
+  const translations = [
+    {
+      id: IDS.testBlogEnglish,
+      locale: "en" as const,
+      title: "Building a Bilingual Portfolio That Stays Maintainable",
+      slug: "building-a-maintainable-bilingual-portfolio",
+      excerpt:
+        "A practical, long-form test article covering architecture, typography, content workflows, performance, and verification for a bilingual portfolio.",
+      seoTitle: "Building a Maintainable Bilingual Portfolio",
+      seoDescription:
+        "A practical guide to architecture, typography, content workflows, performance, and testing for an English and Persian portfolio.",
+      fixture: new URL("./fixtures/test-blog.en.md", import.meta.url),
+    },
+    {
+      id: IDS.testBlogPersian,
+      locale: "fa" as const,
+      title: "ساخت یک پورتفولیوی دوزبانه و قابل نگهداری",
+      slug: "ساخت-پورتفولیوی-دوزبانه-قابل-نگهداری",
+      excerpt:
+        "یک مقالهٔ آزمایشی بلند دربارهٔ معماری، تایپوگرافی، گردش کار محتوا، کارایی و آزمون در پورتفولیوی انگلیسی و فارسی.",
+      seoTitle: "راهنمای ساخت پورتفولیوی دوزبانه و قابل نگهداری",
+      seoDescription:
+        "راهنمایی عملی برای معماری، تایپوگرافی، مدیریت محتوا، کارایی و آزمون یک پورتفولیوی انگلیسی و فارسی.",
+      fixture: new URL("./fixtures/test-blog.fa.md", import.meta.url),
+    },
+  ];
+
+  await prisma.post.upsert({
+    where: { id: IDS.testBlogPost },
+    update: {},
+    create: {
+      id: IDS.testBlogPost,
+      featured: true,
+      version: 1,
+    },
+  });
+
+  for (const translation of translations) {
+    const bodyMarkdown = (await readFile(translation.fixture, "utf8"))
+      .replace(/\r\n?/g, "\n")
+      .trim();
+    const rendered = await renderArticleBody(bodyMarkdown);
+    const bodySha256 = createHash("sha256")
+      .update(bodyMarkdown, "utf8")
+      .digest("hex");
+
+    await prisma.postTranslation.upsert({
+      where: {
+        postId_locale: {
+          postId: IDS.testBlogPost,
+          locale: translation.locale,
+        },
+      },
+      update: {},
+      create: {
+        id: translation.id,
+        postId: IDS.testBlogPost,
+        locale: translation.locale,
+        title: translation.title,
+        slug: translation.slug,
+        excerpt: translation.excerpt,
+        seoTitle: translation.seoTitle,
+        seoDescription: translation.seoDescription,
+        status: "PUBLISHED",
+        publishedAt: TEST_BLOG_PUBLISHED_AT,
+        bodyMarkdown,
+        bodySha256,
+        readingMinutes: rendered.readingTimeMinutes,
+        headingTree: JSON.parse(JSON.stringify(rendered.headings)),
+        renderedHtml: rendered.html,
+        rendererVersion: rendered.rendererVersion,
+        frontmatterSchemaVersion: CURRENT_FRONTMATTER_VERSION,
+        version: 1,
       },
     });
   }
@@ -445,6 +479,7 @@ async function main(): Promise<void> {
   await seedPageSections();
   await seedNavigation();
   await seedSocialLinks();
+  await seedTestBlog();
 
   const counts = {
     siteSettings: await prisma.siteSettings.count(),
@@ -461,17 +496,25 @@ async function main(): Promise<void> {
     siteSettings: 1,
     appearanceSettings: 1,
     pageSections: 6,
-    pageSectionTranslations: 12,
+    pageSectionTranslations: 6,
     navItems: 6,
     socialLinks: 4,
   };
 
-  // A seed that silently produced the wrong number of rows would be discovered
-  // by the M2 reconciliation instead, which is far too late.
+  // Historical Persian portfolio translations are intentionally retained even
+  // though the current portfolio shell is English-only. Require the six seeded
+  // English rows, but do not reject a migrated database for retaining those
+  // valid historical rows. The remaining structural collections are closed
+  // sets and therefore still use exact counts.
   for (const [key, value] of Object.entries(expected)) {
     const actual = counts[key as keyof typeof counts];
-    if (actual !== value) {
-      throw new Error(`Seed produced ${actual} ${key}, expected ${value}.`);
+    const valid =
+      key === "pageSectionTranslations" ? actual >= value : actual === value;
+    if (!valid) {
+      const qualifier = key === "pageSectionTranslations" ? "at least " : "";
+      throw new Error(
+        `Seed produced ${actual} ${key}, expected ${qualifier}${value}.`
+      );
     }
   }
 }

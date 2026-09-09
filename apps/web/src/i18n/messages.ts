@@ -9,9 +9,12 @@ type CatalogShape<T> = {
 
 export type Messages = CatalogShape<typeof en>;
 
-// Missing Persian groups or keys fail the TypeScript build here. Exact key
-// parity, non-empty values, and the no-HTML rule are also checked at runtime.
-const faMessages: Messages = fa;
+// Only blog-specific copy is localized. Shared chrome and every portfolio
+// surface deliberately inherit the English catalog.
+const faMessages: Messages = {
+  ...en,
+  blog: fa.blog,
+};
 
 export const messageCatalogs: Readonly<Record<Locale, Messages>> = {
   en,

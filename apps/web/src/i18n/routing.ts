@@ -1,5 +1,4 @@
 import {
-  DEFAULT_LOCALE,
   encodeSlugForUrl,
   slugSchemaFor,
   type Locale,
@@ -7,13 +6,12 @@ import {
 
 export function localePath(locale: Locale, pathname = ""): string {
   const normalizedPath = pathname.replace(/^\/+|\/+$/g, "");
-  return normalizedPath ? `/${locale}/${normalizedPath}` : `/${locale}`;
-}
-
-/** Preserve the current public route while replacing its explicit locale. */
-export function switchLocalePath(pathname: string, locale: Locale): string {
-  const withoutLocale = pathname.replace(/^\/(?:en|fa)(?=\/|$)/, "");
-  return localePath(locale, withoutLocale);
+  // The portfolio itself is English-only. Language is a property of blog
+  // content, so only blog routes carry a locale segment.
+  if (normalizedPath === "blog" || normalizedPath.startsWith("blog/")) {
+    return `/${locale}/${normalizedPath}`;
+  }
+  return normalizedPath ? `/${normalizedPath}` : "/";
 }
 
 export function articlePath(locale: Locale, slugInput: string): string {
@@ -78,16 +76,16 @@ export function decodeSlugParam(input: string): string | null {
   }
 }
 
-export function legacyLocaleRedirect(
-  pathname: string,
-  rootLocale: Locale = DEFAULT_LOCALE
-): string | null {
-  if (pathname === "/") return localePath(rootLocale);
-  if (pathname === "/projects" || pathname === "/projects/") {
-    return localePath("en", "projects");
-  }
-  if (pathname === "/blog" || pathname === "/blog/") {
+export function legacyLocaleRedirect(pathname: string): string | null {
+  if (pathname === "/blog" || pathname === "/blog/")
     return localePath("en", "blog");
-  }
+
+  // Retire the old site-wide locale URLs while preserving one-hop redirects
+  // for bookmarks and indexed links. Blog URLs intentionally remain scoped
+  // by language.
+  const localizedPortfolio = pathname.match(
+    /^\/(?:en|fa)(\/(?:projects)(?:\/.*)?|\/?$)/
+  );
+  if (localizedPortfolio) return localizedPortfolio[1] || "/";
   return null;
 }

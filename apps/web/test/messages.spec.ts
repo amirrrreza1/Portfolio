@@ -32,9 +32,10 @@ describe("typed public message catalogs", () => {
     }
   });
 
-  it("returns the requested catalog without runtime fallback", () => {
+  it("localizes blog copy while portfolio copy stays English", () => {
     expect(getMessages("en").projects.all).toBe("All projects");
-    expect(getMessages("fa").projects.all).toBe("همه پروژه‌ها");
+    expect(getMessages("fa").projects.all).toBe("All projects");
+    expect(getMessages("fa").blog.title).toBe("وبلاگ");
   });
 
   it("formats visitor-facing numbers and Persian dates by locale", () => {

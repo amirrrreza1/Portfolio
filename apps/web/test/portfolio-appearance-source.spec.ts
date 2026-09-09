@@ -10,7 +10,6 @@ function appearance(defaultTheme: "dark" | "light") {
     defaultTheme,
     blogFonts: [
       { key: "jetbrains-mono", displayName: "JetBrains Mono" },
-      { key: "vazir-code", displayName: "Vazir Code" },
       { key: "system-sans", displayName: "System sans" },
     ],
     defaultBlogFont: "jetbrains-mono",

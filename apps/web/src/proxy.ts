@@ -4,10 +4,6 @@ import { getLocaleDefinition, isLocale } from "@portfolio/contracts/common";
 
 import { legacyLocaleRedirect } from "./i18n/routing";
 import { getMessages } from "./i18n/messages";
-import {
-  LOCALE_COOKIE_NAME,
-  negotiateRootLocale,
-} from "./i18n/locale-preference";
 import { parsePortfolioDataSource } from "./server/portfolio-data-source";
 import {
   ADMIN_LOGIN_PATH,
@@ -234,28 +230,26 @@ export async function proxyWithDependencies(
     return handleAdminRequest(request, pathname, nonce);
   }
 
-  const rootLocale =
-    pathname === "/"
-      ? negotiateRootLocale(
-          request.cookies.get(LOCALE_COOKIE_NAME)?.value,
-          request.headers.get("accept-language")
-        )
-      : undefined;
   const redirectPath =
-    legacyLocaleRedirect(pathname, rootLocale) ??
-    (pathname === rawPath ? null : pathname);
+    legacyLocaleRedirect(pathname) ?? (pathname === rawPath ? null : pathname);
   if (redirectPath) {
     const response = secure(
       NextResponse.redirect(new URL(redirectPath, request.url), 308),
       nonce
     );
-    if (pathname === "/") {
-      response.headers.set("Vary", "Accept-Language, Cookie");
-    }
     return response;
   }
 
-  const locale = pathname.split("/")[1];
+  // Next's existing locale route remains the internal implementation detail,
+  // but visitors see an English-only portfolio at unprefixed URLs. Only the
+  // blog exposes a language in its public URL.
+  const internalPathname =
+    pathname === "/"
+      ? "/en"
+      : pathname === "/projects" || pathname.startsWith("/projects/")
+        ? `/en${pathname}`
+        : pathname;
+  const locale = internalPathname.split("/")[1];
   const dataSource =
     dependencies.dataSource ??
     parsePortfolioDataSource(process.env.PORTFOLIO_DATA_SOURCE);
@@ -263,7 +257,7 @@ export async function proxyWithDependencies(
   if (dataSource === "database" && isLocale(locale) && isDocumentRead) {
     const availability = await (
       dependencies.checkAvailability ?? checkDefaultPublicRouteAvailability
-    )(pathname);
+    )(internalPathname);
     if (availability === "unavailable") {
       return createUnavailableResponse(locale, nonce);
     }
@@ -276,7 +270,14 @@ export async function proxyWithDependencies(
   headers.set("x-portfolio-locale", locale === "fa" ? "fa" : "en");
   headers.set("x-portfolio-csp-nonce", nonce);
   headers.set("x-portfolio-pathname", pathname);
-  const response = secure(NextResponse.next({ request: { headers } }), nonce);
+  const response = secure(
+    internalPathname === pathname
+      ? NextResponse.next({ request: { headers } })
+      : NextResponse.rewrite(new URL(internalPathname, request.url), {
+          request: { headers },
+        }),
+    nonce
+  );
   if (PUBLIC_DISCOVERY_PATH.test(pathname)) {
     // Deleted rather than replaced: the route handler already sent the policy
     // it wants, and a second value here would be the one that wins.

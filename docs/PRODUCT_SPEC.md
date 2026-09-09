@@ -11,7 +11,7 @@ Articles and portfolio content are authored and stored in PostgreSQL. Article bo
 - Preserve the current visual identity and public routes during migration.
 - Make every portfolio content area editable from an authenticated admin panel, down to the About Me prose and the resume file.
 - Publish long-form technical writing in English and Persian as durable PostgreSQL-backed Markdown with immutable revision history and portable file export.
-- Let a visitor choose a site-wide theme, blog-only font and size, motion, and language without a flash, a layout shift, or an accessibility regression.
+- Let a visitor choose a site-wide theme and motion plus a blog-only font, size, and content language without a flash, a layout shift, or an accessibility regression.
 - Keep all privileged mutations behind a dedicated API and auditable authorization checks.
 - Use a PostgreSQL connection string so local, hosted, and container deployments share one configuration contract.
 - Produce reproducible Docker images and a safe database migration workflow.
@@ -63,13 +63,13 @@ Contact submission MUST be server-side, validated, rate-limited, protected again
 
 The browser-side EmailJS integration MUST be removed and its published keys revoked at the provider, since removing a `NEXT_PUBLIC_*` value from source does not invalidate a key that has already shipped. The removal is done; the revocation is not.
 
-### PORT-PUB-006 — Appearance settings
+### PORT-PUB-006 — Appearance behavior
 
-A settings modal MUST let a visitor choose a site-wide theme, motion preference, and language, plus a blog font family and blog text size, from the options the owner has enabled. Blog typography MUST apply only to the blog content area and MUST NOT restyle the portfolio, shared header/footer/navigation, settings UI, or admin UI. The chosen appearance MUST be present in the first server-rendered HTML response — no flash of the wrong theme and no post-hydration correction. The site MUST remain readable and correctly themed with JavaScript disabled. Appearance MUST NOT fragment the public cache. Details in [THEMING.md](THEMING.md).
+The public site exposes a simple theme toggle, but no appearance-settings modal. Blog font, text size, and motion behavior are code-owned design choices rather than visitor- or admin-authored content. Resolved appearance MUST be present in the first server-rendered HTML response — no flash of the wrong theme and no post-hydration correction. The site MUST remain readable and correctly themed with JavaScript disabled, and appearance MUST NOT fragment the public cache. Details in [THEMING.md](THEMING.md).
 
-### PORT-PUB-007 — Bilingual public site
+### PORT-PUB-007 — English portfolio and multilingual blog
 
-The public site MUST be available in English and Persian at locale-prefixed URLs, with correct `lang`/`dir`, RTL typography for Persian, reciprocal `hreflang` between published translations, and per-locale sitemaps and feeds. Language detection MUST NOT redirect a request that already names a locale. Details in [I18N.md](I18N.md).
+Portfolio pages and shared site chrome MUST be English-only at unprefixed URLs. Only blog routes use language prefixes, with correct `lang`/`dir`, RTL typography for Persian articles, reciprocal `hreflang` between published article versions, and per-language feeds. Details in [I18N.md](I18N.md).
 
 ### PORT-PUB-008 — Server-rendered navigation
 
@@ -137,13 +137,12 @@ The dashboard MUST show drafts, scheduled content, recent edits, contact-message
 The panel MUST provide validated create/read/update/delete or archive operations for:
 
 - site settings and SEO defaults
-- appearance settings: enabled themes and blog fonts, defaults, blog size steps, motion toggle
-- ordered page sections and every editable text field, including the About Me prose and hero lines
+- About Me biography content
 - projects and their skills
 - skill categories/items
 - certificates and certificate files
 - daily quotes
-- header navigation items and footer social links
+- footer social links
 - media assets and alt text
 - resume versions and active resume
 - blog posts and their per-locale translations, categories, tags, and slug redirects

@@ -12,7 +12,7 @@ import {
 } from "@/server/public-blog-feeds";
 import { PublicDataUnavailableError } from "@/server/public-api-client";
 import { getSiteUrl } from "@/Utils/siteUrl";
-import { isLocale, LOCALES } from "@portfolio/contracts/common";
+import { isLocale } from "@portfolio/contracts/common";
 import { NextResponse } from "next/server";
 
 /**
@@ -42,7 +42,11 @@ export async function GET(
     reads = await Promise.all([
       getPortfolioFeedEntries(locale),
       getPortfolioTaxonomyIndex(locale),
-      getPortfolioProjects(locale),
+      // Portfolio pages are English-only; the Persian sitemap contains blog
+      // content and no portfolio translations.
+      locale === "en"
+        ? getPortfolioProjects("en")
+        : Promise.resolve({ projects: [] }),
     ]);
   } catch (error) {
     if (!(error instanceof PublicDataUnavailableError)) throw error;
@@ -57,27 +61,10 @@ export async function GET(
     ...staticLocaleUrls(locale, siteUrl),
     ...projects.projects.map((project) => ({
       loc: new URL(
-        `/${locale}/projects/${encodeURIComponent(project.slug)}`,
+        `/projects/${encodeURIComponent(project.slug)}`,
         siteUrl
       ).toString(),
-      // A project slug is locale-independent, so its alternates are the two
-      // locale prefixes of one path rather than two different paths.
-      alternates: [
-        ...LOCALES.map((alternateLocale) => ({
-          hreflang: alternateLocale,
-          href: new URL(
-            `/${alternateLocale}/projects/${encodeURIComponent(project.slug)}`,
-            siteUrl
-          ).toString(),
-        })),
-        {
-          hreflang: "x-default",
-          href: new URL(
-            `/en/projects/${encodeURIComponent(project.slug)}`,
-            siteUrl
-          ).toString(),
-        },
-      ],
+      alternates: [],
     })),
     ...taxonomy.categories.map((term) =>
       toTaxonomySitemapUrl(locale, "category", term, siteUrl)

@@ -23,14 +23,14 @@ export default function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>): React.JSX.Element {
   return (
-    <div className="mx-auto w-[95%] max-w-4xl py-10">
+    <div className="bg-bg min-h-screen">
       <a
         href="#admin-main"
-        className="border-border bg-surface sr-only border p-2 focus:not-sr-only focus:absolute"
+        className="border-border bg-surface sr-only z-50 border px-4 py-3 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         Skip to content
       </a>
-      <main id="admin-main">{children}</main>
+      {children}
     </div>
   );
 }

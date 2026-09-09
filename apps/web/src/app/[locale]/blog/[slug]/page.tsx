@@ -25,7 +25,6 @@ import {
   buildPublicArticleMetadata,
 } from "@/server/public-article-seo";
 import {
-  blogSurfaceAttributes,
   parseAppearanceCookie,
   PREFERENCES_COOKIE_NAME,
   resolvePublicAppearance,
@@ -39,6 +38,11 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Languages } from "lucide-react";
+import {
+  ArticleReadingSurface,
+  ArticleTableOfContents,
+} from "@/features/blog/ArticleContent";
 
 type RouteParams = Promise<{ locale: string; slug: string }>;
 
@@ -145,7 +149,7 @@ export default async function LocaleArticlePage({
   const fontPreloadHref = blogFontPreloadHref(appearance.blogFont);
 
   return (
-    <article className="blog-article-shell Container border-border my-16 space-y-8 border p-5 md:p-8">
+    <article className="blog-article-shell Container bg-surface/90 border-border my-16 space-y-8 border p-5 shadow-lg backdrop-blur-md md:p-8">
       {fontPreloadHref === null ? null : (
         <link
           rel="preload"
@@ -155,42 +159,47 @@ export default async function LocaleArticlePage({
           crossOrigin="anonymous"
         />
       )}
-      <Link href={localePath(locale, "blog")} className="underline">
-        {messages.backToBlog}
-      </Link>
+      <div className="space-y-12">
+        <Link
+          href={localePath(locale, "blog")}
+          className="inline-flex underline underline-offset-4"
+        >
+          {messages.backToBlog}
+        </Link>
 
-      <header className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-4xl font-bold">{article.title}</h1>
-          {article.featured ? (
-            <span className="border-border bg-surface border px-3 py-1 text-sm">
-              {messages.featured}
-            </span>
-          ) : null}
-        </div>
-        <p className="text-text-muted text-lg">{article.excerpt}</p>
-        <dl className="text-text-muted flex flex-wrap gap-6 text-sm">
-          <ArticleDate
-            label={messages.published}
-            value={article.publishedAt}
-            locale={locale}
-          />
-          {article.updatedAt === article.publishedAt ? null : (
+        <header className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-4xl font-bold">{article.title}</h1>
+            {article.featured ? (
+              <span className="border-border bg-surface border px-3 py-1 text-sm">
+                {messages.featured}
+              </span>
+            ) : null}
+          </div>
+          <p className="text-text-muted text-lg">{article.excerpt}</p>
+          <dl className="text-text-muted flex flex-wrap gap-6 text-sm">
             <ArticleDate
-              label={messages.updated}
-              value={article.updatedAt}
+              label={messages.published}
+              value={article.publishedAt}
               locale={locale}
             />
-          )}
-          <div>
-            <dt className="sr-only">{messages.minuteRead}</dt>
-            <dd>
-              {formatNumber(article.readingMinutes, locale)}{" "}
-              {messages.minuteRead}
-            </dd>
-          </div>
-        </dl>
-      </header>
+            {article.updatedAt === article.publishedAt ? null : (
+              <ArticleDate
+                label={messages.updated}
+                value={article.updatedAt}
+                locale={locale}
+              />
+            )}
+            <div>
+              <dt className="sr-only">{messages.minuteRead}</dt>
+              <dd>
+                {formatNumber(article.readingMinutes, locale)}{" "}
+                {messages.minuteRead}
+              </dd>
+            </div>
+          </dl>
+        </header>
+      </div>
 
       {articleTerms.length === 0 ? null : (
         <nav
@@ -216,16 +225,19 @@ export default async function LocaleArticlePage({
       )}
 
       {otherTranslations.length === 0 ? null : (
-        <nav aria-label={messages.availableIn} className="flex flex-wrap gap-3">
-          <span>{messages.availableIn}:</span>
+        <nav aria-label={messages.switchLanguage}>
           {otherTranslations.map((alternate) => (
             <Link
               key={alternate.locale}
               href={articlePath(alternate.locale, alternate.slug)}
               hrefLang={alternate.locale}
               lang={alternate.locale}
-              className="underline"
+              aria-label={`${messages.switchLanguage}: ${getLocaleDefinition(alternate.locale).nativeName}`}
+              className="border-border hover:bg-surface inline-flex items-center gap-2 rounded border px-3 py-2 transition"
             >
+              <Languages aria-hidden="true" className="h-5 w-5" />
+              <span>{messages.switchLanguage}</span>
+              <span aria-hidden="true">·</span>
               {getLocaleDefinition(alternate.locale).nativeName}
             </Link>
           ))}
@@ -233,29 +245,19 @@ export default async function LocaleArticlePage({
       )}
 
       {article.headings.length === 0 ? null : (
-        <nav
-          aria-label={messages.contents}
-          className="border-border border p-4"
-        >
-          <h2 className="mb-3 font-semibold">{messages.contents}</h2>
-          <ol className="space-y-1">
-            {article.headings.map((heading) => (
-              <li key={heading.id} className={headingIndent(heading.depth)}>
-                <a href={`#${heading.id}`} className="underline">
-                  {heading.text}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
+        <ArticleTableOfContents
+          headings={article.headings}
+          label={messages.contents}
+        />
       )}
 
-      <div
-        className="blog-reading-surface"
-        {...blogSurfaceAttributes(appearance)}
-        // `renderedHtml` is generated by the sanitize-last server pipeline,
-        // validated by the strict public DTO, and never accepts request HTML.
-        dangerouslySetInnerHTML={{ __html: article.renderedHtml }}
+      <ArticleReadingSurface
+        html={article.renderedHtml}
+        font={appearance.blogFont}
+        size={appearance.blogSize}
+        copyLabel={messages.copyCode}
+        copiedLabel={messages.codeCopied}
+        copyFailedLabel={messages.copyCodeFailed}
       />
 
       {related.length === 0 ? null : (
@@ -312,14 +314,6 @@ function ArticleDate({
       </dd>
     </div>
   );
-}
-
-function headingIndent(depth: number): string {
-  if (depth === 3) return "ms-4";
-  if (depth === 4) return "ms-8";
-  if (depth === 5) return "ms-12";
-  if (depth === 6) return "ms-16";
-  return "";
 }
 
 function UnavailableArticle({ locale }: { readonly locale: "en" | "fa" }) {

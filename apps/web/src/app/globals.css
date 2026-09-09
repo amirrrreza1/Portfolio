@@ -23,9 +23,9 @@
  *
  * `unicode-range` is what keeps the two scripts apart (THEMING.md §4). The
  * JetBrains Mono faces declare no Arabic block, so a Persian page never fetches
- * six Latin faces to render text they cannot show. M9 also re-encodes Vazir
- * Code into disjoint Latin and Arabic/Persian binaries, so browsers no longer
- * download glyph payload for a script that is absent from the rendered text.
+ * six Latin faces to render text they cannot show. Shabnam's without-Latin
+ * builds provide only the Persian glyph payload; Latin runs continue to use
+ * JetBrains Mono through font fallback.
  *
  * apps/web/test/font-delivery.spec.ts holds this file and public/Fonts to each
  * other: a face declared here must exist on disk, a file on disk must be
@@ -111,18 +111,33 @@
 }
 
 @font-face {
-  font-family: "VazirCode";
-  src: url("/Fonts/Vazir-Code-latin.woff2") format("woff2");
+  font-family: "Shabnam";
+  src: url("/Fonts/Shabnam-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-  unicode-range: u+0000-00ff;
+  unicode-range:
+    u+0600-06ff, u+0750-077f, u+200c-200f, u+2010-2011, u+2018-201f,
+    u+2020-2021, u+2026, u+202a-202e, u+2070-209f, u+20a0-20cf, u+fb8a,
+    u+fbfc-fbff, u+fd3e-fd3f, u+fdf2, u+fdfc, u+fe70-feff, u+fffd;
 }
 
 @font-face {
-  font-family: "VazirCode";
-  src: url("/Fonts/Vazir-Code-arabic.woff2") format("woff2");
-  font-weight: 400;
+  font-family: "Shabnam";
+  src: url("/Fonts/Shabnam-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    u+0600-06ff, u+0750-077f, u+200c-200f, u+2010-2011, u+2018-201f,
+    u+2020-2021, u+2026, u+202a-202e, u+2070-209f, u+20a0-20cf, u+fb8a,
+    u+fbfc-fbff, u+fd3e-fd3f, u+fdf2, u+fdfc, u+fe70-feff, u+fffd;
+}
+
+@font-face {
+  font-family: "Shabnam";
+  src: url("/Fonts/Shabnam-Bold.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
   unicode-range:
@@ -280,7 +295,7 @@
 }
 
 .blog-reading-surface[data-blog-font="vazir-code"] {
-  font-family: "VazirCode", tahoma, sans-serif;
+  font-family: "Shabnam", tahoma, sans-serif;
 }
 
 .blog-reading-surface[data-blog-font="system-sans"] {
@@ -443,7 +458,9 @@
 
 .blog-reading-surface :where(pre),
 .project-reading-surface :where(pre) {
+  position: relative;
   padding: 1em;
+  padding-block-start: 3.25em;
   overflow-x: auto;
   /* A long line must scroll inside the block rather than widening the page. */
   max-width: 100%;
@@ -469,33 +486,67 @@
   text-underline-offset: 0.2em;
 }
 
-/*
- * The section-link anchor is a navigational affordance, not part of the
- * heading's text. It stays out of the reading flow until the heading is
- * hovered or the anchor itself is focused — and it must remain focusable, so
- * it is faded rather than hidden.
- */
-.blog-reading-surface :where(.heading-anchor),
-.project-reading-surface :where(.heading-anchor) {
-  color: var(--color-text-muted);
-  text-decoration: none;
-  margin-inline-end: 0.35em;
-  opacity: 0;
-  transition: opacity 150ms ease;
+/* The sanitizer intentionally strips plugin-authored classes, so identify the
+ * generated empty permalink by structure. Heading IDs remain available to the
+ * contents navigation while the bare `#` stays out of the reading flow. */
+.blog-reading-surface :is(h2, h3, h4, h5, h6) > a:first-child[href^="#"],
+.project-reading-surface :is(h2, h3, h4, h5, h6) > a:first-child[href^="#"] {
+  display: none;
 }
 
-.blog-reading-surface :where(h2, h3, h4, h5, h6):hover .heading-anchor,
-.project-reading-surface :where(h2, h3, h4, h5, h6):hover .heading-anchor,
-.blog-reading-surface .heading-anchor:focus-visible,
-.project-reading-surface .heading-anchor:focus-visible {
-  opacity: 1;
+.blog-reading-surface :where(.code-copy-button) {
+  position: absolute;
+  inset-block-start: 0.65rem;
+  inset-inline-end: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  background-color: var(--color-code-bg);
+  color: var(--color-code-text);
+  cursor: pointer !important;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .blog-reading-surface :where(.heading-anchor),
-  .project-reading-surface :where(.heading-anchor) {
-    transition: none;
-  }
+.blog-reading-surface
+  :where(.code-copy-button:hover, .code-copy-button:focus-visible) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.blog-reading-surface :where(.code-copy-button:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.blog-reading-surface :where(.code-copy-check-icon) {
+  display: none;
+}
+
+.blog-reading-surface :where(.code-copy-button[data-copy-state="copied"]) {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.blog-reading-surface
+  :where(.code-copy-button[data-copy-state="copied"] .code-copy-icon) {
+  display: none;
+}
+
+.blog-reading-surface
+  :where(.code-copy-button[data-copy-state="copied"] .code-copy-check-icon) {
+  display: block;
+}
+
+.blog-reading-surface :where(.code-copy-button[data-copy-state="failed"]) {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .blog-reading-surface :where(strong),
@@ -779,6 +830,21 @@ html[data-motion="reduced"] *::after {
   --color-scrim: var(--color-scrim);
 }
 
+/* The public portfolio uses a custom cursor. The isolated admin document does
+ * not render that cursor, so native pointers must remain visible here. */
+html[data-surface="admin"],
+html[data-surface="admin"] body {
+  cursor: auto;
+}
+
+html[data-surface="admin"] :where(button, a, select, summary) {
+  cursor: pointer !important;
+}
+
+html[data-surface="admin"] :where(input, textarea) {
+  cursor: text !important;
+}
+
 @layer base {
   * {
     margin: 0;
@@ -816,8 +882,137 @@ html[data-motion="reduced"] *::after {
   }
   input:lang(fa),
   textarea:lang(fa) {
-    font-family: "VazirCode", "tahoma", sans-serif;
+    font-family: "Shabnam", tahoma, sans-serif;
   }
+  :lang(fa) {
+    font-family: "Shabnam", tahoma, sans-serif;
+  }
+  :lang(fa):where(code, pre, kbd, samp) {
+    font-family: JetBrains_Mono, monospace;
+  }
+}
+
+.site-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1.5rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  opacity: 1;
+  transition:
+    opacity 360ms ease,
+    visibility 360ms ease;
+  animation: site-loader-failsafe 0s linear 8s forwards;
+}
+
+.site-loader[data-state="leaving"] {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* During a streamed route response, Next's fallback owns the loading surface.
+ * The hydrated readiness gate keeps measuring underneath and takes over only
+ * if fonts or the scene still need time after the fallback is removed. */
+body:has(.site-loader[data-loader-kind="route"])
+  .site-loader[data-loader-kind="page"] {
+  display: none;
+}
+
+.site-loader__content {
+  width: min(31rem, 100%);
+  transition: transform 360ms ease;
+}
+
+.site-loader[data-state="leaving"] .site-loader__content {
+  transform: translateY(-0.4rem);
+}
+
+.site-loader__eyebrow {
+  margin-bottom: clamp(2.5rem, 7vw, 4.5rem);
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.site-loader__code {
+  display: grid;
+  gap: 0.85rem;
+  font-size: clamp(0.78rem, 3.4vw, 1rem);
+  line-height: 1.7;
+}
+
+.site-loader__line {
+  display: grid;
+  grid-template-columns: 2.5ch 1fr;
+  gap: clamp(1rem, 5vw, 2.25rem);
+  opacity: 0;
+  animation: site-loader-line 420ms ease forwards;
+}
+
+.site-loader__line:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.site-loader__line:nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.site-loader__line-number {
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  user-select: none;
+}
+
+.site-loader__keyword {
+  color: var(--color-text-muted);
+}
+
+.site-loader__cursor {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1.1em;
+  margin-left: 0.4ch;
+  vertical-align: -0.2em;
+  background: var(--color-text);
+  animation: blink 0.85s step-end infinite;
+}
+
+.site-loader__status {
+  display: flex;
+  justify-content: space-between;
+  margin-top: clamp(2.75rem, 8vw, 4.25rem);
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.site-loader__count {
+  color: var(--color-text);
+}
+
+.site-loader__track {
+  position: relative;
+  height: 1px;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-text) 18%, transparent);
+}
+
+.site-loader__track span {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 38%;
+  background: var(--color-text);
+  animation: site-loader-progress 1.4s ease-in-out infinite;
 }
 
 @layer components {
@@ -853,6 +1048,9 @@ html[data-motion="reduced"] *::after {
       outline: 2px solid var(--color-primary);
     }
   }
+  .FormInput:lang(fa) {
+    font-family: "Shabnam", tahoma, sans-serif;
+  }
   .toast-in {
     animation: slideIn 0.3s ease-out forwards;
   }
@@ -871,6 +1069,37 @@ html[data-motion="reduced"] *::after {
   100% {
     opacity: 0;
   }
+}
+
+@keyframes site-loader-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes site-loader-line {
+  from {
+    transform: translateY(0.45rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes site-loader-failsafe {
+  to {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+html[data-page-loading="true"] {
+  overflow: hidden;
 }
 
 @keyframes slideIn {

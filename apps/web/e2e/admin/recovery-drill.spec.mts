@@ -416,6 +416,9 @@ async function recoverWith(page: Page, code: string): Promise<void> {
 }
 
 async function enrol(page: Page, label: string): Promise<void> {
+  if ((await page.getByLabel("Name this device").count()) === 0) {
+    await page.goto("/admin/security");
+  }
   await page.getByLabel("Name this device").fill(label);
   await page.getByTestId("admin-enrol-passkey").click();
   await expect(page.getByTestId("admin-enrol-status")).toHaveText(

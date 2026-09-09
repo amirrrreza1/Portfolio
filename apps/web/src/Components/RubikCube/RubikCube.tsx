@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useMemo, useRef, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+} from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, ThreeEvent } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
@@ -268,8 +274,13 @@ function Lights() {
 
 type HeroRubikProps = { className?: string };
 export default function RubikCube({ className }: HeroRubikProps) {
+  const [ready, setReady] = useState(false);
+  const markReady = useCallback(() => setReady(true), []);
+
   return (
     <div
+      data-rubik-canvas
+      data-ready={ready}
       className={`flex h-full w-full items-center justify-center ${
         className ?? ""
       }`}
@@ -280,7 +291,7 @@ export default function RubikCube({ className }: HeroRubikProps) {
           className="h-full w-full"
           camera={{ position: [6, 6, 8], fov: 45 }}
         >
-          <SceneRoot onReady={() => {}} />
+          <SceneRoot onFirstFrame={markReady} />
         </Canvas>
       </div>
     </div>
@@ -288,16 +299,19 @@ export default function RubikCube({ className }: HeroRubikProps) {
 }
 
 function SceneRoot({
-  onReady,
+  onFirstFrame,
 }: {
-  onReady: (api: { enqueue: (m: Turn | Turn[]) => void }) => void;
+  onFirstFrame: () => void;
 }) {
   const root = useRef<THREE.Group>(null!);
   const { enqueue } = useMoveQueue(root);
+  const firstFrameReported = useRef(false);
 
-  useEffect(() => {
-    onReady({ enqueue });
-  }, [onReady, enqueue]);
+  useFrame(() => {
+    if (firstFrameReported.current) return;
+    firstFrameReported.current = true;
+    requestAnimationFrame(onFirstFrame);
+  });
 
   useEffect(() => {
     enqueue(rndMoves(30));

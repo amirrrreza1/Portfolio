@@ -81,8 +81,10 @@ export const BLOG_FONTS: { readonly [K in BlogFontKey]: BlogFontDefinition } = {
   },
   "vazir-code": {
     key: "vazir-code",
-    displayName: "Vazir Code",
-    scripts: ["arabic", "latin"],
+    // Keep the persisted key stable so existing preference cookies and stored
+    // appearance settings continue to resolve after replacing the font files.
+    displayName: "Shabnam",
+    scripts: ["arabic"],
     selfHosted: true,
   },
   "system-sans": {
