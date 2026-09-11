@@ -134,13 +134,7 @@ export default function AdminPortfolioEditor(): React.JSX.Element {
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
-        <div>
-          <p className="font-semibold">English portfolio content</p>
-          <p className="text-text-muted text-sm">
-            Site-wide content is English. Blog posts manage their language in
-            the Blog workspace.
-          </p>
-        </div>
+        <p className="font-semibold">English portfolio content</p>
         <EditorStatus message={message} error={failed} />
       </div>
 
@@ -190,9 +184,9 @@ function SettingsEditor({
                 google: nullable(form, "googleVerificationToken"),
                 bing: nullable(form, "bingVerificationToken"),
               },
-              githubUsername: nullable(form, "githubUsername"),
-              githubRepoAllowlist: lines(form, "githubRepoAllowlist"),
-              githubCacheTtlSeconds: integer(form, "githubCacheTtlSeconds"),
+              githubUsername: settings.githubUsername,
+              githubRepoAllowlist: settings.githubRepoAllowlist,
+              githubCacheTtlSeconds: settings.githubCacheTtlSeconds,
               robotsAllowIndexing: form.has("robotsAllowIndexing"),
               birthDate: nullable(form, "birthDate"),
             },
@@ -204,10 +198,7 @@ function SettingsEditor({
 
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Site settings"
-        description="Canonical identity, contact delivery, GitHub statistics, indexing, and the private birth date used to derive age."
-      />
+      <ResourceHeading title="Site settings" />
       <form
         data-testid="admin-settings-form"
         onSubmit={submit}
@@ -294,35 +285,6 @@ function SettingsEditor({
             name="birthDate"
             type="date"
             defaultValue={settings.birthDate?.slice(0, 10) ?? ""}
-          />
-        </Field>
-        <Field label="GitHub username">
-          <input
-            className={inputClass}
-            name="githubUsername"
-            defaultValue={settings.githubUsername ?? ""}
-          />
-        </Field>
-        <Field label="GitHub cache seconds">
-          <input
-            className={inputClass}
-            name="githubCacheTtlSeconds"
-            type="number"
-            min="60"
-            max="86400"
-            required
-            defaultValue={settings.githubCacheTtlSeconds}
-          />
-        </Field>
-        <Field
-          label="Repository allowlist"
-          hint="One repository name per line."
-        >
-          <textarea
-            className={inputClass}
-            name="githubRepoAllowlist"
-            rows={4}
-            defaultValue={settings.githubRepoAllowlist.join("\n")}
           />
         </Field>
         <Field label="Default social-image media ID">
@@ -478,10 +440,7 @@ function AboutEditor({
 
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="About content"
-        description="Edit the portfolio biography. Section headings, order, visibility, navigation, and interface labels are fixed in the site design."
-      />
+      <ResourceHeading title="About content" />
       {about === undefined ? (
         <EditorStatus message="The About content record is missing." error />
       ) : (
@@ -588,188 +547,78 @@ function SocialEditor({
     success: string
   ) => Promise<void>;
 }): React.JSX.Element {
+  const links = [
+    { label: "GitHub", kind: "SOCIAL" as const },
+    { label: "LinkedIn", kind: "SOCIAL" as const },
+    { label: "Telegram", kind: "SOCIAL" as const },
+    { label: "Donate", kind: "DONATE" as const },
+  ].map((slot, sortOrder) => ({
+    ...slot,
+    sortOrder,
+    item: items.find(
+      (item) =>
+        item.labelByLocale.en.toLocaleLowerCase() ===
+        slot.label.toLocaleLowerCase()
+    ),
+  }));
+
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Footer and social links"
-        description="Social and donation links require HTTPS. Email links use a validated mailto address."
-      />
-      <SocialForm busy={busy} mutate={mutate} />
-      {items.map((item) => (
-        <SocialForm key={item.id} item={item} busy={busy} mutate={mutate} />
-      ))}
+      <ResourceHeading title="Profile links" />
+      <form
+        className="border-border grid gap-4 border p-4 md:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          void mutate(
+            () =>
+              Promise.all(
+                links.map(({ item, kind, label, sortOrder }) => {
+                  const body = {
+                    labelByLocale: { en: label },
+                    kind,
+                    url: text(form, label),
+                    iconKey: item?.iconKey ?? null,
+                    rel: item?.rel ?? "noopener noreferrer",
+                    enabled: item?.enabled ?? true,
+                    sortOrder: item?.sortOrder ?? sortOrder,
+                  };
+
+                  return item === undefined
+                    ? adminRequest("/admin/social-links", {
+                        method: "POST",
+                        mutation: true,
+                        body,
+                      })
+                    : adminRequest(`/admin/social-links/${item.id}`, {
+                        method: "PATCH",
+                        mutation: true,
+                        ifMatch: item.version,
+                        body,
+                      });
+                })
+              ),
+            "Profile links saved."
+          );
+        }}
+      >
+        {links.map(({ item, label }) => (
+          <Field key={label} label={`${label} link`}>
+            <input
+              className={inputClass}
+              name={label}
+              type="url"
+              autoComplete="url"
+              required
+              defaultValue={item?.url ?? "https://"}
+            />
+          </Field>
+        ))}
+        <div className="md:col-span-2">
+          <SaveButton busy={busy}>Save links</SaveButton>
+        </div>
+      </form>
     </section>
-  );
-}
-
-function SocialForm({
-  item,
-  busy,
-  mutate,
-}: {
-  readonly item?: SocialLink;
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  return (
-    <form
-      className={`border-border grid gap-3 border p-4 md:grid-cols-3 ${item?.archivedAt === null || item === undefined ? "" : "opacity-70"}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const body = {
-          labelByLocale: {
-            en: text(form, "labelEn"),
-          },
-          kind: text(form, "kind"),
-          url: text(form, "url"),
-          iconKey: nullable(form, "iconKey"),
-          rel: nullable(form, "rel"),
-          enabled: form.has("enabled"),
-          sortOrder: integer(form, "sortOrder"),
-        };
-        void mutate(
-          () =>
-            adminRequest(
-              item === undefined
-                ? "/admin/social-links"
-                : `/admin/social-links/${item.id}`,
-              {
-                method: item === undefined ? "POST" : "PATCH",
-                mutation: true,
-                ...(item === undefined ? {} : { ifMatch: item.version }),
-                body,
-              }
-            ),
-          item === undefined ? "Social link created." : "Social link saved."
-        );
-      }}
-    >
-      <h4 className="font-semibold md:col-span-3">
-        {item === undefined ? "Add social link" : item.labelByLocale.en}
-      </h4>
-      <Field label="English label">
-        <input
-          className={inputClass}
-          name="labelEn"
-          required
-          defaultValue={item?.labelByLocale.en ?? ""}
-        />
-      </Field>
-      <Field label="Kind">
-        <select
-          className={inputClass}
-          name="kind"
-          defaultValue={item?.kind ?? "SOCIAL"}
-        >
-          <option value="SOCIAL">Social</option>
-          <option value="DONATE">Donation</option>
-          <option value="EMAIL">Email</option>
-        </select>
-      </Field>
-      <Field label="URL">
-        <input
-          className={inputClass}
-          name="url"
-          required
-          defaultValue={item?.url ?? "https://"}
-        />
-      </Field>
-      <Field label="Icon key">
-        <input
-          className={inputClass}
-          name="iconKey"
-          defaultValue={item?.iconKey ?? ""}
-        />
-      </Field>
-      <Field label="Link relationship">
-        <input
-          className={inputClass}
-          name="rel"
-          defaultValue={item?.rel ?? "noopener noreferrer"}
-        />
-      </Field>
-      <Field label="Order">
-        <input
-          className={inputClass}
-          name="sortOrder"
-          type="number"
-          min="0"
-          required
-          defaultValue={item?.sortOrder ?? 0}
-        />
-      </Field>
-      <Check
-        name="enabled"
-        label="Enabled"
-        defaultChecked={item?.enabled ?? true}
-      />
-      <div className="flex flex-wrap gap-2 md:col-span-3">
-        <SaveButton busy={busy}>
-          {item === undefined ? "Create link" : "Save changes"}
-        </SaveButton>
-        {item === undefined ? null : (
-          <ArchiveButton
-            resource="social-links"
-            item={item}
-            busy={busy}
-            mutate={mutate}
-          />
-        )}
-      </div>
-    </form>
-  );
-}
-
-function ArchiveButton({
-  resource,
-  item,
-  busy,
-  mutate,
-}: {
-  readonly resource: string;
-  readonly item: {
-    readonly id: string;
-    readonly version: number;
-    readonly archivedAt: string | null;
-  };
-  readonly busy: boolean;
-  readonly mutate: (
-    action: () => Promise<unknown>,
-    success: string
-  ) => Promise<void>;
-}): React.JSX.Element {
-  const archived = item.archivedAt !== null;
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      className="border-border border px-4 py-2 text-sm disabled:opacity-60"
-      onClick={() => {
-        if (
-          !archived &&
-          !window.confirm("Archive this item? It will stop appearing publicly.")
-        )
-          return;
-        void mutate(
-          () =>
-            adminRequest(
-              `/admin/resources/${resource}/${item.id}/${archived ? "restore" : "archive"}`,
-              {
-                method: "POST",
-                mutation: true,
-                body: { confirm: true, version: item.version },
-              }
-            ),
-          archived ? "Item restored." : "Item archived."
-        );
-      }}
-    >
-      {archived ? "Restore" : "Archive"}
-    </button>
   );
 }
 

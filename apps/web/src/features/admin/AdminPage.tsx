@@ -1,11 +1,9 @@
 export function AdminPageHeader({
   eyebrow,
   title,
-  description,
 }: {
   readonly eyebrow: string;
   readonly title: string;
-  readonly description: string;
 }): React.JSX.Element {
   return (
     <header>
@@ -13,7 +11,6 @@ export function AdminPageHeader({
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
         {title}
       </h1>
-      <p className="text-text-muted mt-2 max-w-3xl text-sm">{description}</p>
     </header>
   );
 }

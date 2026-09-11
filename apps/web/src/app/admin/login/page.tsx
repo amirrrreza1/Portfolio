@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import AdminLoginForm from "@/features/admin/AdminLoginForm";
 import { readAdminActor } from "@/server/admin-session";
 
+export const instant = false;
+
 export default async function AdminLoginPage(): Promise<React.JSX.Element> {
   // A signed-in visitor has no business on the sign-in page, but a failure to
   // reach the API must not keep them off it either: if the check itself

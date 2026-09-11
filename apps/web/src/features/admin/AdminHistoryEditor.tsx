@@ -121,10 +121,7 @@ function RevisionHistory({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Revision history"
-        description="Preview the stored before/after snapshots. Restoring validates the historical content against today's contract and creates a new revision—history is never rewritten."
-      />
+      <ResourceHeading title="Revision history" />
       <div className="flex flex-col gap-3">
         {revisions.length === 0 ? (
           <p className="text-text-muted text-sm">
@@ -211,10 +208,7 @@ function AuditHistory({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Audit events"
-        description="Append-only action categories, outcomes, actors, and safe metadata. Request fingerprints and credentials are never displayed."
-      />
+      <ResourceHeading title="Audit events" />
       {events.length === 0 ? (
         <p className="text-text-muted text-sm">
           No audit events are available for this role.
@@ -263,10 +257,7 @@ function UserEditor({
   );
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Users and permissions"
-        description="Owners may provision an editor or another owner. Ten recovery codes are shown once so the new account can establish its first session and enrol a passkey."
-      />
+      <ResourceHeading title="Users and permissions" />
       {users.length === 0 ? (
         <p className="text-text-muted text-sm">
           User management is available only to an owner with recent

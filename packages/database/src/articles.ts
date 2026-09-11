@@ -268,6 +268,7 @@ export function createArticleStore(
             select: {
               featured: true,
               coverMediaId: true,
+              coverMedia: { select: { altText: true } },
               category: { select: { key: true } },
               tags: { select: { tag: { select: { key: true } } } },
             },
@@ -312,6 +313,7 @@ export function createArticleStore(
         category: translation.post.category?.key ?? null,
         tags: translation.post.tags.map((row) => row.tag.key),
         coverImage: translation.post.coverMediaId,
+        coverImageAlt: translation.post.coverMedia?.altText ?? null,
         featured: translation.post.featured,
         /**
          * Whether the autosave is ahead of the committed row, rather than the

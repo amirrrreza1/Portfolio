@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import AdminRecoveryForm from "@/features/admin/AdminRecoveryForm";
 import { readAdminActor } from "@/server/admin-session";
 
+export const instant = false;
+
 export default async function AdminRecoveryPage(): Promise<React.JSX.Element> {
   let signedIn = false;
   try {

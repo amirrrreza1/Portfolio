@@ -10,6 +10,8 @@ import { AdminPageHeader } from "@/features/admin/AdminPage";
 import { formatUtc } from "@/features/admin/format";
 import { requireAdminActor } from "@/server/admin-session";
 
+export const instant = false;
+
 export default async function AdminHomePage(): Promise<React.JSX.Element> {
   const actor = await requireAdminActor();
 
@@ -20,7 +22,6 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
           <AdminPageHeader
             eyebrow="Dashboard"
             title={`Welcome back, ${actor.displayName}`}
-            description="A quick view of your account and portfolio delivery. Use the sidebar to open each editing workspace."
           />
           <span className="border-success/40 bg-success/10 text-success inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
             <span className="bg-success size-1.5 rounded-full" />
@@ -61,10 +62,6 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
       <section className="border-border bg-surface flex flex-col gap-4 rounded-xl border p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Content health</h2>
-          <p className="text-text-muted text-sm">
-            Drafts, delivery state, recent edits, and failed security events.
-            Content bodies and credentials are never shown here.
-          </p>
         </div>
         <AdminDashboard />
       </section>

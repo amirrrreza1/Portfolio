@@ -51,13 +51,18 @@ test("the complete portfolio workspace loads and handles a real conflict", async
     page.getByRole("heading", { name: "Daily quotes" })
   ).toBeVisible();
 
-  await page.getByRole("link", { name: "Media & resume" }).click();
+  await page.getByRole("link", { name: "Media" }).click();
   await expect(
     page.getByRole("heading", { name: "Upload media" })
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Media library" })
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Resume versions" })
+  ).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Resume", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Resume versions" })
   ).toBeVisible();

@@ -129,15 +129,8 @@ export function LocaleBadge({
 
 export function ResourceHeading({
   title,
-  description,
 }: {
   readonly title: string;
-  readonly description: string;
 }): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-1">
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="text-text-muted max-w-3xl text-sm">{description}</p>
-    </div>
-  );
+  return <h3 className="text-lg font-semibold">{title}</h3>;
 }

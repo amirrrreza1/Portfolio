@@ -3,37 +3,23 @@ import { AdminPageHeader } from "@/features/admin/AdminPage";
 import AdminSessionList from "@/features/admin/AdminSessionList";
 import { listAdminSessions, requireAdminActor } from "@/server/admin-session";
 
+export const instant = false;
+
 export default async function AdminSecurityPage(): Promise<React.JSX.Element> {
   await requireAdminActor();
   const sessions = await listAdminSessions();
 
   return (
     <div className="flex flex-col gap-8">
-      <AdminPageHeader
-        eyebrow="Administration"
-        title="Security"
-        description="Manage active sessions and register passkeys for secure sign-in."
-      />
+      <AdminPageHeader eyebrow="Administration" title="Security" />
 
       <section className="border-border bg-surface flex flex-col gap-4 rounded-xl border p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Active sessions</h2>
-          <p className="text-text-muted text-sm">
-            Revoking another session takes effect on its next request. It needs
-            a passkey confirmation if you have not signed in recently.
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold">Active sessions</h2>
         <AdminSessionList sessions={sessions} />
       </section>
 
       <section className="border-border bg-surface flex flex-col gap-4 rounded-xl border p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Passkeys</h2>
-          <p className="text-text-muted text-sm">
-            Register the device you will sign in with. An account that has only
-            recovery codes left needs one of these before the codes run out.
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold">Passkeys</h2>
         <AdminEnrolPasskey />
       </section>
     </div>

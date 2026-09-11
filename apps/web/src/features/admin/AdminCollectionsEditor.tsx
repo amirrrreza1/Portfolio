@@ -23,7 +23,6 @@ type Skill = {
   readonly categoryId: string;
   readonly name: string;
   readonly color: string;
-  readonly iconMediaId: string | null;
   readonly enabled: boolean;
   readonly sortOrder: number;
   readonly archivedAt: string | null;
@@ -52,7 +51,6 @@ type Project = {
   readonly status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "ARCHIVED";
   readonly demoUrl: string | null;
   readonly repositoryUrl: string | null;
-  readonly imageId: string | null;
   readonly featured: boolean;
   readonly enabled: boolean;
   readonly sortOrder: number;
@@ -205,10 +203,7 @@ function SkillsEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Skills and categories"
-        description="Skill names remain proper nouns. Category labels are translated independently and every colour must pass the theme contrast policy."
-      />
+      <ResourceHeading title="Skills and categories" />
       <form
         className="border-border grid gap-3 border p-4 md:grid-cols-3"
         onSubmit={(event) => {
@@ -424,7 +419,6 @@ function SkillForm({
           categoryId: text(form, "categoryId"),
           name: text(form, "name"),
           color: text(form, "color"),
-          iconMediaId: nullable(form, "iconMediaId"),
           enabled: form.has("enabled"),
           sortOrder: integer(form, "sortOrder"),
         };
@@ -481,13 +475,6 @@ function SkillForm({
           defaultValue={skill?.color ?? "#0070f3"}
         />
       </Field>
-      <Field label="Icon media ID">
-        <input
-          className={inputClass}
-          name="iconMediaId"
-          defaultValue={skill?.iconMediaId ?? ""}
-        />
-      </Field>
       <Field label="Order">
         <input
           className={inputClass}
@@ -533,10 +520,7 @@ function ProjectsEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Projects"
-        description="Manage links, dates, status, featured order, verified imagery, skill relationships, and English copy."
-      />
+      <ResourceHeading title="Projects" />
       <ProjectForm skills={skills} busy={busy} mutate={mutate} />
       {projects.map((project) => (
         <ProjectForm
@@ -600,7 +584,6 @@ function ProjectForm({
               status: text(form, "status"),
               demoUrl: nullable(form, "demoUrl"),
               repositoryUrl: nullable(form, "repositoryUrl"),
-              imageId: nullable(form, "imageId"),
               featured: form.has("featured"),
               enabled: form.has("enabled"),
               sortOrder: integer(form, "sortOrder"),
@@ -676,13 +659,6 @@ function ProjectForm({
               name="repositoryUrl"
               type="url"
               defaultValue={project?.repositoryUrl ?? ""}
-            />
-          </Field>
-          <Field label="Image media ID">
-            <input
-              className={inputClass}
-              name="imageId"
-              defaultValue={project?.imageId ?? ""}
             />
           </Field>
           <Field label="Started">
@@ -848,10 +824,7 @@ function CertificatesEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Certificates"
-        description="Certificate metadata and localized descriptions stay separate from the verified PDF asset they reference."
-      />
+      <ResourceHeading title="Certificates" />
       <CertificateForm busy={busy} mutate={mutate} />
       {certificates.map((item) => (
         <CertificateForm
@@ -1123,10 +1096,7 @@ function QuotesEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Daily quotes"
-        description="The public quote is chosen deterministically by UTC day unless one enabled quote is pinned."
-      />
+      <ResourceHeading title="Daily quotes" />
       <QuoteForm busy={busy} mutate={mutate} />
       {quotes.map((quote) => (
         <QuoteForm key={quote.id} quote={quote} busy={busy} mutate={mutate} />

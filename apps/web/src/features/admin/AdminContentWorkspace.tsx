@@ -12,7 +12,7 @@ const VIEWS = [
   { key: "portfolio", label: "Site and structure" },
   { key: "collections", label: "Portfolio collections" },
   { key: "blog", label: "Articles" },
-  { key: "media", label: "Media and resume" },
+  { key: "media", label: "Media" },
   { key: "history", label: "History and access" },
 ] as const;
 
@@ -33,10 +33,6 @@ export default function AdminContentWorkspace(): React.JSX.Element {
         <h2 id="content-workspace-title" className="text-xl font-semibold">
           Content workspace
         </h2>
-        <p className="text-text-muted max-w-3xl text-sm">
-          Edit what visitors see, manage blog languages, and recover earlier
-          versions without touching the database or source files.
-        </p>
       </div>
 
       <nav

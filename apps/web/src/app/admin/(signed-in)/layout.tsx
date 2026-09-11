@@ -5,6 +5,8 @@ import { PanelsTopLeft } from "lucide-react";
 import AdminNavigation from "@/features/admin/AdminNavigation";
 import SignOutButton from "@/features/admin/SignOutButton";
 
+export const instant = false;
+
 /**
  * Everything inside this group requires a verified session.
  *

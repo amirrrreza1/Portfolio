@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   FileClock,
+  FileText,
   Globe2,
   Images,
   Layers3,
@@ -43,7 +44,8 @@ const groups: readonly {
         icon: Newspaper,
         matches: ["/admin/blog"],
       },
-      { href: "/admin/media", label: "Media & resume", icon: Images },
+      { href: "/admin/media", label: "Media", icon: Images },
+      { href: "/admin/resume", label: "Resume", icon: FileText },
     ],
   },
   {

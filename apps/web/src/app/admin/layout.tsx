@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 
 /**
+ * Admin routes always depend on request cookies and uncached authenticated API
+ * reads. They are intentionally request-rendered, so instant-navigation
+ * validation would only surface a development overlay without producing a
+ * useful static shell.
+ */
+export const instant = false;
+
+/**
  * The admin frame.
  *
  * It deliberately does not check for a session. Two of its children —

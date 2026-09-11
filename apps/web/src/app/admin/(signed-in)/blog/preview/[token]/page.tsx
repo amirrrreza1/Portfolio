@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { readAdminPreview, requireAdminActor } from "@/server/admin-session";
 
+export const instant = false;
+
 /**
  * Unpublished work must never be indexable, and the header is not enough on
  * its own — a crawler that follows a link from a leaked page reads the tag in

@@ -10,7 +10,6 @@ import {
   ResourceHeading,
   SaveButton,
 } from "./AdminEditorFields";
-import { formatUtc } from "./format";
 
 type Media = {
   readonly id: string;
@@ -30,38 +29,15 @@ type Media = {
   readonly references?: Record<string, number>;
 };
 
-type Resume = {
-  readonly id: string;
-  readonly mediaAssetId: string;
-  readonly label: string;
-  readonly publicFilename: string | null;
-  readonly activatedAt: string | null;
-  readonly retiredAt: string | null;
-  readonly createdAt: string;
-  readonly version: number;
-  readonly mediaAsset: {
-    readonly id: string;
-    readonly displayName: string;
-    readonly mimeType: string;
-    readonly processingState: string;
-  };
-  readonly uploadedBy: { readonly displayName: string } | null;
-};
-
 export default function AdminMediaEditor(): React.JSX.Element {
   const [media, setMedia] = useState<readonly Media[] | null>(null);
-  const [resumes, setResumes] = useState<readonly Resume[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const load = useCallback(async () => {
     try {
-      const [nextMedia, nextResumes] = await Promise.all([
-        adminRequest<readonly Media[]>("/admin/media"),
-        adminRequest<readonly Resume[]>("/admin/resumes"),
-      ]);
+      const nextMedia = await adminRequest<readonly Media[]>("/admin/media");
       setMedia(nextMedia);
-      setResumes(nextResumes);
       setFailed(false);
     } catch (error) {
       setMessage(describeAdminError(error));
@@ -87,19 +63,13 @@ export default function AdminMediaEditor(): React.JSX.Element {
       setBusy(false);
     }
   }
-  if (media === null || resumes === null)
+  if (media === null)
     return (
       <EditorStatus
         message={message ?? "Loading media library…"}
         error={failed}
       />
     );
-  const verifiedPdfs = media.filter(
-    (item) =>
-      item.archivedAt === null &&
-      item.processingState === "VERIFIED" &&
-      item.mimeType === "application/pdf"
-  );
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
@@ -125,12 +95,6 @@ export default function AdminMediaEditor(): React.JSX.Element {
       </div>
       <UploadForm busy={busy} mutate={mutate} />
       <MediaLibrary media={media} busy={busy} mutate={mutate} />
-      <ResumeEditor
-        resumes={resumes}
-        media={verifiedPdfs}
-        busy={busy}
-        mutate={mutate}
-      />
     </div>
   );
 }
@@ -144,10 +108,7 @@ function UploadForm({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Upload media"
-        description="Uploads are streamed under a fixed limit. Raster images are decoded, re-encoded, and stripped of metadata; PDFs must pass structural, page-count, and active-content policy."
-      />
+      <ResourceHeading title="Upload media" />
       <form
         className="border-border grid gap-4 border p-4 md:grid-cols-2"
         onSubmit={(event) => {
@@ -216,10 +177,7 @@ function MediaLibrary({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Media library"
-        description="Object keys remain private. The reference count must reach zero before an asset can be archived."
-      />
+      <ResourceHeading title="Media library" />
       <div className="flex flex-col gap-3">
         {media.length === 0 ? (
           <p className="text-text-muted text-sm">No media has been uploaded.</p>
@@ -353,171 +311,6 @@ function MediaLibrary({
             </details>
           ))
         )}
-      </div>
-    </section>
-  );
-}
-
-function ResumeEditor({
-  resumes,
-  media,
-  busy,
-  mutate,
-}: {
-  readonly resumes: readonly Resume[];
-  readonly media: readonly Media[];
-  readonly busy: boolean;
-  readonly mutate: Mutate;
-}): React.JSX.Element {
-  return (
-    <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Resume versions"
-        description="Create a version from a verified PDF, then activate it atomically. Activating an earlier version is the rollback path; prior files are never overwritten."
-      />
-      <form
-        className="border-border grid gap-3 border p-4 md:grid-cols-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          void mutate(
-            () =>
-              adminRequest("/admin/resumes", {
-                method: "POST",
-                mutation: true,
-                body: {
-                  mediaAssetId: text(form, "mediaAssetId"),
-                  label: text(form, "label"),
-                  publicFilename: nullable(form, "publicFilename"),
-                },
-              }),
-            "Resume version created. Activate it when ready."
-          );
-        }}
-      >
-        <Field label="Verified PDF">
-          <select
-            className={inputClass}
-            name="mediaAssetId"
-            required
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Select a PDF
-            </option>
-            {media.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.displayName}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Version label">
-          <input
-            className={inputClass}
-            name="label"
-            required
-            placeholder="CV — August 2026"
-          />
-        </Field>
-        <Field label="Public filename">
-          <input
-            className={inputClass}
-            name="publicFilename"
-            placeholder="resume.pdf"
-          />
-        </Field>
-        <div className="md:col-span-3">
-          <SaveButton busy={busy}>Create version</SaveButton>
-        </div>
-      </form>
-      <div className="flex flex-col gap-3">
-        {resumes.map((resume) => {
-          const active =
-            resume.activatedAt !== null && resume.retiredAt === null;
-          return (
-            <form
-              key={resume.id}
-              className={`border-border grid gap-3 border p-4 md:grid-cols-3 ${active ? "border-success" : ""}`}
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void mutate(
-                  () =>
-                    adminRequest(`/admin/resumes/${resume.id}`, {
-                      method: "PATCH",
-                      mutation: true,
-                      ifMatch: resume.version,
-                      body: {
-                        label: text(form, "label"),
-                        publicFilename: nullable(form, "publicFilename"),
-                      },
-                    }),
-                  "Resume metadata saved."
-                );
-              }}
-            >
-              <div className="md:col-span-3">
-                <span className="font-semibold">
-                  {active ? "Active · " : ""}
-                  {resume.mediaAsset.displayName}
-                </span>
-                <p className="text-text-muted text-xs">
-                  Created {formatUtc(resume.createdAt)} ·{" "}
-                  {resume.uploadedBy?.displayName ?? "Unknown uploader"}
-                </p>
-              </div>
-              <Field label="Label">
-                <input
-                  className={inputClass}
-                  name="label"
-                  required
-                  defaultValue={resume.label}
-                />
-              </Field>
-              <Field label="Public filename">
-                <input
-                  className={inputClass}
-                  name="publicFilename"
-                  defaultValue={resume.publicFilename ?? ""}
-                />
-              </Field>
-              <div className="flex items-end gap-2">
-                <SaveButton busy={busy} />
-                <button
-                  type="button"
-                  disabled={
-                    busy ||
-                    active ||
-                    resume.mediaAsset.processingState !== "VERIFIED"
-                  }
-                  className="border-border border px-4 py-2 text-sm disabled:opacity-50"
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        active
-                          ? "This resume is already active."
-                          : "Activate this resume version now?"
-                      )
-                    )
-                      return;
-                    void mutate(
-                      () =>
-                        adminRequest(`/admin/resumes/${resume.id}/activate`, {
-                          method: "POST",
-                          mutation: true,
-                          ifMatch: resume.version,
-                        }),
-                      "Active resume changed atomically."
-                    );
-                  }}
-                >
-                  Activate
-                </button>
-              </div>
-            </form>
-          );
-        })}
       </div>
     </section>
   );

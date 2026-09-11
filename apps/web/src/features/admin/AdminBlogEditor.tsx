@@ -61,6 +61,7 @@ type Translation = {
   readonly category: string | null;
   readonly tags: readonly string[];
   readonly coverImage: string | null;
+  readonly coverImageAlt: string | null;
   readonly draft: {
     readonly bodyMarkdown: string;
     readonly updatedAt: string;
@@ -71,6 +72,12 @@ type Translation = {
 type Checklist = {
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
+};
+
+type BlogImageAsset = {
+  readonly id: string;
+  readonly displayName: string;
+  readonly altText: string | null;
 };
 
 type ImportReport = {
@@ -296,10 +303,7 @@ function PostList({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Articles"
-        description="Choose the language of each article. English and Persian posts keep independent drafts and publishing states."
-      />
+      <ResourceHeading title="Articles" />
       <div className="flex flex-wrap gap-2">
         {(["en", "fa"] as const).map((locale) => (
           <button
@@ -398,10 +402,7 @@ function ImportPanel({
 
   return (
     <section className="flex flex-col gap-5" data-testid="blog-import">
-      <ResourceHeading
-        title="Import Markdown"
-        description="The first step only parses and reports. The exact upload is retained privately in quarantine; nothing reaches an article until you review the normalized Markdown and confirm its report token."
-      />
+      <ResourceHeading title="Import Markdown" />
       <form
         className="border-border grid gap-4 border p-4 md:grid-cols-3"
         onSubmit={(event) => {
@@ -617,6 +618,10 @@ function TranslationEditor({
   const [seoDescription, setSeoDescription] = useState("");
   const [category, setCategory] = useState("");
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
+  const [coverImageId, setCoverImageId] = useState<string | null>(null);
+  const [coverImageAlt, setCoverImageAlt] = useState<string | null>(null);
+  const [socialImageId, setSocialImageId] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [acknowledged, setAcknowledged] = useState<readonly string[]>([]);
   const [autosaveState, setAutosaveState] = useState<string | null>(null);
@@ -635,6 +640,9 @@ function TranslationEditor({
       setSeoDescription(value.seoDescription ?? "");
       setCategory(value.category ?? "");
       setSelectedTags(value.tags);
+      setCoverImageId(value.coverImage);
+      setCoverImageAlt(value.coverImageAlt);
+      setSocialImageId(value.socialImageId);
       // The committed body, never the draft. An autosave that silently became
       // the document is the one outcome an autosave must not produce, so the
       // draft is offered as an explicit restore below instead.
@@ -706,8 +714,9 @@ function TranslationEditor({
       canonicalUrl: translation?.canonicalUrl ?? null,
       category: category.length === 0 ? null : category,
       tags: selectedTags,
-      coverImage: translation?.coverImage ?? null,
-      socialImage: translation?.socialImageId ?? null,
+      coverImage: coverImageId,
+      coverImageAlt,
+      socialImage: socialImageId,
     }),
     [
       postId,
@@ -718,6 +727,9 @@ function TranslationEditor({
       seoDescription,
       category,
       selectedTags,
+      coverImageId,
+      coverImageAlt,
+      socialImageId,
       translation,
     ]
   );
@@ -752,6 +764,41 @@ function TranslationEditor({
 
   const version = translation?.version ?? null;
 
+  async function uploadBlogImage(
+    target: "cover" | "social",
+    form: HTMLFormElement
+  ): Promise<void> {
+    const source = new FormData(form);
+    const file = source.get("file");
+    const altText = String(source.get("altText") ?? "").trim();
+    if (!(file instanceof File) || file.size === 0 || altText.length === 0)
+      return;
+    const body = new FormData();
+    body.append("kind", "IMAGE");
+    body.append("visibility", "PUBLIC");
+    body.append("altText", altText);
+    body.append("file", file, file.name);
+    setImageUploading(true);
+    setLocalError(null);
+    try {
+      const image = await adminUpload<BlogImageAsset>("/admin/media", body);
+      if (target === "cover") {
+        setCoverImageId(image.id);
+        setCoverImageAlt(image.altText);
+      } else {
+        setSocialImageId(image.id);
+      }
+      form.reset();
+      setAutosaveState(
+        `${image.displayName} uploaded. Save the article to use it as the ${target} image.`
+      );
+    } catch (error) {
+      setLocalError(describeAdminError(error));
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
   async function openPreview(): Promise<void> {
     try {
       const preview = await adminRequest<{ readonly previewUrl: string }>(
@@ -769,10 +816,7 @@ function TranslationEditor({
 
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title={`${locale.toUpperCase()} translation`}
-        description="The body is Markdown with the directive set this site renders. Everything below is validated against the same contract the publish path uses."
-      />
+      <ResourceHeading title={`${locale.toUpperCase()} translation`} />
 
       {translation?.draft?.aheadOfSave === true ? (
         <aside
@@ -891,6 +935,28 @@ function TranslationEditor({
           </div>
         </fieldset>
       </div>
+
+      <section className="grid gap-4 md:grid-cols-2" aria-label="Blog images">
+        <BlogImageUpload
+          title="Cover image"
+          hint="Shared by both translations of this article."
+          selectedId={coverImageId}
+          disabled={busy || imageUploading}
+          onUpload={(form) => uploadBlogImage("cover", form)}
+          onRemove={() => {
+            setCoverImageId(null);
+            setCoverImageAlt(null);
+          }}
+        />
+        <BlogImageUpload
+          title="Social image"
+          hint={`Used when the ${locale.toUpperCase()} article is shared.`}
+          selectedId={socialImageId}
+          disabled={busy || imageUploading}
+          onUpload={(form) => uploadBlogImage("social", form)}
+          onRemove={() => setSocialImageId(null)}
+        />
+      </section>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1013,6 +1079,67 @@ function TranslationEditor({
   );
 }
 
+function BlogImageUpload({
+  title,
+  hint,
+  selectedId,
+  disabled,
+  onUpload,
+  onRemove,
+}: {
+  readonly title: string;
+  readonly hint: string;
+  readonly selectedId: string | null;
+  readonly disabled: boolean;
+  readonly onUpload: (form: HTMLFormElement) => Promise<void>;
+  readonly onRemove: () => void;
+}): React.JSX.Element {
+  return (
+    <form
+      className="border-border flex flex-col gap-3 border p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onUpload(event.currentTarget);
+      }}
+    >
+      <div>
+        <h3 className="font-semibold">{title}</h3>
+        <p className="text-text-muted text-xs">{hint}</p>
+      </div>
+      <Field label="Image file">
+        <input
+          className={inputClass}
+          name="file"
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          required
+        />
+      </Field>
+      <Field label="Alternative text">
+        <input className={inputClass} name="altText" required maxLength={500} />
+      </Field>
+      {selectedId === null ? null : (
+        <div className="text-text-muted text-xs">
+          Selected media: <span className="font-mono">{selectedId}</span>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <SaveButton busy={disabled}>Upload and select</SaveButton>
+        {selectedId === null ? null : (
+          <button
+            type="button"
+            className="border-border border px-3 py-2 text-sm"
+            disabled={disabled}
+            onClick={onRemove}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
 /**
  * The article's own history, beside the article.
  *
@@ -1082,10 +1209,7 @@ function RevisionHistoryPanel({
 
   return (
     <section className="flex flex-col gap-3" data-testid="revision-history">
-      <ResourceHeading
-        title="Version history"
-        description="Every save and transition of this translation. Restoring replays the recorded Markdown through the normal save — it re-renders, writes a new revision, and never changes publication state."
-      />
+      <ResourceHeading title="Version history" />
       <EditorStatus message={error} error={error !== null} />
       {history.revisions.length === 0 ? (
         <p className="text-text-muted text-sm">
@@ -1385,10 +1509,7 @@ function TaxonomyEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading
-        title="Categories and tags"
-        description="Frontmatter never creates taxonomy: an unknown key is refused rather than turned into a new row, so a typo cannot become a category. These forms are the only way one comes into being."
-      />
+      <ResourceHeading title="Categories and tags" />
       <div className="grid gap-6 md:grid-cols-2">
         {(
           [
