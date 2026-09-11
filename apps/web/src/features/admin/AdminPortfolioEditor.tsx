@@ -8,7 +8,6 @@ import {
   EditorStatus,
   Field,
   inputClass,
-  LocaleBadge,
   ResourceHeading,
   SaveButton,
 } from "./AdminEditorFields";
@@ -134,7 +133,7 @@ export default function AdminPortfolioEditor(): React.JSX.Element {
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
-        <p className="font-semibold">English portfolio content</p>
+        <p className="font-semibold">Portfolio content</p>
         <EditorStatus message={message} error={failed} />
       </div>
 
@@ -157,6 +156,8 @@ function SettingsEditor({
     success: string
   ) => Promise<void>;
 }): React.JSX.Element {
+  const siteText = settings.translations.find((item) => item.locale === "en");
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -325,101 +326,79 @@ function SettingsEditor({
         </div>
       </form>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {(["en"] as const).map((locale) => {
-          const translation = settings.translations.find(
-            (item) => item.locale === locale
+      <form
+        className="border-border flex flex-col gap-3 border p-4 lg:max-w-2xl"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          void mutate(
+            () =>
+              adminRequest("/admin/settings/translations/en", {
+                method: "PATCH",
+                mutation: true,
+                ifMatch: siteText?.version ?? 0,
+                body: {
+                  siteName: text(form, "siteName"),
+                  titleTemplate: text(form, "titleTemplate"),
+                  metaDescription: text(form, "metaDescription"),
+                  keywords: lines(form, "keywords"),
+                  footerLines: lines(form, "footerLines"),
+                  footerRights: siteText?.footerRights ?? "All rights reserved",
+                  resumeButtonLabel: siteText?.resumeButtonLabel ?? "Download",
+                },
+              }),
+            "Site text saved."
           );
-          return (
-            <form
-              key={locale}
-              className="border-border flex flex-col gap-3 border p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void mutate(
-                  () =>
-                    adminRequest(`/admin/settings/translations/${locale}`, {
-                      method: "PATCH",
-                      mutation: true,
-                      ifMatch: translation?.version ?? 0,
-                      body: {
-                        siteName: text(form, "siteName"),
-                        titleTemplate: text(form, "titleTemplate"),
-                        metaDescription: text(form, "metaDescription"),
-                        keywords: lines(form, "keywords"),
-                        footerLines: lines(form, "footerLines"),
-                        footerRights:
-                          translation?.footerRights ?? "All rights reserved",
-                        resumeButtonLabel:
-                          translation?.resumeButtonLabel ?? "Download",
-                      },
-                    }),
-                  `${locale.toUpperCase()} site text saved.`
-                );
-              }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h4 className="font-semibold">English</h4>
-                <LocaleBadge
-                  locale={locale}
-                  present={translation !== undefined}
-                />
-              </div>
-              <Field label="Site name">
-                <input
-                  className={inputClass}
-                  name="siteName"
-                  required
-                  defaultValue={translation?.siteName ?? ""}
-                  dir="ltr"
-                />
-              </Field>
-              <Field label="Title template">
-                <input
-                  className={inputClass}
-                  name="titleTemplate"
-                  required
-                  defaultValue={translation?.titleTemplate ?? ""}
-                  dir="ltr"
-                />
-              </Field>
-              <Field label="Meta description">
-                <textarea
-                  className={inputClass}
-                  name="metaDescription"
-                  required
-                  rows={4}
-                  defaultValue={translation?.metaDescription ?? ""}
-                  dir="ltr"
-                />
-              </Field>
-              <Field label="SEO keywords" hint="One reviewed keyword per line.">
-                <textarea
-                  className={inputClass}
-                  name="keywords"
-                  rows={6}
-                  defaultValue={(translation?.keywords ?? []).join("\n")}
-                  dir="ltr"
-                />
-              </Field>
-              <Field
-                label="Footer rotating lines"
-                hint="Optional; one line per row."
-              >
-                <textarea
-                  className={inputClass}
-                  name="footerLines"
-                  rows={3}
-                  defaultValue={(translation?.footerLines ?? []).join("\n")}
-                  dir="ltr"
-                />
-              </Field>
-              <SaveButton busy={busy} />
-            </form>
-          );
-        })}
-      </div>
+        }}
+      >
+        <Field label="Site name">
+          <input
+            className={inputClass}
+            name="siteName"
+            required
+            defaultValue={siteText?.siteName ?? ""}
+            dir="ltr"
+          />
+        </Field>
+        <Field label="Title template">
+          <input
+            className={inputClass}
+            name="titleTemplate"
+            required
+            defaultValue={siteText?.titleTemplate ?? ""}
+            dir="ltr"
+          />
+        </Field>
+        <Field label="Meta description">
+          <textarea
+            className={inputClass}
+            name="metaDescription"
+            required
+            rows={4}
+            defaultValue={siteText?.metaDescription ?? ""}
+            dir="ltr"
+          />
+        </Field>
+        <Field label="SEO keywords" hint="One reviewed keyword per line.">
+          <textarea
+            className={inputClass}
+            name="keywords"
+            rows={6}
+            defaultValue={(siteText?.keywords ?? []).join("\n")}
+            dir="ltr"
+          />
+        </Field>
+        <Field label="Footer rotating lines" hint="Optional; one line per row.">
+          <textarea
+            className={inputClass}
+            name="footerLines"
+            rows={3}
+            defaultValue={(siteText?.footerLines ?? []).join("\n")}
+            dir="ltr"
+          />
+        </Field>
+        <SaveButton busy={busy} />
+      </form>
     </section>
   );
 }
@@ -493,10 +472,7 @@ function AboutContentForm({
         );
       }}
     >
-      <div className="flex items-center gap-2 md:col-span-2">
-        <h4 className="font-semibold">Biography</h4>
-        <LocaleBadge locale="en" present={translation !== undefined} />
-      </div>
+      <h4 className="font-semibold md:col-span-2">Biography</h4>
       <Field label="Location">
         <input
           className={inputClass}

@@ -8,7 +8,6 @@ import {
   EditorStatus,
   Field,
   inputClass,
-  LocaleBadge,
   ResourceHeading,
   SaveButton,
 } from "./AdminEditorFields";
@@ -151,26 +150,14 @@ export default function AdminCollectionsEditor(): React.JSX.Element {
       />
     );
   const allSkills = state.categories.flatMap((category) => category.skills);
-  const missing =
-    state.categories.filter(
-      (item) => !item.translations.some(({ locale }) => locale === "en")
-    ).length +
-    state.projects.filter(
-      (item) => !item.translations.some(({ locale }) => locale === "en")
-    ).length +
-    state.certificates.filter(
-      (item) => !item.translations.some(({ locale }) => locale === "en")
-    ).length +
-    state.quotes.filter((item) => item.textByLocale.en === undefined).length;
   return (
     <div className="flex flex-col gap-10">
       <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-3 border p-4">
         <div>
-          <p className="font-semibold">Collection readiness</p>
+          <p className="font-semibold">Portfolio collections</p>
           <p className="text-text-muted text-sm">
-            {missing === 0
-              ? "Every portfolio collection has English content."
-              : `${missing} record${missing === 1 ? " needs" : "s need"} English content.`}
+            Manage the projects, skills, certificates, and quotes shown on the
+            site.
           </p>
         </div>
         <EditorStatus message={message} error={failed} />
@@ -220,7 +207,7 @@ function SkillsEditor({
                   sortOrder: integer(form, "sortOrder"),
                 },
               }),
-            "Category created. Add both labels before enabling it."
+            "Category created. Add its name before enabling it."
           );
         }}
       >
@@ -257,17 +244,6 @@ function SkillsEditor({
             <span className="font-semibold">
               {category.translations.find((item) => item.locale === "en")
                 ?.name ?? category.key}
-            </span>
-            <span className="flex gap-2">
-              {(["en"] as const).map((locale) => (
-                <LocaleBadge
-                  key={locale}
-                  locale={locale}
-                  present={category.translations.some(
-                    (item) => item.locale === locale
-                  )}
-                />
-              ))}
             </span>
           </summary>
           <div className="border-border flex flex-col gap-5 border-t p-4">
@@ -348,17 +324,10 @@ function SkillsEditor({
                               body: { name: text(form, "name") },
                             }
                           ),
-                        `${locale.toUpperCase()} category label saved.`
+                        "Category name saved."
                       );
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">English</span>
-                      <LocaleBadge
-                        locale={locale}
-                        present={value !== undefined}
-                      />
-                    </div>
                     <Field label="Category name">
                       <input
                         className={inputClass}
@@ -558,19 +527,6 @@ function ProjectForm({
             project?.slug ??
             "Add project"}
         </span>
-        {project === undefined ? null : (
-          <span className="flex gap-2">
-            {(["en"] as const).map((locale) => (
-              <LocaleBadge
-                key={locale}
-                locale={locale}
-                present={project.translations.some(
-                  (item) => item.locale === locale
-                )}
-              />
-            ))}
-          </span>
-        )}
       </summary>
       <div className="border-border flex flex-col gap-5 border-t p-4">
         <form
@@ -610,7 +566,7 @@ function ProjectForm({
                   }
                 ),
               project === undefined
-                ? "Project created. Add both translations before enabling it."
+                ? "Project created. Add its content before enabling it."
                 : "Project saved."
             );
           }}
@@ -719,34 +675,24 @@ function ProjectForm({
             )}
           </div>
         </form>
-        {project === undefined
-          ? null
-          : (["en"] as const).map((locale) => (
-              <ProjectTranslationForm
-                key={locale}
-                project={project}
-                locale={locale}
-                busy={busy}
-                mutate={mutate}
-              />
-            ))}
+        {project === undefined ? null : (
+          <ProjectContentForm project={project} busy={busy} mutate={mutate} />
+        )}
       </div>
     </details>
   );
 }
 
-function ProjectTranslationForm({
+function ProjectContentForm({
   project,
-  locale,
   busy,
   mutate,
 }: {
   readonly project: Project;
-  readonly locale: "en" | "fa";
   readonly busy: boolean;
   readonly mutate: Mutate;
 }): React.JSX.Element {
-  const value = project.translations.find((item) => item.locale === locale);
+  const value = project.translations.find((item) => item.locale === "en");
   return (
     <form
       className="border-border grid gap-3 border-t pt-4 md:grid-cols-2"
@@ -755,34 +701,27 @@ function ProjectTranslationForm({
         const form = new FormData(event.currentTarget);
         void mutate(
           () =>
-            adminRequest(
-              `/admin/projects/${project.id}/translations/${locale}`,
-              {
-                method: "PATCH",
-                mutation: true,
-                ifMatch: value?.version ?? 0,
-                body: {
-                  title: text(form, "title"),
-                  summary: text(form, "summary"),
-                  longDescription: nullable(form, "longDescription"),
-                },
-              }
-            ),
-          `${locale.toUpperCase()} project copy saved.`
+            adminRequest(`/admin/projects/${project.id}/translations/en`, {
+              method: "PATCH",
+              mutation: true,
+              ifMatch: value?.version ?? 0,
+              body: {
+                title: text(form, "title"),
+                summary: text(form, "summary"),
+                longDescription: nullable(form, "longDescription"),
+              },
+            }),
+          "Project content saved."
         );
       }}
     >
-      <div className="flex items-center gap-2 md:col-span-2">
-        <h5 className="font-semibold">English</h5>
-        <LocaleBadge locale={locale} present={value !== undefined} />
-      </div>
       <Field label="Title">
         <input
           className={inputClass}
           name="title"
           required
           defaultValue={value?.title ?? ""}
-          dir={locale === "fa" ? "rtl" : "ltr"}
+          dir="ltr"
         />
       </Field>
       <Field label="Summary">
@@ -792,7 +731,7 @@ function ProjectTranslationForm({
           required
           rows={3}
           defaultValue={value?.summary ?? ""}
-          dir={locale === "fa" ? "rtl" : "ltr"}
+          dir="ltr"
         />
       </Field>
       <div className="md:col-span-2">
@@ -802,7 +741,7 @@ function ProjectTranslationForm({
             name="longDescription"
             rows={8}
             defaultValue={value?.longDescription ?? ""}
-            dir={locale === "fa" ? "rtl" : "ltr"}
+            dir="ltr"
           />
         </Field>
       </div>
@@ -856,19 +795,6 @@ function CertificateForm({
           {certificate?.translations.find((item) => item.locale === "en")
             ?.title ?? "Add certificate"}
         </span>
-        {certificate === undefined ? null : (
-          <span className="flex gap-2">
-            {(["en"] as const).map((locale) => (
-              <LocaleBadge
-                key={locale}
-                locale={locale}
-                present={certificate.translations.some(
-                  (item) => item.locale === locale
-                )}
-              />
-            ))}
-          </span>
-        )}
       </summary>
       <div className="border-border flex flex-col gap-4 border-t p-4">
         <form
@@ -1005,33 +931,27 @@ function CertificateForm({
             )}
           </div>
         </form>
-        {certificate === undefined
-          ? null
-          : (["en"] as const).map((locale) => (
-              <CertificateTranslationForm
-                key={locale}
-                certificate={certificate}
-                locale={locale}
-                busy={busy}
-                mutate={mutate}
-              />
-            ))}
+        {certificate === undefined ? null : (
+          <CertificateContentForm
+            certificate={certificate}
+            busy={busy}
+            mutate={mutate}
+          />
+        )}
       </div>
     </details>
   );
 }
-function CertificateTranslationForm({
+function CertificateContentForm({
   certificate,
-  locale,
   busy,
   mutate,
 }: {
   readonly certificate: Certificate;
-  readonly locale: "en" | "fa";
   readonly busy: boolean;
   readonly mutate: Mutate;
 }): React.JSX.Element {
-  const value = certificate.translations.find((item) => item.locale === locale);
+  const value = certificate.translations.find((item) => item.locale === "en");
   return (
     <form
       className="border-border grid gap-3 border-t pt-4 md:grid-cols-2"
@@ -1041,7 +961,7 @@ function CertificateTranslationForm({
         void mutate(
           () =>
             adminRequest(
-              `/admin/certificates/${certificate.id}/translations/${locale}`,
+              `/admin/certificates/${certificate.id}/translations/en`,
               {
                 method: "PATCH",
                 mutation: true,
@@ -1052,21 +972,17 @@ function CertificateTranslationForm({
                 },
               }
             ),
-          `${locale.toUpperCase()} certificate copy saved.`
+          "Certificate content saved."
         );
       }}
     >
-      <div className="flex items-center gap-2 md:col-span-2">
-        <h5 className="font-semibold">English</h5>
-        <LocaleBadge locale={locale} present={value !== undefined} />
-      </div>
       <Field label="Title">
         <input
           className={inputClass}
           name="title"
           required
           defaultValue={value?.title ?? ""}
-          dir={locale === "fa" ? "rtl" : "ltr"}
+          dir="ltr"
         />
       </Field>
       <Field label="Description">
@@ -1075,7 +991,7 @@ function CertificateTranslationForm({
           name="description"
           rows={3}
           defaultValue={value?.description ?? ""}
-          dir={locale === "fa" ? "rtl" : "ltr"}
+          dir="ltr"
         />
       </Field>
       <div className="md:col-span-2">
@@ -1146,20 +1062,14 @@ function QuoteForm({
         );
       }}
     >
-      <div className="flex items-center justify-between gap-3 md:col-span-2">
+      <div className="md:col-span-2">
         <h4 className="font-semibold">
           {quote === undefined
             ? "Add quote"
             : quote.textByLocale.en.slice(0, 72)}
         </h4>
-        <span className="flex gap-2">
-          <LocaleBadge
-            locale="en"
-            present={quote?.textByLocale.en !== undefined}
-          />
-        </span>
       </div>
-      <Field label="English text">
+      <Field label="Quote text">
         <textarea
           className={inputClass}
           name="textEn"
