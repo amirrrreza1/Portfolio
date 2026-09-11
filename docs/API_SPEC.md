@@ -73,8 +73,6 @@ All public read paths are locale-scoped. `:locale` is validated against the allo
 | `GET`  | `/public/:locale/site`                   | Enabled settings, navigation, sections, social links, public GitHub statistics allowlist   | short ISR/public cache                |
 | `GET`  | `/public/:locale/appearance`             | Enabled site themes, blog typography options, and defaults for the settings modal          | long public cache                     |
 | `GET`  | `/public/:locale/projects`               | Enabled projects and associated skills                                                     | public cache                          |
-| `GET`  | `/public/:locale/projects/:slug`         | One public project                                                                         | public cache                          |
-| `GET`  | `/public/projects/:slug/image`           | Verified public image attached to one enabled project; `404` when absent                   | long public cache                     |
 | `GET`  | `/public/:locale/blog/posts`             | Published translation summaries, cursor pagination                                         | public cache                          |
 | `GET`  | `/public/:locale/blog/posts/:slug`       | One published translation: rendered HTML, heading tree, SEO data, and available alternates | public cache                          |
 | `GET`  | `/public/:locale/blog/posts/:slug/image` | Verified social or cover image for one published translation; `404` when absent            | long public cache                     |

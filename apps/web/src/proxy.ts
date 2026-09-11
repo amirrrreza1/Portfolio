@@ -246,7 +246,7 @@ export async function proxyWithDependencies(
   const internalPathname =
     pathname === "/"
       ? "/en"
-      : pathname === "/projects" || pathname.startsWith("/projects/")
+      : pathname === "/projects"
         ? `/en${pathname}`
         : pathname;
   const locale = internalPathname.split("/")[1];

@@ -43,8 +43,7 @@ import { PublicSiteService } from "./public-site.service.js";
       useFactory: (): PublicProjectsService => {
         const environment = parseApiEnvironment(process.env);
         return new PublicProjectsService(
-          getDatabaseClient({ connectionString: environment.databaseUrl }),
-          createPublicMediaReader(environment.media)
+          getDatabaseClient({ connectionString: environment.databaseUrl })
         );
       },
     },

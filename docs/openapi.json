@@ -205,30 +205,6 @@
         "tags": ["PublicProjects"]
       }
     },
-    "/api/v1/public/{locale}/projects/{slug}": {
-      "get": {
-        "operationId": "PublicProjectsController_detail_v1",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": ["PublicProjects"]
-      }
-    },
-    "/api/v1/public/projects/{slug}/image": {
-      "get": {
-        "operationId": "PublicProjectsController_image_v1",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": ["PublicProjects"]
-      }
-    },
     "/api/v1/public/{locale}/site": {
       "get": {
         "operationId": "PublicSiteController_read_v1",

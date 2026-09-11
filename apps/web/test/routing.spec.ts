@@ -15,9 +15,6 @@ describe("locale routing", () => {
   it("prefixes blog paths only", () => {
     expect(localePath("en")).toBe("/");
     expect(localePath("fa", "/projects/")).toBe("/projects");
-    expect(localePath("fa", "/projects/portfolio/")).toBe(
-      "/projects/portfolio"
-    );
     expect(articlePath("fa", "خواندن-عمومی-نوعدار")).toBe(
       "/fa/blog/%D8%AE%D9%88%D8%A7%D9%86%D8%AF%D9%86-%D8%B9%D9%85%D9%88%D9%85%DB%8C-%D9%86%D9%88%D8%B9%D8%AF%D8%A7%D8%B1"
     );
@@ -28,9 +25,7 @@ describe("locale routing", () => {
     expect(legacyLocaleRedirect("/projects")).toBeNull();
     expect(legacyLocaleRedirect("/en")).toBe("/");
     expect(legacyLocaleRedirect("/fa")).toBe("/");
-    expect(legacyLocaleRedirect("/en/projects/portfolio")).toBe(
-      "/projects/portfolio"
-    );
+    expect(legacyLocaleRedirect("/en/projects/portfolio")).toBeNull();
     expect(legacyLocaleRedirect("/fa/projects")).toBe("/projects");
     expect(legacyLocaleRedirect("/blog")).toBe("/en/blog");
   });

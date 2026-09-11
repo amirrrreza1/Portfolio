@@ -682,7 +682,6 @@ export class AdminPortfolioService {
   async createSkill(actorId: string, input: AdminSkill): Promise<unknown> {
     return this.database.$transaction(async (tx) => {
       await assertActiveCategory(tx, input.categoryId);
-      await assertMediaReference(tx, input.iconMediaId, "IMAGE");
       const skill = await tx.skill.create({ data: input });
       await this.recordChange(
         tx,
@@ -706,7 +705,6 @@ export class AdminPortfolioService {
   ): Promise<unknown> {
     return this.database.$transaction(async (tx) => {
       await assertActiveCategory(tx, input.categoryId);
-      await assertMediaReference(tx, input.iconMediaId, "IMAGE");
       return this.updateVersionedInTransaction(
         tx,
         tx.skill,
@@ -731,7 +729,6 @@ export class AdminPortfolioService {
 
   async createProject(actorId: string, input: AdminProject): Promise<unknown> {
     return this.database.$transaction(async (tx) => {
-      await assertMediaReference(tx, input.imageId, "IMAGE");
       await assertProjectSkills(
         tx,
         input.skills.map((skill) => skill.skillId)
@@ -768,7 +765,6 @@ export class AdminPortfolioService {
     input: AdminProject
   ): Promise<unknown> {
     return this.database.$transaction(async (tx) => {
-      await assertMediaReference(tx, input.imageId, "IMAGE");
       await assertProjectSkills(
         tx,
         input.skills.map((skill) => skill.skillId)
@@ -1005,9 +1001,7 @@ export class AdminPortfolioService {
         uploadedBy: { select: { displayName: true } },
         _count: {
           select: {
-            projects: true,
             certificates: true,
-            skills: true,
             posts: true,
             postTranslations: true,
             resumeVersions: true,
@@ -1149,9 +1143,7 @@ export class AdminPortfolioService {
         include: {
           _count: {
             select: {
-              projects: true,
               certificates: true,
-              skills: true,
               posts: true,
               postTranslations: true,
               resumeVersions: true,
@@ -1634,13 +1626,11 @@ export class AdminPortfolioService {
               "categoryId",
               "name",
               "color",
-              "iconMediaId",
               "enabled",
               "sortOrder",
             ])
           );
           await assertActiveCategory(tx, parsed.categoryId);
-          await assertMediaReference(tx, parsed.iconMediaId, "IMAGE");
           return restoreCurrent(
             this,
             tx,
@@ -1663,7 +1653,6 @@ export class AdminPortfolioService {
               "status",
               "demoUrl",
               "repositoryUrl",
-              "imageId",
               "featured",
               "enabled",
               "sortOrder",
@@ -1672,7 +1661,6 @@ export class AdminPortfolioService {
             completedAt: dateOnlyOrNull(snapshot.completedAt),
             skills,
           });
-          await assertMediaReference(tx, parsed.imageId, "IMAGE");
           await assertProjectSkills(
             tx,
             parsed.skills.map((skill) => skill.skillId)
@@ -2242,7 +2230,6 @@ function projectData(input: AdminProject) {
     status: input.status,
     demoUrl: input.demoUrl,
     repositoryUrl: input.repositoryUrl,
-    imageId: input.imageId,
     featured: input.featured,
     enabled: input.enabled,
     sortOrder: input.sortOrder,

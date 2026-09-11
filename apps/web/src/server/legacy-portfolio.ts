@@ -11,7 +11,7 @@ import type { Projects } from "@/Components/Projects/Types";
 import type { SkillCategory } from "@/Components/Skills/Types";
 import { getMessages } from "@/i18n/messages";
 import { resolveAge } from "@/Utils/Age";
-import { suggestSlug, type Locale } from "@portfolio/contracts/common";
+import type { Locale } from "@portfolio/contracts/common";
 import {
   BLOG_FONTS,
   fontSupportsLocale,
@@ -20,10 +20,8 @@ import {
 } from "@portfolio/contracts/appearance";
 import {
   publicHomeSchema,
-  publicProjectDetailItemSchema,
   publicSiteSchema,
   type PublicHome,
-  type PublicProjectDetailItem,
   type PublicSite,
 } from "@portfolio/contracts/portfolio";
 
@@ -38,55 +36,11 @@ export function getLegacyPortfolioData(): {
   readonly quotes: readonly Quote[];
 } {
   return {
-    projects: (projects as Omit<Projects, "slug" | "image">[]).map(
-      (project) => ({
-        ...project,
-        slug: suggestSlug(project.title, "en").slug,
-        image: null,
-      })
-    ),
+    projects: projects as Projects[],
     skills: skills as SkillCategory[],
     certificates: certificates as CertificateType[],
     quotes: quotes as Quote[],
   };
-}
-
-/** Exact legacy project detail used only by the explicit rollback source. */
-export function getLegacyProjectDetail(
-  slug: string
-): PublicProjectDetailItem | null {
-  const data = getLegacyPortfolioData();
-  const project = data.projects.find((candidate) => candidate.slug === slug);
-  if (project === undefined) return null;
-  const allSkills = data.skills.flatMap((category) => category.items);
-  const skills = project.technologies.flatMap((id) => {
-    const skill = allSkills.find((candidate) => candidate.id === id);
-    return skill === undefined
-      ? []
-      : [
-          {
-            id: legacyUuid(3, Number(skill.id)),
-            name: skill.name,
-            color: skill.color,
-          },
-        ];
-  });
-  return publicProjectDetailItemSchema.parse({
-    id: legacyUuid(4, Number(project.id)),
-    slug: project.slug,
-    title: project.title,
-    summary: project.description,
-    status: project.status === "completed" ? "COMPLETED" : "IN_PROGRESS",
-    demoUrl: project.link === "#" ? null : project.link,
-    repositoryUrl: project.repo,
-    featured: false,
-    skillIds: skills.map((skill) => skill.id),
-    image: null,
-    longDescription: null,
-    startedAt: null,
-    completedAt: null,
-    skills,
-  });
 }
 
 /**

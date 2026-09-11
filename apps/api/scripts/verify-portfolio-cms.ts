@@ -308,7 +308,6 @@ try {
       categoryId: category.id,
       name: `M7 Skill ${suffix}`,
       color: "#0070f3",
-      iconMediaId: null,
       enabled: true,
       sortOrder: 9000,
     },
@@ -323,7 +322,6 @@ try {
       status: "IN_PROGRESS",
       demoUrl: null,
       repositoryUrl: null,
-      imageId: null,
       featured: false,
       enabled: true,
       sortOrder: 9000,
@@ -576,15 +574,6 @@ try {
     publicProjects.status === 200 && !untranslatedIsPublic,
     `HTTP ${publicProjects.status}`
   );
-  const untranslatedDetail = await fetch(
-    `${API}/api/v1/public/en/projects/m7-${suffix}`
-  );
-  check(
-    "the untranslated record's detail page is a clean 404, not a crash",
-    untranslatedDetail.status === 404,
-    `HTTP ${untranslatedDetail.status}`
-  );
-
   const publicHome = await fetch(`${API}/api/v1/public/en/home`);
   const publicHomeBody = (await publicHome.json()) as any;
   const download = publicHomeBody?.data?.resume?.downloadPath ?? "";

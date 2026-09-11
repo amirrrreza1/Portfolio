@@ -13,7 +13,7 @@ Portfolio routes are unprefixed and English-only. Blog routes carry a content-la
 | Route                                              | Default index policy                                   |
 | -------------------------------------------------- | ------------------------------------------------------ |
 | `/` and public portfolio pages                     | index, follow                                          |
-| `/projects` and canonical project details          | index, follow                                          |
+| `/projects`                                        | index, follow                                          |
 | `/<locale>/blog` and canonical published posts     | index, follow                                          |
 | useful category archives with unique copy          | index, follow                                          |
 | thin/duplicate tag or deep pagination archives     | noindex, follow until editorially valuable             |

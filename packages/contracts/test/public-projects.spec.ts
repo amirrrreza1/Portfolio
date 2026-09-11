@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  publicProjectDetailEnvelopeSchema,
-  publicProjectDetailSchema,
   publicProjectsEnvelopeSchema,
   publicProjectsSchema,
 } from "../src/portfolio/index.js";
@@ -24,7 +22,6 @@ const validProjects = {
   projects: [
     {
       id: projectId,
-      slug: "portfolio",
       title: "Portfolio",
       summary: "A public project summary.",
       status: "COMPLETED",
@@ -32,7 +29,6 @@ const validProjects = {
       repositoryUrl: "https://github.com/example/portfolio",
       featured: true,
       skillIds: [skillId],
-      image: null,
     },
   ],
 } as const;
@@ -96,45 +92,10 @@ describe("public project DTOs", () => {
     ).toBe(false);
   });
 
-  it("accepts a strict project detail with an opaque image path", () => {
-    const detail = {
-      locale: "en",
-      project: {
-        ...validProjects.projects[0],
-        image: {
-          src: "/api/v1/public/projects/portfolio/image",
-          altText: "Portfolio dashboard",
-          mimeType: "image/webp",
-          width: 1600,
-          height: 900,
-        },
-        longDescription: "## What it does\n\nA safe description.",
-        startedAt: "2025-01-02",
-        completedAt: null,
-        skills: validProjects.skillCategories[0].skills,
-      },
-    } as const;
-
-    expect(publicProjectDetailSchema.parse(detail)).toEqual(detail);
-    expect(
-      publicProjectDetailEnvelopeSchema.safeParse({
-        data: detail,
-        meta: { requestId: "request-detail" },
-      }).success
-    ).toBe(true);
-  });
-
-  it("rejects leaking image internals and incomplete dimensions", () => {
+  it("rejects the removed project image field", () => {
     const project = {
       ...validProjects.projects[0],
-      image: {
-        src: "/api/v1/public/projects/portfolio/image",
-        altText: "Portfolio",
-        mimeType: "image/png",
-        width: 1200,
-        height: null,
-        storageKey: "media/private.png",
-      },
+      image: null,
     };
     expect(
       publicProjectsSchema.safeParse({

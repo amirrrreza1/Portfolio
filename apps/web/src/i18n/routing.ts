@@ -22,7 +22,7 @@ export function articlePath(locale: Locale, slugInput: string): string {
 /**
  * The taxonomy segment stays ASCII in both locales.
  *
- * `blog` and `projects` already do, and a localized path segment would make
+ * `blog` already does, and a localized path segment would make
  * the two locales' URL shapes structurally different for no gain: the part a
  * Persian reader actually reads is the slug, which *is* localized.
  */
@@ -83,9 +83,7 @@ export function legacyLocaleRedirect(pathname: string): string | null {
   // Retire the old site-wide locale URLs while preserving one-hop redirects
   // for bookmarks and indexed links. Blog URLs intentionally remain scoped
   // by language.
-  const localizedPortfolio = pathname.match(
-    /^\/(?:en|fa)(\/(?:projects)(?:\/.*)?|\/?$)/
-  );
+  const localizedPortfolio = pathname.match(/^\/(?:en|fa)(\/projects|\/?)$/);
   if (localizedPortfolio) return localizedPortfolio[1] || "/";
   return null;
 }

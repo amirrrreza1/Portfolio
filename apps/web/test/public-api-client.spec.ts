@@ -1,5 +1,4 @@
 import {
-  publicProjectDetailEnvelopeSchema,
   publicProjectsEnvelopeSchema,
   publicProjectsSchema,
 } from "@portfolio/contracts/portfolio";
@@ -7,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createPublicProjectsClient,
-  createPublicProjectDetailClient,
   PublicApiResponseError,
   PublicDataUnavailableError,
   type PublicReadCache,
@@ -30,31 +28,6 @@ function envelope(locale: "en" | "fa") {
       ],
     },
     meta: { requestId: `request-${locale}` },
-  });
-}
-
-function detailEnvelope(locale: "en" | "fa", slug = "portfolio") {
-  return publicProjectDetailEnvelopeSchema.parse({
-    data: {
-      locale,
-      project: {
-        id: "p12345678901234567890123",
-        slug,
-        title: "Portfolio",
-        summary: "A project detail.",
-        status: "COMPLETED",
-        demoUrl: null,
-        repositoryUrl: "https://github.com/example/portfolio",
-        featured: false,
-        skillIds: [skillId],
-        image: null,
-        longDescription: null,
-        startedAt: null,
-        completedAt: null,
-        skills: [{ id: skillId, name: "Next.js", color: "#38bdf8" }],
-      },
-    },
-    meta: { requestId: `detail-${locale}-${slug}` },
   });
 }
 
@@ -282,47 +255,5 @@ describe("public project fixture", () => {
     expect(publicProjectsSchema.safeParse(envelope("en").data).success).toBe(
       true
     );
-  });
-});
-
-describe("public project detail client", () => {
-  it("isolates cache and request paths by locale and canonical slug", async () => {
-    const cache = new TestCache();
-    const request = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(detailEnvelope("fa"), '"detail"'));
-    const read = createPublicProjectDetailClient({
-      apiOrigin: "http://127.0.0.1:4000",
-      fetch: request as unknown as typeof fetch,
-      cache,
-      now: () => 5_000,
-    });
-
-    await expect(read("fa", "portfolio")).resolves.toEqual({
-      envelope: detailEnvelope("fa"),
-      stale: false,
-    });
-    expect(request).toHaveBeenCalledWith(
-      new URL("http://127.0.0.1:4000/api/v1/public/fa/projects/portfolio"),
-      expect.objectContaining({
-        next: {
-          revalidate: 300,
-          tags: ["public:project:portfolio:fa"],
-        },
-      })
-    );
-    expect(cache.entries.has("public:project:portfolio:fa")).toBe(true);
-    expect(cache.entries.has("public:projects:fa")).toBe(false);
-  });
-
-  it("rejects a noncanonical slug before issuing a request", async () => {
-    const request = vi.fn();
-    const read = createPublicProjectDetailClient({
-      apiOrigin: "http://127.0.0.1:4000",
-      fetch: request as unknown as typeof fetch,
-    });
-
-    expect(() => read("en", "../secret")).toThrow();
-    expect(request).not.toHaveBeenCalled();
   });
 });

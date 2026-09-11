@@ -25,7 +25,6 @@ const databaseData = publicProjectsSchema.parse({
   projects: [
     {
       id: "p12345678901234567890123",
-      slug: "portfolio",
       title: "Portfolio",
       summary: "A migrated project.",
       status: "COMPLETED",
@@ -33,7 +32,6 @@ const databaseData = publicProjectsSchema.parse({
       repositoryUrl: "https://github.com/example/portfolio",
       featured: false,
       skillIds: ["s12345678901234567890123"],
-      image: null,
     },
   ],
 });
@@ -42,12 +40,10 @@ const legacyData = {
   projects: [
     {
       id: 1,
-      slug: "legacy",
       title: "Legacy",
       description: "Legacy project.",
       link: null,
       repo: null,
-      image: null,
       technologies: [202],
       status: "completed" as const,
     },
@@ -75,7 +71,6 @@ describe("portfolio project source switch", () => {
       projects: [
         {
           id: "p12345678901234567890123",
-          slug: "portfolio",
           description: "A migrated project.",
           technologies: ["s12345678901234567890123"],
         },

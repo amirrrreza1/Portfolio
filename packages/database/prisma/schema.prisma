@@ -457,7 +457,6 @@ model Project {
   /// is rejected at validation, which is what the legacy Portfolio row needs.
   demoUrl       String?
   repositoryUrl String?
-  imageId       String?
   featured      Boolean       @default(false)
   sortOrder     Int           @default(0)
   enabled       Boolean       @default(true)
@@ -471,7 +470,6 @@ model Project {
   archivedAt    DateTime?     @db.Timestamptz(6)
   version       Int           @default(0)
 
-  image        MediaAsset?          @relation(fields: [imageId], references: [id], onDelete: Restrict)
   translations ProjectTranslation[]
   skills       ProjectSkill[]
 
@@ -545,7 +543,6 @@ model Skill {
   /// values are #000000 and fail; M2 reports them and replaces them under its
   /// own migration version rather than editing the frozen source.
   color       String
-  iconMediaId String?
   sortOrder   Int       @default(0)
   enabled     Boolean   @default(true)
   legacyId    Int?      @unique
@@ -554,9 +551,8 @@ model Skill {
   archivedAt  DateTime? @db.Timestamptz(6)
   version     Int       @default(0)
 
-  category  SkillCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  iconMedia MediaAsset?    @relation(fields: [iconMediaId], references: [id], onDelete: Restrict)
-  projects  ProjectSkill[]
+  category SkillCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  projects ProjectSkill[]
 
   @@index([categoryId, sortOrder])
   @@index([enabled])
@@ -675,9 +671,7 @@ model MediaAsset {
   version         Int                  @default(0)
 
   uploadedBy           User?                 @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  projects             Project[]
   certificates         Certificate[]
-  skills               Skill[]
   posts                Post[]
   postTranslations     PostTranslation[]
   resumeVersions       ResumeVersion[]

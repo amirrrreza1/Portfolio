@@ -33,12 +33,10 @@ export function toProjectView(data: PublicProjects): PortfolioProjectsView {
   return {
     projects: data.projects.map((project) => ({
       id: project.id,
-      slug: project.slug,
       title: project.title,
       description: project.summary,
       link: project.demoUrl,
       repo: project.repositoryUrl,
-      image: project.image,
       technologies: project.skillIds,
       status: project.status === "COMPLETED" ? "completed" : "in-progress",
     })),

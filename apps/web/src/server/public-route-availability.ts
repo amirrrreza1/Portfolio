@@ -1,6 +1,5 @@
 import type { PublicTaxonomyKind } from "@portfolio/contracts/blog";
 import { slugSchemaFor, type Locale } from "@portfolio/contracts/common";
-import { publicProjectSlugSchema } from "@portfolio/contracts/portfolio";
 
 import {
   createPublicAppearanceClient,
@@ -8,7 +7,6 @@ import {
   createPublicArticleListClient,
   createPublicArticleTaxonomyClient,
   createPublicHomeClient,
-  createPublicProjectDetailClient,
   createPublicProjectsClient,
   createPublicSiteClient,
   PublicApiResponseError,
@@ -17,12 +15,7 @@ import {
 } from "./public-api-client";
 
 type PublicRouteResource =
-  | "home"
-  | "projects"
-  | "project-detail"
-  | "articles"
-  | "article-detail"
-  | "article-taxonomy";
+  "home" | "projects" | "articles" | "article-detail" | "article-taxonomy";
 
 export type PublicRouteRequirement =
   | {
@@ -39,7 +32,7 @@ export type PublicRouteRequirement =
     }
   | {
       readonly locale: Locale;
-      readonly resource: "project-detail" | "article-detail";
+      readonly resource: "article-detail";
       readonly slug: string;
     }
   | {
@@ -57,10 +50,6 @@ export interface PublicRouteAvailabilityReaders {
   readonly readHome: (locale: Locale) => Promise<unknown>;
   readonly readProjects: (locale: Locale) => Promise<unknown>;
   readonly readArticles: (locale: Locale) => Promise<unknown>;
-  readonly readProjectDetail: (
-    locale: Locale,
-    slug: string
-  ) => Promise<unknown>;
   readonly readArticleDetail: (
     locale: Locale,
     slug: string
@@ -92,8 +81,7 @@ interface PendingRead {
 }
 
 /**
- * Only real public document routes are gated. Unknown paths retain their 404,
- * and malformed project slugs are left to the route's canonical 404 handling.
+ * Only real public document routes are gated. Unknown paths retain their 404.
  */
 export function classifyPublicRoute(
   pathname: string
@@ -143,23 +131,7 @@ export function classifyPublicRoute(
     return { locale, resource: "article-detail", slug: slug.data };
   }
 
-  const detail = /^\/(en|fa)\/projects\/([^/]+)$/.exec(pathname);
-  if (!detail) return null;
-
-  let decodedSlug: string;
-  try {
-    decodedSlug = decodeURIComponent(detail[2] ?? "");
-  } catch {
-    return null;
-  }
-  const slug = publicProjectSlugSchema.safeParse(decodedSlug);
-  if (!slug.success) return null;
-
-  return {
-    locale: detail[1] as Locale,
-    resource: "project-detail",
-    slug: slug.data,
-  };
+  return null;
 }
 
 export async function evaluatePublicRouteAvailability(
@@ -194,11 +166,6 @@ export async function evaluatePublicRouteAvailability(
     pending.push({
       kind: "articles",
       promise: readers.readArticles(requirement.locale),
-    });
-  } else if (requirement.resource === "project-detail") {
-    pending.push({
-      kind: "project-detail",
-      promise: readers.readProjectDetail(requirement.locale, requirement.slug),
     });
   } else if (requirement.resource === "article-taxonomy") {
     pending.push({
@@ -237,8 +204,7 @@ export async function evaluatePublicRouteAvailability(
       continue;
     }
     if (
-      (failedRead?.kind === "project-detail" ||
-        failedRead?.kind === "article-detail") &&
+      failedRead?.kind === "article-detail" &&
       error instanceof PublicApiResponseError &&
       error.status === 404
     ) {
@@ -273,7 +239,6 @@ export function createPublicRouteAvailabilityChecker(
   const readSite = createPublicSiteClient(clientOptions);
   const readHome = createPublicHomeClient(clientOptions);
   const readProjects = createPublicProjectsClient(clientOptions);
-  const readProjectDetail = createPublicProjectDetailClient(clientOptions);
   const readArticles = createPublicArticleListClient(clientOptions);
   const readArticleDetail = createPublicArticleDetailClient(clientOptions);
   const readArticleTaxonomy = createPublicArticleTaxonomyClient(clientOptions);
@@ -286,7 +251,6 @@ export function createPublicRouteAvailabilityChecker(
       readSite,
       readHome,
       readProjects,
-      readProjectDetail,
       readArticles: (locale) => readArticles(locale, { limit: 20 }),
       readArticleDetail,
       readArticleTaxonomy: (locale, kind, slug) =>

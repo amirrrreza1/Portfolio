@@ -2,7 +2,6 @@ import {
   getPortfolioFeedEntries,
   getPortfolioTaxonomyIndex,
 } from "@/server/portfolio-blog-discovery";
-import { getPortfolioProjects } from "@/server/portfolio-projects";
 import {
   buildUrlSet,
   staticLocaleUrls,
@@ -20,8 +19,8 @@ import { NextResponse } from "next/server";
  *
  * It contains only canonical, successful, published URLs
  * ([SEO.md](../../../../../docs/SEO.md)): the locale's static pages, its
- * published projects, its published articles, and the taxonomy pages that
- * actually have at least one discoverable article. Cursor pages are absent by
+ * published articles and the taxonomy pages that actually have at least one
+ * discoverable article. Cursor pages are absent by
  * construction — they are `noindex` and their contents shift — and so is
  * anything the article listing already excludes for source or render
  * integrity, because every entry here comes from `feed-index`.
@@ -42,11 +41,6 @@ export async function GET(
     reads = await Promise.all([
       getPortfolioFeedEntries(locale),
       getPortfolioTaxonomyIndex(locale),
-      // Portfolio pages are English-only; the Persian sitemap contains blog
-      // content and no portfolio translations.
-      locale === "en"
-        ? getPortfolioProjects("en")
-        : Promise.resolve({ projects: [] }),
     ]);
   } catch (error) {
     if (!(error instanceof PublicDataUnavailableError)) throw error;
@@ -56,16 +50,9 @@ export async function GET(
     });
   }
 
-  const [entries, taxonomy, projects] = reads;
+  const [entries, taxonomy] = reads;
   const urls: SitemapUrl[] = [
     ...staticLocaleUrls(locale, siteUrl),
-    ...projects.projects.map((project) => ({
-      loc: new URL(
-        `/projects/${encodeURIComponent(project.slug)}`,
-        siteUrl
-      ).toString(),
-      alternates: [],
-    })),
     ...taxonomy.categories.map((term) =>
       toTaxonomySitemapUrl(locale, "category", term, siteUrl)
     ),

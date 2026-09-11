@@ -97,7 +97,7 @@ Section keys are an allowlist in code. The API rejects content that does not mat
 
 ### `Project`
 
-`id`, unique `slug`, `status` (`PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`), `demoUrl`, `repositoryUrl`, `imageId`, `featured`, `sortOrder`, `enabled`, `startedAt`, `completedAt`, `legacyId`, version, timestamps, archivedAt, plus `ProjectTranslation(projectId, locale, title, summary, longDescription)`.
+`id`, unique `slug`, `status` (`PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`), `demoUrl`, `repositoryUrl`, `featured`, `sortOrder`, `enabled`, `startedAt`, `completedAt`, `legacyId`, version, timestamps, archivedAt, plus `ProjectTranslation(projectId, locale, title, summary, longDescription)`.
 
 `demoUrl` and `repositoryUrl` distinguish null from empty: absent means the link is not rendered. A placeholder `"#"` is not a URL and is rejected. `legacyId` preserves the numeric ID from `Projects.json` for migration reconciliation and is never exposed publicly.
 
@@ -105,7 +105,7 @@ Section keys are an allowlist in code. The API rejects content that does not mat
 
 Categories have `id`, stable `key`, sort order, enabled state, `legacyId`, version, and `SkillCategoryTranslation(categoryId, locale, name)`.
 
-Skills have `id`, category ID, unique normalized `name`, `color`, optional icon/media reference, sort order, enabled state, `legacyId`, and version. Skill names are proper nouns and are **not** translated. `color` is validated `#rrggbb` and contrast-checked against every enabled theme by `checkBadgeColorContrast` in `@portfolio/contracts/appearance`, because label text colour is derived from it at render time. Two checks, not one: the badge fill against each theme's page background, and the derived label against the fill.
+Skills have `id`, category ID, unique normalized `name`, `color`, sort order, enabled state, `legacyId`, and version. Skill names are proper nouns and are **not** translated. `color` is validated `#rrggbb` and contrast-checked against every enabled theme by `checkBadgeColorContrast` in `@portfolio/contracts/appearance`, because label text colour is derived from it at render time. Two checks, not one: the badge fill against each theme's page background, and the derived label against the fill.
 
 `ProjectSkill(projectId, skillId, sortOrder)` is the many-to-many join with a composite unique key. Moving a skill between categories preserves its project links.
 

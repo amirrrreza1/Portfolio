@@ -1,7 +1,5 @@
 import type { Database } from "@portfolio/database";
 import {
-  publicProjectDetailEnvelopeSchema,
-  publicProjectDetailSchema,
   publicProjectsEnvelopeSchema,
   publicProjectsSchema,
 } from "@portfolio/contracts/portfolio";
@@ -41,7 +39,6 @@ const publishedProjects = publicProjectsSchema.parse({
   projects: [
     {
       id: projectId,
-      slug: "portfolio",
       title: "Portfolio",
       summary: "A public project summary.",
       status: "COMPLETED",
@@ -49,20 +46,8 @@ const publishedProjects = publicProjectsSchema.parse({
       repositoryUrl: "https://github.com/example/portfolio",
       featured: false,
       skillIds: [skillId],
-      image: null,
     },
   ],
-});
-
-const publishedDetail = publicProjectDetailSchema.parse({
-  locale: "fa",
-  project: {
-    ...publishedProjects.projects[0],
-    longDescription: null,
-    startedAt: null,
-    completedAt: null,
-    skills: publishedProjects.skillCategories[0]?.skills ?? [],
-  },
 });
 
 describe("public projects API", () => {
@@ -80,15 +65,7 @@ describe("public projects API", () => {
     }),
     overrides: Readonly<Record<string, unknown>> = {}
   ) {
-    const service = {
-      read,
-      readDetail: vi.fn().mockResolvedValue({
-        data: publishedDetail,
-        lastModified,
-      }),
-      readImage: vi.fn().mockResolvedValue(null),
-      ...overrides,
-    };
+    const service = { read, ...overrides };
     const moduleRef = await withStubbedAuth(
       Test.createTestingModule({ imports: [AppModule] })
     )
@@ -163,67 +140,14 @@ describe("public projects API", () => {
     expect(fixture.read).not.toHaveBeenCalled();
   });
 
-  it("serves one strict localized detail and honors its ETag", async () => {
+  it("does not expose the removed project detail endpoint", async () => {
     const fixture = await createApp();
-    const first = await fixture.app.inject({
-      method: "GET",
-      url: "/api/v1/public/fa/projects/portfolio",
-    });
-    expect(first.statusCode).toBe(200);
-    expect(
-      publicProjectDetailEnvelopeSchema.safeParse(first.json()).success
-    ).toBe(true);
-    expect(first.headers["content-language"]).toBe("fa");
-    expect(fixture.service.readDetail).toHaveBeenCalledWith("fa", "portfolio");
-
-    const conditional = await fixture.app.inject({
-      method: "GET",
-      url: "/api/v1/public/fa/projects/portfolio",
-      headers: { "if-none-match": first.headers.etag },
-    });
-    expect(conditional.statusCode).toBe(304);
-    expect(conditional.body).toBe("");
-  });
-
-  it("returns stable 400 and 404 responses for invalid or absent details", async () => {
-    const readDetail = vi.fn().mockResolvedValue(null);
-    const fixture = await createApp(undefined, { readDetail });
-    const invalid = await fixture.app.inject({
-      method: "GET",
-      url: "/api/v1/public/en/projects/Not_Canonical",
-    });
-    expect(invalid.statusCode).toBe(400);
-    expect(readDetail).not.toHaveBeenCalled();
-
-    const missing = await fixture.app.inject({
-      method: "GET",
-      url: "/api/v1/public/en/projects/missing",
-    });
-    expect(missing.statusCode).toBe(404);
-    expect(missing.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
-  });
-
-  it("serves a verified image inline without exposing its storage key", async () => {
-    const bytes = Uint8Array.from([0x89, 0x50, 0x4e, 0x47]);
-    const readBytes = vi.fn().mockResolvedValue(bytes);
-    const readImage = vi.fn().mockResolvedValue({
-      mimeType: "image/png",
-      checksumSha256: "a".repeat(64),
-      lastModified,
-      readBytes,
-    });
-    const fixture = await createApp(undefined, { readImage });
     const response = await fixture.app.inject({
       method: "GET",
-      url: "/api/v1/public/projects/portfolio/image",
+      url: "/api/v1/public/en/projects/portfolio",
     });
-    expect(response.statusCode).toBe(200);
-    expect(response.headers["content-type"]).toBe("image/png");
-    expect(response.headers["content-disposition"]).toBe("inline");
-    expect(response.headers["x-content-type-options"]).toBe("nosniff");
-    expect(response.headers.etag).toBe(`"sha256-${"a".repeat(64)}"`);
-    expect(response.rawPayload).toEqual(Buffer.from(bytes));
-    expect(response.body).not.toContain("storageKey");
+
+    expect(response.statusCode).toBe(404);
   });
 });
 
@@ -260,7 +184,6 @@ describe("PublicProjectsService", () => {
         legacyId: 1,
         version: 9,
         updatedAt: lastModified,
-        image: null,
         translations: [
           {
             locale: "en",
@@ -277,9 +200,7 @@ describe("PublicProjectsService", () => {
       project: { findMany: projectFindMany },
     } as unknown as Database;
 
-    const result = await new PublicProjectsService(database, {
-      read: vi.fn(),
-    }).read("fa");
+    const result = await new PublicProjectsService(database).read("fa");
 
     expect(result.data).toEqual(publishedProjects);
     expect(result.lastModified).toEqual(lastModified);
@@ -337,7 +258,6 @@ describe("PublicProjectsService", () => {
         repositoryUrl: "https://github.com/example/portfolio",
         featured: false,
         updatedAt: lastModified,
-        image: null,
         translations: [
           {
             locale: "en",
@@ -356,7 +276,6 @@ describe("PublicProjectsService", () => {
         repositoryUrl: null,
         featured: false,
         updatedAt: lastModified,
-        image: null,
         translations: [],
         skills: [],
       },
@@ -366,116 +285,8 @@ describe("PublicProjectsService", () => {
       project: { findMany: projectFindMany },
     } as unknown as Database;
 
-    const result = await new PublicProjectsService(database, {
-      read: vi.fn(),
-    }).read("fa");
+    const result = await new PublicProjectsService(database).read("fa");
 
     expect(result.data).toEqual(publishedProjects);
-  });
-
-  it("returns nothing for a detail request on an untranslated project", async () => {
-    const projectFindFirst = vi.fn().mockResolvedValue({
-      id: "p99999999999999999999999",
-      slug: "drafted-in-the-cms",
-      status: "IN_PROGRESS",
-      demoUrl: null,
-      repositoryUrl: null,
-      featured: false,
-      startedAt: null,
-      completedAt: null,
-      updatedAt: lastModified,
-      image: null,
-      translations: [],
-      skills: [],
-    });
-    const database = {
-      project: { findFirst: projectFindFirst },
-    } as unknown as Database;
-
-    await expect(
-      new PublicProjectsService(database, { read: vi.fn() }).readDetail(
-        "fa",
-        "drafted-in-the-cms"
-      )
-    ).resolves.toBeNull();
-  });
-
-  it("returns safe detail fields and reads only a verified public image", async () => {
-    const read = vi.fn().mockResolvedValue(Uint8Array.from([1, 2, 3]));
-    const image = {
-      storageKey: "media/123e4567-e89b-42d3-a456-426614174000.webp",
-      mimeType: "image/webp",
-      byteSize: 3n,
-      checksumSha256: "b".repeat(64),
-      width: 1600,
-      height: 900,
-      altText: null,
-      kind: "IMAGE",
-      processingState: "VERIFIED",
-      visibility: "PUBLIC",
-      archivedAt: null,
-      updatedAt: lastModified,
-    };
-    const projectFindFirst = vi
-      .fn()
-      .mockResolvedValueOnce({
-        id: projectId,
-        slug: "portfolio",
-        status: "COMPLETED",
-        demoUrl: null,
-        repositoryUrl: "https://github.com/example/portfolio",
-        featured: true,
-        startedAt: new Date("2025-01-02T00:00:00.000Z"),
-        completedAt: null,
-        updatedAt: lastModified,
-        translations: [
-          {
-            locale: "en",
-            title: "Portfolio",
-            summary: "A public project summary.",
-            longDescription: "## Details\n\nBuilt **safely**.",
-            updatedAt: lastModified,
-          },
-        ],
-        image,
-        skills: [
-          {
-            skillId,
-            skill: {
-              name: "Next.js",
-              color: "#38bdf8",
-              updatedAt: lastModified,
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({ updatedAt: lastModified, image });
-    const database = {
-      project: { findFirst: projectFindFirst },
-    } as unknown as Database;
-    const service = new PublicProjectsService(database, { read });
-
-    const detail = await service.readDetail("fa", "portfolio");
-    expect(detail?.data).toMatchObject({
-      locale: "fa",
-      project: {
-        longDescription: "## Details\n\nBuilt **safely**.",
-        startedAt: "2025-01-02",
-        image: {
-          src: "/api/v1/public/projects/portfolio/image",
-          altText: "Portfolio project cover",
-          mimeType: "image/webp",
-          width: 1600,
-          height: 900,
-        },
-      },
-    });
-
-    const file = await service.readImage("portfolio");
-    await expect(file?.readBytes()).resolves.toEqual(
-      Uint8Array.from([1, 2, 3])
-    );
-    expect(read).toHaveBeenCalledWith(image.storageKey);
-    expect(JSON.stringify(detail?.data)).not.toContain("storageKey");
   });
 });

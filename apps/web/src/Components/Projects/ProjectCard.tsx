@@ -4,9 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import Button from "../UI/Buttons/CustomBTN";
 import type { SkillCategory } from "@/Components/Skills/Types";
-import { localePath } from "@/i18n/routing";
 import type { Locale } from "@portfolio/contracts/common";
-import Link from "next/link";
 import { Projects } from "./Types";
 import { getMessages } from "@/i18n/messages";
 import { formatNumber } from "@/i18n/format";
@@ -113,9 +111,6 @@ export default function ProjectCard({
       ) : null}
 
       <div className="flex gap-6">
-        <Link href={localePath(locale, `projects/${pj.slug}`)}>
-          <Button>{messages.projects.details}</Button>
-        </Link>
         {pj.link && (
           <Button>
             <a href={pj.link} target="_blank" rel="noopener noreferrer">

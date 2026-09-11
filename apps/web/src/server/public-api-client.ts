@@ -29,12 +29,10 @@ import {
 } from "@portfolio/contracts/content";
 import {
   publicProjectsEnvelopeSchema,
-  publicProjectDetailEnvelopeSchema,
   publicHomeEnvelopeSchema,
   publicSiteEnvelopeSchema,
   type PublicHomeEnvelope,
   type PublicProjectsEnvelope,
-  type PublicProjectDetailEnvelope,
   type PublicSiteEnvelope,
 } from "@portfolio/contracts/portfolio";
 import { connection } from "next/server";
@@ -92,7 +90,6 @@ interface PublicClientOptions {
 }
 
 export type PublicProjectsClientOptions = PublicClientOptions;
-export type PublicProjectDetailClientOptions = PublicClientOptions;
 export type PublicSiteClientOptions = PublicClientOptions;
 export type PublicAppearanceClientOptions = PublicClientOptions;
 export type PublicHomeClientOptions = PublicClientOptions;
@@ -104,11 +101,6 @@ export type PublicFeedIndexClientOptions = PublicClientOptions;
 
 export interface PublicProjectsClientResult {
   readonly envelope: PublicProjectsEnvelope;
-  readonly stale: boolean;
-}
-
-export interface PublicProjectDetailClientResult {
-  readonly envelope: PublicProjectDetailEnvelope;
   readonly stale: boolean;
 }
 
@@ -240,30 +232,6 @@ export function createPublicProjectsClient(
     resourcePath: "projects",
     envelopeSchema: publicProjectsEnvelopeSchema,
   });
-}
-
-export function createPublicProjectDetailClient(
-  options: PublicProjectDetailClientOptions
-): (locale: Locale, slug: string) => Promise<PublicProjectDetailClientResult> {
-  const readers = new Map<
-    string,
-    (locale: Locale) => Promise<PublicProjectDetailClientResult>
-  >();
-
-  return (locale, slugInput) => {
-    const slug = slugSchemaFor("en").parse(slugInput);
-    let reader = readers.get(slug);
-    if (reader === undefined) {
-      reader = createLocalizedPublicClient({
-        ...options,
-        cacheNamespace: `project:${slug}`,
-        resourcePath: `projects/${encodeURIComponent(slug)}`,
-        envelopeSchema: publicProjectDetailEnvelopeSchema,
-      });
-      readers.set(slug, reader);
-    }
-    return reader(locale);
-  };
 }
 
 export function createPublicSiteClient(

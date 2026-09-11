@@ -16,10 +16,6 @@ describe("blog typography boundary", () => {
       path.join(sourceRoot, "blog/[slug]/page.tsx"),
       "utf8"
     );
-    const project = await readFile(
-      path.join(sourceRoot, "projects/[slug]/page.tsx"),
-      "utf8"
-    );
     const articleContent = await readFile(
       path.join(webSourceRoot, "features/blog/ArticleContent.tsx"),
       "utf8"
@@ -32,7 +28,6 @@ describe("blog typography boundary", () => {
     expect(articleContent).toContain("data-blog-font={font}");
     expect(articleContent).toContain("data-blog-size={size}");
     expect(article).toContain("getPortfolioAppearance(locale)");
-    expect(project).not.toContain("blog-reading-surface");
   });
 
   it("keeps the complete article in a token-backed blurred reading shell", async () => {

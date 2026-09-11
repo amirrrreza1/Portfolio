@@ -3,11 +3,8 @@ import { z } from "zod";
 import {
   hexColorSchema,
   httpsUrlSchema,
-  isoDateSchema,
   localeSchema,
-  publicImageSchema,
   projectIdSchema,
-  slugSchemaFor,
   skillCategoryIdSchema,
   skillIdSchema,
   stableKeySchema,
@@ -44,20 +41,9 @@ export const publicProjectStatusSchema = z.enum([
   "COMPLETED",
 ]);
 
-export const publicProjectSlugSchema = slugSchemaFor("en");
-
-/**
- * The shared public image contract, named here for the callers that already
- * import this symbol. The rule itself lives in `common/media.js` because
- * articles publish cover and social images under exactly the same guarantees,
- * and one of the two copies would eventually be the laxer one.
- */
-export const publicProjectImageSchema = publicImageSchema;
-
 export const publicProjectSchema = z
   .object({
     id: projectIdSchema,
-    slug: z.string().trim().min(1).max(96),
     title: z.string().trim().min(1).max(200),
     summary: z.string().trim().min(1).max(2_000),
     status: publicProjectStatusSchema,
@@ -65,28 +51,6 @@ export const publicProjectSchema = z
     repositoryUrl: httpsUrlSchema.nullable(),
     featured: z.boolean(),
     skillIds: z.array(skillIdSchema).max(250),
-    image: publicProjectImageSchema.nullable(),
-  })
-  .strict();
-
-export const publicProjectDetailItemSchema = publicProjectSchema
-  .extend({
-    longDescription: z
-      .string()
-      .trim()
-      .min(1)
-      .max(512 * 1024)
-      .nullable(),
-    startedAt: isoDateSchema.nullable(),
-    completedAt: isoDateSchema.nullable(),
-    skills: z.array(publicSkillSchema).max(250),
-  })
-  .strict();
-
-export const publicProjectDetailSchema = z
-  .object({
-    locale: localeSchema,
-    project: publicProjectDetailItemSchema,
   })
   .strict();
 
@@ -101,23 +65,11 @@ export const publicProjectsSchema = z
 export const publicProjectsEnvelopeSchema =
   successEnvelopeSchema(publicProjectsSchema).strict();
 
-export const publicProjectDetailEnvelopeSchema = successEnvelopeSchema(
-  publicProjectDetailSchema
-).strict();
-
 export type PublicSkill = z.infer<typeof publicSkillSchema>;
 export type PublicSkillCategory = z.infer<typeof publicSkillCategorySchema>;
 export type PublicProjectStatus = z.infer<typeof publicProjectStatusSchema>;
-export type PublicProjectImage = z.infer<typeof publicProjectImageSchema>;
 export type PublicProject = z.infer<typeof publicProjectSchema>;
-export type PublicProjectDetailItem = z.infer<
-  typeof publicProjectDetailItemSchema
->;
-export type PublicProjectDetail = z.infer<typeof publicProjectDetailSchema>;
 export type PublicProjects = z.infer<typeof publicProjectsSchema>;
 export type PublicProjectsEnvelope = z.infer<
   typeof publicProjectsEnvelopeSchema
->;
-export type PublicProjectDetailEnvelope = z.infer<
-  typeof publicProjectDetailEnvelopeSchema
 >;

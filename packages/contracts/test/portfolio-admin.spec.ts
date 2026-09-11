@@ -94,7 +94,6 @@ describe("portfolio admin contracts", () => {
         categoryId: "category",
         name: "TypeScript",
         color: "#0070f3",
-        iconMediaId: null,
         enabled: true,
         sortOrder: 1,
       }).success
@@ -105,7 +104,6 @@ describe("portfolio admin contracts", () => {
         status: "COMPLETED",
         demoUrl: null,
         repositoryUrl: null,
-        imageId: null,
         featured: false,
         enabled: true,
         sortOrder: 0,

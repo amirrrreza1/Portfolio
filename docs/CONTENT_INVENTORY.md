@@ -79,19 +79,19 @@ Current categories: `Languages` (4), `Frameworks & Libraries` (8), `UI & Styling
 
 14 projects in `Projects.json`. Every one currently has `status: "Completed"`.
 
-| Admin field                   | Type                             | Notes                                                                                 |
-| ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------- |
-| Title                         | short text, translatable         |                                                                                       |
-| Slug                          | slug                             | Deterministically generated from the title; now used by localized project-detail URLs |
-| Summary                       | inline Markdown, translatable    | Maps from `description`                                                               |
-| Long description              | Markdown, translatable, optional | New capability for a project detail page                                              |
-| Status                        | enum                             | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`                                     |
-| Demo URL                      | URL, optional                    |                                                                                       |
-| Repository URL                | URL, optional                    |                                                                                       |
-| Cover image                   | media reference, optional        | No project images exist today                                                         |
-| Technologies                  | ordered skill references         | Maps from the numeric `technologies` array                                            |
-| Featured, sort order, enabled | boolean, integer, boolean        | Currently implicit in array order                                                     |
-| Started at, completed at      | dates, optional                  | Not present today                                                                     |
+| Admin field                   | Type                             | Notes                                                            |
+| ----------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| Title                         | short text, translatable         |                                                                  |
+| Slug                          | slug                             | Stable internal identifier used by project media delivery        |
+| Summary                       | inline Markdown, translatable    | Maps from `description`                                          |
+| Long description              | Markdown, translatable, optional | Retained authoring field; not exposed by the public projects API |
+| Status                        | enum                             | `PLANNED`, `IN_PROGRESS`, `COMPLETED`, `ARCHIVED`                |
+| Demo URL                      | URL, optional                    |                                                                  |
+| Repository URL                | URL, optional                    |                                                                  |
+| Cover image                   | media reference, optional        | No project images exist today                                    |
+| Technologies                  | ordered skill references         | Maps from the numeric `technologies` array                       |
+| Featured, sort order, enabled | boolean, integer, boolean        | Currently implicit in array order                                |
+| Started at, completed at      | dates, optional                  | Not present today                                                |
 
 **Corrections:**
 

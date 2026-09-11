@@ -292,7 +292,6 @@ export const adminSkillSchema = z
       .string()
       .regex(/^#[0-9a-f]{6}$/i)
       .transform((value) => value.toLowerCase()),
-    iconMediaId: z.string().trim().min(1).max(64).nullable(),
     enabled: z.boolean(),
     sortOrder: sortOrderSchema,
   })
@@ -314,7 +313,6 @@ export const adminProjectSchema = z
     status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED", "ARCHIVED"]),
     demoUrl: httpsUrlSchema.nullable(),
     repositoryUrl: httpsUrlSchema.nullable(),
-    imageId: z.string().trim().min(1).max(64).nullable(),
     featured: z.boolean(),
     enabled: z.boolean(),
     sortOrder: sortOrderSchema,

@@ -122,7 +122,6 @@ function readers(
     readHome: vi.fn().mockResolvedValue({}),
     readProjects: vi.fn().mockResolvedValue({}),
     readArticles: vi.fn().mockResolvedValue({}),
-    readProjectDetail: vi.fn().mockResolvedValue({}),
     readArticleDetail: vi.fn().mockResolvedValue({}),
     readArticleTaxonomy: vi.fn().mockResolvedValue({}),
     ...overrides,
@@ -130,7 +129,7 @@ function readers(
 }
 
 describe("public route availability gate", () => {
-  it("classifies only canonical public documents and valid detail slugs", () => {
+  it("classifies only canonical public documents and valid article slugs", () => {
     expect(classifyPublicRoute("/en")).toEqual({
       locale: "en",
       resource: "home",
@@ -139,11 +138,7 @@ describe("public route availability gate", () => {
       locale: "fa",
       resource: "projects",
     });
-    expect(classifyPublicRoute("/en/projects/portfolio")).toEqual({
-      locale: "en",
-      resource: "project-detail",
-      slug: "portfolio",
-    });
+    expect(classifyPublicRoute("/en/projects/portfolio")).toBeNull();
     expect(classifyPublicRoute("/fa/blog")).toEqual({
       locale: "fa",
       resource: "articles",
@@ -187,7 +182,6 @@ describe("public route availability gate", () => {
     expect(scopedReaders.readSite).toHaveBeenCalledWith("en");
     expect(scopedReaders.readProjects).toHaveBeenCalledWith("en");
     expect(scopedReaders.readHome).not.toHaveBeenCalled();
-    expect(scopedReaders.readProjectDetail).not.toHaveBeenCalled();
     expect(scopedReaders.readArticles).not.toHaveBeenCalled();
     expect(scopedReaders.readArticleDetail).not.toHaveBeenCalled();
 
@@ -200,7 +194,6 @@ describe("public route availability gate", () => {
     ).resolves.toBe("available");
     expect(homeReaders.readHome).toHaveBeenCalledWith("en");
     expect(homeReaders.readProjects).toHaveBeenCalledWith("en");
-    expect(homeReaders.readProjectDetail).not.toHaveBeenCalled();
 
     const articleReaders = readers();
     await expect(
@@ -237,7 +230,7 @@ describe("public route availability gate", () => {
     expect(taxonomyReaders.readArticleDetail).not.toHaveBeenCalled();
   });
 
-  it("reports controlled outages but preserves missing-project 404 semantics", async () => {
+  it("reports controlled outages and preserves taxonomy 404 semantics", async () => {
     await expect(
       evaluatePublicRouteAvailability(
         { locale: "en", resource: "home" },
@@ -259,17 +252,6 @@ describe("public route availability gate", () => {
         })
       )
     ).resolves.toBe("unavailable");
-
-    await expect(
-      evaluatePublicRouteAvailability(
-        { locale: "en", resource: "project-detail", slug: "missing" },
-        readers({
-          readProjectDetail: async () => {
-            throw new PublicApiResponseError(404);
-          },
-        })
-      )
-    ).resolves.toBe("available");
 
     // A withdrawn category is a canonical route-level 404: the API replied,
     // and its reply was "no". It must not become a site-wide `503`.
