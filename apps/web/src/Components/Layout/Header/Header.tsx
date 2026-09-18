@@ -1,5 +1,6 @@
 "use client";
 
+import Button from "@/Components/UI/Buttons/CustomBTN";
 import { scrollToSection } from "@/Components/SmoothScroll/SmoothScroll";
 import ThemeToggle from "@/Components/UI/Buttons/ThemeToggle";
 import Tooltip from "@/Components/UI/Tooltip/Tooltip";
@@ -8,6 +9,7 @@ import { getMessages } from "@/i18n/messages";
 import { getLocaleDefinition, type Locale } from "@portfolio/contracts/common";
 import {
   Award,
+  BookOpen,
   Code2,
   Home,
   Languages,
@@ -78,8 +80,7 @@ function handleNavigation(event: MouseEvent<HTMLAnchorElement>, href: string) {
 
 export default function Header({ locale }: { readonly locale: Locale }) {
   const pathname = usePathname();
-  const isProjectsPage =
-    /^\/(?:(?:en|fa)\/)?projects(?:\/|$)/.test(pathname);
+  const isProjectsPage = /^\/(?:(?:en|fa)\/)?projects(?:\/|$)/.test(pathname);
   const isBlogPage = /^\/(?:en|fa)\/blog(?:\/|$)/.test(pathname);
   const blogLocale: Locale = pathname.startsWith("/fa/blog") ? "fa" : "en";
   const messages = getMessages(isBlogPage ? blogLocale : locale);
@@ -144,6 +145,15 @@ export default function Header({ locale }: { readonly locale: Locale }) {
                   </Tooltip>
                 );
               })}
+              <Button asChild size="sm">
+                <a
+                  href={localePath(locale, "blog")}
+                  className="flex items-center gap-1.5"
+                >
+                  <BookOpen aria-hidden="true" size={16} />
+                  {messages.blog.title}
+                </a>
+              </Button>
             </>
           )}
         </nav>

@@ -22,7 +22,7 @@ import { visit } from "unist-util-visit";
 import YAML from "yaml";
 
 /** Bump this when the parser, sanitizer, or highlighted output changes. */
-export const RENDERER_VERSION = "2";
+export const RENDERER_VERSION = "3";
 
 const MAX_DOCUMENT_BYTES = 512 * 1024;
 const MAX_FRONTMATTER_BYTES = 32 * 1024;
@@ -1102,6 +1102,7 @@ async function highlightChildren(parent: Node): Promise<void> {
               "code-block",
               language === requested ? "language-known" : "language-unknown",
             ],
+            dataLanguage: requested,
             "aria-label":
               language === requested
                 ? requested + " code block"

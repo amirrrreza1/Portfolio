@@ -29,6 +29,7 @@ import {
   type Database,
 } from "@portfolio/database";
 import { frontmatterSchema, normalizeSlug } from "@portfolio/contracts";
+import { RENDERER_VERSION } from "@portfolio/markdown";
 
 import { runInvalidationDrain } from "../src/worker/invalidation-drain.js";
 import { createSignedInvalidationSender } from "../src/worker/invalidation-sender.js";
@@ -263,7 +264,7 @@ async function seedState(
       bodyMarkdown: body,
       bodySha256: state.corruptDigest ? "f".repeat(64) : digest,
       renderedHtml: `<h2>${title}</h2>`,
-      rendererVersion: "2",
+      rendererVersion: RENDERER_VERSION,
       readingMinutes: 1,
       headingTree: [],
       frontmatterSchemaVersion: 1,

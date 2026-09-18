@@ -1,4 +1,5 @@
 import type { Database } from "@portfolio/database";
+import { RENDERER_VERSION } from "@portfolio/markdown";
 import {
   publicArticleDetailEnvelopeSchema,
   publicArticleDetailSchema,
@@ -372,7 +373,7 @@ describe("PublicArticlesService", () => {
         status: "PUBLISHED",
         archivedAt: null,
         renderedHtml: { not: null },
-        rendererVersion: "2",
+        rendererVersion: RENDERER_VERSION,
         bodyMarkdown: { not: null },
         bodySha256: { not: null },
         post: { archivedAt: null },
@@ -714,7 +715,7 @@ function detailRow(
     readingMinutes: 4,
     headingTree: [{ depth: 2, id: "intro", text: "Introduction" }],
     renderedHtml: '<h2 id="intro">Introduction</h2><p>Safe body.</p>',
-    rendererVersion: "2",
+    rendererVersion: RENDERER_VERSION,
     bodyMarkdown,
     bodySha256,
     updatedAt,

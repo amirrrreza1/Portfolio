@@ -458,9 +458,7 @@
 
 .blog-reading-surface :where(pre),
 .project-reading-surface :where(pre) {
-  position: relative;
   padding: 1em;
-  padding-block-start: 3.25em;
   overflow-x: auto;
   /* A long line must scroll inside the block rather than widening the page. */
   max-width: 100%;
@@ -494,19 +492,59 @@
   display: none;
 }
 
+.blog-reading-surface :where(.code-block-frame) {
+  margin-block: 0 1.15em;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-code-bg);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.blog-reading-surface :where(.code-block-header) {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.55rem 0.4rem 0.85rem;
+  border-block-end: 1px solid var(--color-border);
+  background-color: color-mix(
+    in srgb,
+    var(--color-code-bg) 88%,
+    var(--color-border)
+  );
+}
+
+.blog-reading-surface :where(.code-language-label) {
+  color: var(--color-text-muted);
+  font-family: "JetBrains_Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.blog-reading-surface :where(.code-block-frame > pre) {
+  margin: 0;
+  border-radius: 0;
+}
+
 .blog-reading-surface :where(.code-copy-button) {
-  position: absolute;
-  inset-block-start: 0.65rem;
-  inset-inline-end: 0.65rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--color-border);
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding-inline: 0.65rem;
+  border: 1px solid transparent;
   border-radius: 0.25rem;
-  background-color: var(--color-code-bg);
-  color: var(--color-code-text);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer !important;
   transition:
     border-color 150ms ease,
@@ -527,6 +565,10 @@
 
 .blog-reading-surface :where(.code-copy-check-icon) {
   display: none;
+}
+
+.blog-reading-surface :where(.code-copy-icon, .code-copy-check-icon) {
+  flex: 0 0 auto;
 }
 
 .blog-reading-surface :where(.code-copy-button[data-copy-state="copied"]) {

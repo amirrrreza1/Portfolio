@@ -101,9 +101,19 @@ export function ArticleReadingSurface({
     const cleanups: Array<() => void> = [];
     for (const pre of surface.querySelectorAll("pre")) {
       const code = pre.querySelector("code");
-      if (code === null || pre.querySelector(".code-copy-button") !== null) {
+      if (code === null || pre.closest(".code-block-frame") !== null) {
         continue;
       }
+
+      const frame = document.createElement("div");
+      frame.className = "code-block-frame";
+
+      const header = document.createElement("div");
+      header.className = "code-block-header";
+
+      const language = document.createElement("span");
+      language.className = "code-language-label";
+      language.textContent = formatCodeLanguage(pre.dataset.language);
 
       const button = createCopyButton(copyLabel);
       let resetTimer: number | undefined;
@@ -111,27 +121,24 @@ export function ArticleReadingSurface({
         if (resetTimer !== undefined) window.clearTimeout(resetTimer);
         try {
           await copyText(code.textContent ?? "");
-          button.dataset.copyState = "copied";
-          button.setAttribute("aria-label", copiedLabel);
-          button.title = copiedLabel;
+          setCopyButtonState(button, "copied", copiedLabel);
         } catch {
-          button.dataset.copyState = "failed";
-          button.setAttribute("aria-label", copyFailedLabel);
-          button.title = copyFailedLabel;
+          setCopyButtonState(button, "failed", copyFailedLabel);
         }
         resetTimer = window.setTimeout(() => {
-          button.dataset.copyState = "idle";
-          button.setAttribute("aria-label", copyLabel);
-          button.title = copyLabel;
+          setCopyButtonState(button, "idle", copyLabel);
         }, 2_000);
       };
 
       button.addEventListener("click", onClick);
-      pre.append(button);
+      pre.before(frame);
+      header.append(language, button);
+      frame.append(header, pre);
       cleanups.push(() => {
         if (resetTimer !== undefined) window.clearTimeout(resetTimer);
         button.removeEventListener("click", onClick);
-        button.remove();
+        frame.before(pre);
+        frame.remove();
       });
     }
 
@@ -166,8 +173,44 @@ function createCopyButton(label: string): HTMLButtonElement {
   button.dataset.copyState = "idle";
   button.setAttribute("aria-label", label);
   button.title = label;
-  button.append(createCopyIcon(), createCheckIcon());
+  const text = document.createElement("span");
+  text.className = "code-copy-label";
+  text.textContent = label;
+  button.append(createCopyIcon(), createCheckIcon(), text);
   return button;
+}
+
+function setCopyButtonState(
+  button: HTMLButtonElement,
+  state: "idle" | "copied" | "failed",
+  label: string
+): void {
+  button.dataset.copyState = state;
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  const text = button.querySelector(".code-copy-label");
+  if (text !== null) text.textContent = label;
+}
+
+function formatCodeLanguage(language: string | undefined): string {
+  const normalized = language?.trim().toLowerCase() || "text";
+  const labels: Readonly<Record<string, string>> = {
+    bash: "Bash",
+    css: "CSS",
+    html: "HTML",
+    javascript: "JavaScript",
+    js: "JavaScript",
+    json: "JSON",
+    jsx: "JSX",
+    sql: "SQL",
+    text: "Plain text",
+    ts: "TypeScript",
+    tsx: "TSX",
+    typescript: "TypeScript",
+    yaml: "YAML",
+    yml: "YAML",
+  };
+  return labels[normalized] ?? normalized;
 }
 
 function createCopyIcon(): SVGSVGElement {
