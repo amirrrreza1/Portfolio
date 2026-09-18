@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { adminRequest, describeAdminError } from "./admin-client";
+import { AdminSortableList } from "./AdminSortableList";
 import {
   Check,
   EditorStatus,
@@ -190,191 +191,236 @@ function SkillsEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading title="Skills and categories" />
+      <div className="space-y-1">
+        <ResourceHeading title="Skill categories" />
+        <p className="text-text-muted text-sm">
+          Categories are the collapsible groups shown on the site. Skills are
+          the individual coloured badges inside each group. Drag the handles to
+          set their display order.
+        </p>
+      </div>
       <form
-        className="border-border grid gap-3 border p-4 md:grid-cols-3"
+        className="border-border grid gap-3 border p-4 md:grid-cols-2"
         onSubmit={(event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
-          void mutate(
-            () =>
-              adminRequest("/admin/skill-categories", {
+          const name = text(form, "name");
+          void mutate(async () => {
+            const category = await adminRequest<Category>(
+              "/admin/skill-categories",
+              {
                 method: "POST",
                 mutation: true,
                 body: {
-                  key: text(form, "key"),
+                  key: stableKey(name, "category"),
                   enabled: form.has("enabled"),
-                  sortOrder: integer(form, "sortOrder"),
+                  sortOrder: nextSortOrder(categories),
                 },
-              }),
-            "Category created. Add its name before enabling it."
-          );
+              }
+            );
+            await adminRequest(
+              `/admin/skill-categories/${category.id}/translations/en`,
+              {
+                method: "PATCH",
+                mutation: true,
+                ifMatch: 0,
+                body: { name },
+              }
+            );
+          }, "Category created.");
         }}
       >
-        <h4 className="font-semibold md:col-span-3">Add category</h4>
-        <Field label="Stable key">
-          <input
-            className={inputClass}
-            name="key"
-            required
-            pattern="[a-z][a-z0-9]*(?:-[a-z0-9]+)*"
-          />
+        <div className="md:col-span-2">
+          <h4 className="font-semibold">Add a category</h4>
+          <p className="text-text-muted text-sm">
+            Use a broad group such as “Frontend” or “Design tools”.
+          </p>
+        </div>
+        <Field label="Category name">
+          <input className={inputClass} name="name" required maxLength={120} />
         </Field>
-        <Field label="Order">
-          <input
-            className={inputClass}
-            name="sortOrder"
-            required
-            type="number"
-            min="0"
-            defaultValue="0"
-          />
-        </Field>
-        <Check name="enabled" label="Enabled" />
-        <div className="md:col-span-3">
+        <Check name="enabled" label="Show this category" defaultChecked />
+        <div className="md:col-span-2">
           <SaveButton busy={busy}>Create category</SaveButton>
         </div>
       </form>
-      {categories.map((category) => (
-        <details
-          className={`border-border border ${category.archivedAt === null ? "" : "opacity-70"}`}
-          key={category.id}
-        >
-          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4">
-            <span className="font-semibold">
-              {category.translations.find((item) => item.locale === "en")
-                ?.name ?? category.key}
-            </span>
-          </summary>
-          <div className="border-border flex flex-col gap-5 border-t p-4">
-            <form
-              className="grid gap-3 md:grid-cols-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void mutate(
-                  () =>
-                    adminRequest(`/admin/skill-categories/${category.id}`, {
-                      method: "PATCH",
-                      mutation: true,
-                      ifMatch: category.version,
-                      body: {
-                        key: text(form, "key"),
-                        enabled: form.has("enabled"),
-                        sortOrder: integer(form, "sortOrder"),
-                      },
-                    }),
-                  "Category saved."
-                );
-              }}
-            >
-              <Field label="Stable key">
-                <input
-                  className={inputClass}
-                  name="key"
-                  required
-                  defaultValue={category.key}
+      <AdminSortableList
+        items={categories}
+        itemId={(category) => category.id}
+        itemLabel={categoryName}
+        busy={busy}
+        onReorder={(ordered) => {
+          void mutate(
+            () =>
+              Promise.all(
+                ordered.map((category, sortOrder) =>
+                  adminRequest(`/admin/skill-categories/${category.id}`, {
+                    method: "PATCH",
+                    mutation: true,
+                    ifMatch: category.version,
+                    body: categoryPayload(category, sortOrder),
+                  })
+                )
+              ),
+            "Category order saved."
+          );
+        }}
+        renderItem={(category, dragHandle) => (
+          <details
+            className={`border-border border ${category.archivedAt === null ? "" : "opacity-70"}`}
+          >
+            <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
+              {dragHandle}
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">
+                  {categoryName(category)}
+                </span>
+                <span className="text-text-muted block text-xs">
+                  Category · {category.skills.length} skill
+                  {category.skills.length === 1 ? "" : "s"} · Select to edit
+                </span>
+              </span>
+              <span className="text-text-muted text-sm" aria-hidden="true">
+                ▾
+              </span>
+            </summary>
+            <div className="border-border flex flex-col gap-5 border-t p-4">
+              <form
+                className="grid gap-3 md:grid-cols-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  const name = text(form, "name");
+                  const translation = category.translations.find(
+                    (item) => item.locale === "en"
+                  );
+                  void mutate(async () => {
+                    await adminRequest(
+                      `/admin/skill-categories/${category.id}`,
+                      {
+                        method: "PATCH",
+                        mutation: true,
+                        ifMatch: category.version,
+                        body: {
+                          key: stableKey(name, category.key),
+                          enabled: form.has("enabled"),
+                          sortOrder: category.sortOrder,
+                        },
+                      }
+                    );
+                    await adminRequest(
+                      `/admin/skill-categories/${category.id}/translations/en`,
+                      {
+                        method: "PATCH",
+                        mutation: true,
+                        ifMatch: translation?.version ?? 0,
+                        body: { name },
+                      }
+                    );
+                  }, "Category saved.");
+                }}
+              >
+                <Field
+                  label="Category name"
+                  hint="The internal identifier is created automatically from this name."
+                >
+                  <input
+                    className={inputClass}
+                    name="name"
+                    required
+                    maxLength={120}
+                    defaultValue={categoryName(category)}
+                    dir="ltr"
+                  />
+                </Field>
+                <Check
+                  name="enabled"
+                  label="Show this category"
+                  defaultChecked={category.enabled}
                 />
-              </Field>
-              <Field label="Order">
-                <input
-                  className={inputClass}
-                  name="sortOrder"
-                  required
-                  type="number"
-                  min="0"
-                  defaultValue={category.sortOrder}
-                />
-              </Field>
-              <Check
-                name="enabled"
-                label="Enabled"
-                defaultChecked={category.enabled}
-              />
-              <div className="flex gap-2 md:col-span-3">
-                <SaveButton busy={busy} />
-                <ArchiveButton
-                  resource="skill-categories"
-                  item={category}
-                  busy={busy}
-                  mutate={mutate}
-                />
-              </div>
-            </form>
-            <div className="grid gap-3 lg:grid-cols-2">
-              {(["en"] as const).map((locale) => {
-                const value = category.translations.find(
-                  (item) => item.locale === locale
-                );
-                return (
-                  <form
-                    key={locale}
-                    className="border-border flex flex-col gap-3 border p-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const form = new FormData(event.currentTarget);
+                <div className="flex gap-2 md:col-span-2">
+                  <SaveButton busy={busy} />
+                  <ArchiveButton
+                    resource="skill-categories"
+                    item={category}
+                    busy={busy}
+                    mutate={mutate}
+                  />
+                </div>
+              </form>
+              <div className="border-border border-l-4 pl-4">
+                <div className="mb-3">
+                  <h5 className="font-semibold">Skills in this category</h5>
+                  <p className="text-text-muted text-sm">
+                    Add individual technologies, then drag them into the order
+                    visitors should see.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <SkillForm
+                    categoryId={category.id}
+                    categories={categories}
+                    siblingSkills={category.skills}
+                    busy={busy}
+                    mutate={mutate}
+                  />
+                  <AdminSortableList
+                    items={category.skills}
+                    itemId={(skill) => skill.id}
+                    itemLabel={(skill) => skill.name}
+                    busy={busy}
+                    onReorder={(ordered) => {
                       void mutate(
                         () =>
-                          adminRequest(
-                            `/admin/skill-categories/${category.id}/translations/${locale}`,
-                            {
-                              method: "PATCH",
-                              mutation: true,
-                              ifMatch: value?.version ?? 0,
-                              body: { name: text(form, "name") },
-                            }
+                          Promise.all(
+                            ordered.map((skill, sortOrder) =>
+                              adminRequest(`/admin/skills/${skill.id}`, {
+                                method: "PATCH",
+                                mutation: true,
+                                ifMatch: skill.version,
+                                body: skillPayload(skill, sortOrder),
+                              })
+                            )
                           ),
-                        "Category name saved."
+                        "Skill order saved."
                       );
                     }}
-                  >
-                    <Field label="Category name">
-                      <input
-                        className={inputClass}
-                        name="name"
-                        required
-                        defaultValue={value?.name ?? ""}
-                        dir="ltr"
+                    renderItem={(skill, skillHandle) => (
+                      <SkillForm
+                        skill={skill}
+                        dragHandle={skillHandle}
+                        categoryId={category.id}
+                        categories={categories}
+                        siblingSkills={category.skills}
+                        busy={busy}
+                        mutate={mutate}
                       />
-                    </Field>
-                    <SaveButton busy={busy} />
-                  </form>
-                );
-              })}
+                    )}
+                  />
+                </div>
+              </div>
             </div>
-            <SkillForm
-              categoryId={category.id}
-              categories={categories}
-              busy={busy}
-              mutate={mutate}
-            />
-            {category.skills.map((skill) => (
-              <SkillForm
-                key={skill.id}
-                skill={skill}
-                categoryId={category.id}
-                categories={categories}
-                busy={busy}
-                mutate={mutate}
-              />
-            ))}
-          </div>
-        </details>
-      ))}
+          </details>
+        )}
+      />
     </section>
   );
 }
 
 function SkillForm({
   skill,
+  dragHandle,
   categoryId,
   categories,
+  siblingSkills,
   busy,
   mutate,
 }: {
   readonly skill?: Skill;
+  readonly dragHandle?: React.ReactNode;
   readonly categoryId: string;
   readonly categories: readonly Category[];
+  readonly siblingSkills: readonly Skill[];
   readonly busy: boolean;
   readonly mutate: Mutate;
 }): React.JSX.Element {
@@ -389,7 +435,7 @@ function SkillForm({
           name: text(form, "name"),
           color: text(form, "color"),
           enabled: form.has("enabled"),
-          sortOrder: integer(form, "sortOrder"),
+          sortOrder: skill?.sortOrder ?? nextSortOrder(siblingSkills),
         };
         void mutate(
           () =>
@@ -408,9 +454,17 @@ function SkillForm({
         );
       }}
     >
-      <h5 className="font-semibold md:col-span-3">
-        {skill?.name ?? "Add skill"}
-      </h5>
+      <div className="flex items-center gap-3 md:col-span-3">
+        {dragHandle}
+        <div>
+          <h6 className="font-semibold">{skill?.name ?? "Add a skill"}</h6>
+          <p className="text-text-muted text-xs">
+            {skill === undefined
+              ? "A skill is one technology or tool inside this category."
+              : "Skill"}
+          </p>
+        </div>
+      </div>
       <Field label="Category">
         <select
           className={inputClass}
@@ -435,7 +489,10 @@ function SkillForm({
           defaultValue={skill?.name ?? ""}
         />
       </Field>
-      <Field label="Colour">
+      <Field
+        label="Badge colour"
+        hint="Colours must remain readable in both light and dark themes."
+      >
         <input
           className={inputClass}
           name="color"
@@ -444,19 +501,9 @@ function SkillForm({
           defaultValue={skill?.color ?? "#0070f3"}
         />
       </Field>
-      <Field label="Order">
-        <input
-          className={inputClass}
-          name="sortOrder"
-          type="number"
-          min="0"
-          required
-          defaultValue={skill?.sortOrder ?? 0}
-        />
-      </Field>
       <Check
         name="enabled"
-        label="Enabled"
+        label="Show this skill"
         defaultChecked={skill?.enabled ?? true}
       />
       <div className="flex gap-2 md:col-span-3">
@@ -489,28 +536,66 @@ function ProjectsEditor({
 }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-5">
-      <ResourceHeading title="Projects" />
-      <ProjectForm skills={skills} busy={busy} mutate={mutate} />
-      {projects.map((project) => (
-        <ProjectForm
-          key={project.id}
-          project={project}
-          skills={skills}
-          busy={busy}
-          mutate={mutate}
-        />
-      ))}
+      <div className="space-y-1">
+        <ResourceHeading title="Projects" />
+        <p className="text-text-muted text-sm">
+          Drag projects into their display order. Progress is represented by one
+          status instead of separate start and completion dates.
+        </p>
+      </div>
+      <ProjectForm
+        projects={projects}
+        skills={skills}
+        busy={busy}
+        mutate={mutate}
+      />
+      <AdminSortableList
+        items={projects}
+        itemId={(project) => project.id}
+        itemLabel={projectName}
+        busy={busy}
+        onReorder={(ordered) => {
+          void mutate(
+            () =>
+              Promise.all(
+                ordered.map((project, sortOrder) =>
+                  adminRequest(`/admin/projects/${project.id}`, {
+                    method: "PATCH",
+                    mutation: true,
+                    ifMatch: project.version,
+                    body: projectPayload(project, sortOrder),
+                  })
+                )
+              ),
+            "Project order saved."
+          );
+        }}
+        renderItem={(project, dragHandle) => (
+          <ProjectForm
+            project={project}
+            dragHandle={dragHandle}
+            projects={projects}
+            skills={skills}
+            busy={busy}
+            mutate={mutate}
+          />
+        )}
+      />
     </section>
   );
 }
 
 function ProjectForm({
   project,
+  dragHandle,
+  projects,
   skills,
   busy,
   mutate,
 }: {
   readonly project?: Project;
+  readonly dragHandle?: React.ReactNode;
+  readonly projects: readonly Project[];
   readonly skills: readonly Skill[];
   readonly busy: boolean;
   readonly mutate: Mutate;
@@ -521,11 +606,21 @@ function ProjectForm({
       open={project === undefined}
       className={`border-border border ${project?.archivedAt === null || project === undefined ? "" : "opacity-70"}`}
     >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4">
-        <span className="font-semibold">
-          {project?.translations.find((item) => item.locale === "en")?.title ??
-            project?.slug ??
-            "Add project"}
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
+        {dragHandle}
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">
+            {project === undefined ? "Add a project" : projectName(project)}
+          </span>
+          <span className="text-text-muted block text-xs">
+            {project === undefined
+              ? "Create the project and its public summary."
+              : "Project · Select to edit"}
+          </span>
+        </span>
+        {project === undefined ? null : <StatusBadge status={project.status} />}
+        <span className="text-text-muted text-sm" aria-hidden="true">
+          ▾
         </span>
       </summary>
       <div className="border-border flex flex-col gap-5 border-t p-4">
@@ -535,50 +630,79 @@ function ProjectForm({
             event.preventDefault();
             const form = new FormData(event.currentTarget);
             const skillIds = form.getAll("skillId").map(String);
+            const title = text(form, "title");
             const body = {
-              slug: text(form, "slug"),
+              slug:
+                project?.slug ??
+                stableKey(title, `project-${Date.now().toString(36)}`),
               status: text(form, "status"),
               demoUrl: nullable(form, "demoUrl"),
               repositoryUrl: nullable(form, "repositoryUrl"),
               featured: form.has("featured"),
               enabled: form.has("enabled"),
-              sortOrder: integer(form, "sortOrder"),
-              startedAt: nullable(form, "startedAt"),
-              completedAt: nullable(form, "completedAt"),
+              sortOrder: project?.sortOrder ?? nextSortOrder(projects),
+              startedAt: project?.startedAt ?? null,
+              completedAt: project?.completedAt ?? null,
               skills: skillIds.map((skillId, sortOrder) => ({
                 skillId,
                 sortOrder,
               })),
             };
             void mutate(
-              () =>
-                adminRequest(
-                  project === undefined
-                    ? "/admin/projects"
-                    : `/admin/projects/${project.id}`,
-                  {
-                    method: project === undefined ? "POST" : "PATCH",
+              async () => {
+                if (project !== undefined) {
+                  await adminRequest(`/admin/projects/${project.id}`, {
+                    method: "PATCH",
                     mutation: true,
-                    ...(project === undefined
-                      ? {}
-                      : { ifMatch: project.version }),
+                    ifMatch: project.version,
                     body,
+                  });
+                  return;
+                }
+                const created = await adminRequest<Project>("/admin/projects", {
+                  method: "POST",
+                  mutation: true,
+                  body,
+                });
+                await adminRequest(
+                  `/admin/projects/${created.id}/translations/en`,
+                  {
+                    method: "PATCH",
+                    mutation: true,
+                    ifMatch: 0,
+                    body: {
+                      title,
+                      summary: text(form, "summary"),
+                      longDescription: null,
+                    },
                   }
-                ),
-              project === undefined
-                ? "Project created. Add its content before enabling it."
-                : "Project saved."
+                );
+              },
+              project === undefined ? "Project created." : "Project saved."
             );
           }}
         >
-          <Field label="Slug">
-            <input
-              className={inputClass}
-              name="slug"
-              required
-              defaultValue={project?.slug ?? ""}
-            />
-          </Field>
+          {project === undefined ? (
+            <>
+              <Field label="Project title">
+                <input
+                  className={inputClass}
+                  name="title"
+                  required
+                  maxLength={200}
+                />
+              </Field>
+              <Field label="Short summary">
+                <textarea
+                  className={inputClass}
+                  name="summary"
+                  required
+                  rows={3}
+                  maxLength={2000}
+                />
+              </Field>
+            </>
+          ) : null}
           <Field label="Status">
             <select
               className={inputClass}
@@ -590,16 +714,6 @@ function ProjectForm({
               <option value="COMPLETED">Completed</option>
               <option value="ARCHIVED">Archived status</option>
             </select>
-          </Field>
-          <Field label="Order">
-            <input
-              className={inputClass}
-              name="sortOrder"
-              type="number"
-              min="0"
-              required
-              defaultValue={project?.sortOrder ?? 0}
-            />
           </Field>
           <Field label="Demo URL">
             <input
@@ -615,22 +729,6 @@ function ProjectForm({
               name="repositoryUrl"
               type="url"
               defaultValue={project?.repositoryUrl ?? ""}
-            />
-          </Field>
-          <Field label="Started">
-            <input
-              className={inputClass}
-              name="startedAt"
-              type="date"
-              defaultValue={date(project?.startedAt)}
-            />
-          </Field>
-          <Field label="Completed">
-            <input
-              className={inputClass}
-              name="completedAt"
-              type="date"
-              defaultValue={date(project?.completedAt)}
             />
           </Field>
           <div className="grid gap-2">
@@ -1195,4 +1293,78 @@ function integer(form: FormData, name: string): number {
 }
 function date(value: string | null | undefined): string {
   return value?.slice(0, 10) ?? "";
+}
+
+function stableKey(value: string, fallback: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function nextSortOrder(
+  items: readonly { readonly sortOrder: number }[]
+): number {
+  return items.reduce((max, item) => Math.max(max, item.sortOrder + 1), 0);
+}
+
+function categoryName(category: Category): string {
+  return (
+    category.translations.find((item) => item.locale === "en")?.name ??
+    category.key
+  );
+}
+
+function categoryPayload(category: Category, sortOrder: number) {
+  return {
+    key: category.key,
+    enabled: category.enabled,
+    sortOrder,
+  };
+}
+
+function skillPayload(skill: Skill, sortOrder: number) {
+  return {
+    categoryId: skill.categoryId,
+    name: skill.name,
+    color: skill.color,
+    enabled: skill.enabled,
+    sortOrder,
+  };
+}
+
+function projectName(project: Project): string {
+  return (
+    project.translations.find((item) => item.locale === "en")?.title ??
+    project.slug
+  );
+}
+
+function projectPayload(project: Project, sortOrder: number) {
+  return {
+    slug: project.slug,
+    status: project.status,
+    demoUrl: project.demoUrl,
+    repositoryUrl: project.repositoryUrl,
+    featured: project.featured,
+    enabled: project.enabled,
+    sortOrder,
+    startedAt: project.startedAt,
+    completedAt: project.completedAt,
+    skills: project.skills,
+  };
+}
+
+function StatusBadge({
+  status,
+}: {
+  readonly status: Project["status"];
+}): React.JSX.Element {
+  return (
+    <span className="border-border bg-surface text-text-muted rounded border px-2 py-0.5 text-xs font-medium uppercase">
+      {status.toLowerCase().replace(/_/g, " ")}
+    </span>
+  );
 }
